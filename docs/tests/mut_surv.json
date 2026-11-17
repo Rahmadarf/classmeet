@@ -1,0 +1,27 @@
+[
+ [
+  "M6 batas sapuan market dihapus",
+  "    exit when o.kind = 'market' and v_levels > v_sweep;\n",
+  "",
+  [
+   "run_ob3.py"
+  ]
+ ],
+ [
+  "M10 offer bandar tak dibatasi persediaan",
+  "      v_n := least(v_n, v_stock);\n",
+  "",
+  [
+   "run_ob3.py"
+  ]
+ ],
+ [
+  "M15 market beli tidak membatasi sesuai saldo",
+  "      while v_n > 0 and m.price * v_n + public.ob_fee(m.price, v_n, v_fee) > v_cash loop",
+  "      while false loop",
+  [
+   "run_ob.py",
+   "run_ob2.py"
+  ]
+ ]
+]
