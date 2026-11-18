@@ -831,3 +831,17 @@ Permintaan pengguna: cari referensi leaderboard di Refero, terapkan **layout dan
 Diuji (HTTPS, 1920 × 1080, data nyata): semua lima baris dan kaki "Angka dalam rupiah" muat tanpa terpotong; dengan respons `get_leaderboard` yang ditiru (Tim Rajawali jadi juara) urutan kartu berpindah (posisi Y 0/166/332/498/664 mengikuti peringkat baru) dan lebar batang berubah. tsc, eslint, vitest (104 tes) lolos.
 
 Catatan: perbandingan batang relatif terhadap tim teratas, jadi saat satu tim jauh di depan (data uji: 200 juta vs ±10 juta) batang tim lain tampak pendek; angka tetap tertera. Belum diuji: layar tunggu (disembunyikan admin) setelah perubahan header, dan nama tim sangat panjang.
+
+### Layar Peringkat: batang dihapus, diganti tabel klasemen (18 Nov)
+
+Permintaan pengguna: hapus batang komposisi dan cari referensi leaderboard yang tidak memakai batang.
+
+**Referensi Refero** (pencarian "tournament standings table teams rank points columns" dan "podium top three winners 1st 2nd 3rd leaderboard"): tabel klasemen Premier League di The Athletic (kepala kolom **sekali** di atas, baris berisi nilai yang sejajar kolom, tanpa label di tiap baris), daftar Quizlet (peringkat | nilai | nama berkolom, baris disorot) dan hasil kuis Deezer (daftar berurutan dengan lencana peringkat dan satu baris disorot). Dipilih pola tabel klasemen.
+
+**Perubahan** (`components/display/leaderboard-screen.tsx`; warna tidak diubah, hanya `ink`, `ink-muted`, `line`, `card`, badge peringkat yang sama):
+- Batang komposisi, legenda, dan label per baris **dihapus**.
+- Kepala kolom sekali di atas papan: TIM | SALDO | NILAI ASET | TOTAL (huruf kapital, `ink-muted`), sejajar dengan kolom pada tiap baris.
+- Tiap kartu: nama di kiri (52 px), tiga sel angka berlebar tetap (300 / 300 / 450 px) rata kanan dengan garis tipis pemisah kolom di kiri tiap sel; kolom **Total** paling besar dan tebal (72 px, 60 px bila ≥ 11 karakter), Saldo dan Nilai aset 50 px (42 px bila ≥ 11 karakter).
+- Tinggi kartu 152 → 144 px dan jarak 14 → 12 px agar kepala kolom, header, dan kaki tetap muat di 1080 px. Badge peringkat dan animasi (DOM stabil + `translateY`) tidak berubah; judul "Peringkat Tim" di header dipertahankan.
+
+Diuji (HTTPS, 1920 × 1080): semua baris dan kaki muat (tinggi dokumen 1080 px); tidak ada teks yang terpotong, juga dengan data tiruan ekstrem (`999.999.999`, `600.000.000`, nama "Tim Cendrawasih"); dengan respons `get_leaderboard` yang ditiru urutan kartu berpindah (posisi Y 0/156/312/468/624 mengikuti peringkat baru). tsc, eslint, vitest (104 tes) lolos. Belum diuji: layar tunggu (leaderboard disembunyikan) dan nama tim yang lebih panjang dari ±12 huruf (dipotong dengan elipsis).

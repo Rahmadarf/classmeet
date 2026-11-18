@@ -11,8 +11,12 @@ import { cn } from "@/lib/utils";
 
 /** docs/07 §5: layar publik memuat ulang `get_leaderboard()` tiap ±5 detik (tanpa Realtime). */
 const POLL_MS = 5_000;
-const CARD_H = 152;
-const GAP = 14;
+/** Lebar kolom angka (px); kepala tabel dan tiap baris memakai ukuran yang sama supaya sejajar. */
+const COL_CASH = "w-[300px]";
+const COL_HOLD = "w-[300px]";
+const COL_TOTAL = "w-[450px]";
+const CARD_H = 144;
+const GAP = 12;
 
 /** Warna badge menurut POSISI (bukan tim): 1 kuning, 2 biru muda, 3 oranye, 4–5 abu (DESIGN.md §6). */
 const BADGE = ["bg-accent-2", "bg-brand-light", "bg-accent", "bg-rank-gray", "bg-rank-gray"] as const;
@@ -93,60 +97,56 @@ function Board({ rows }: { rows: LeaderRow[] }) {
   }
   const height = rows.length * CARD_H + (rows.length - 1) * GAP;
   const stable = [...rows].sort((a, b) => a.teamId.localeCompare(b.teamId));
-  const max = Math.max(0, ...rows.map((r) => r.total));
   return (
-    <section aria-label="Lima tim teratas" className="flex shrink-0 gap-6">
-      {/* Kolom badge: tetap, tidak ikut bergeser */}
-      <ol aria-hidden className="flex shrink-0 flex-col gap-[14px]">
-        {rows.map((_, i) => (
-          <li key={i} className="grid h-[152px] w-24 place-items-center">
-            <span
-              className={cn(
-                "text-ink-on-accent rounded-control grid size-24 place-items-center text-[56px] font-bold",
-                BADGE[i],
-              )}
-            >
-              {i + 1}
-            </span>
-          </li>
-        ))}
-      </ol>
-
-      {/* Urutan DOM kartu dibuat STABIL (menurut id tim) dan posisinya diatur lewat translateY. Memindahkan simpul
-          DOM akan membatalkan transisi CSS, sehingga kartu tidak akan bergeser halus. */}
-      <ol aria-hidden className="relative min-w-0 flex-1" style={{ height }}>
-        {stable.map((r) => (
-          <li
-            key={r.teamId}
-            className="board-card border-line bg-card shadow-card rounded-panel absolute inset-x-0 flex h-[152px] items-center gap-[48px] border pr-10 pl-8"
-            style={{ transform: `translateY(${rows.indexOf(r) * (CARD_H + GAP)}px)` }}
-          >
-            {/* Kiri: nama, batang komposisi (panjang = total relatif terhadap tim teratas; terbagi saldo | nilai aset),
-                lalu rincian angka (pola batang komposisi + legenda di papan Product Hunt). */}
-            <div className="flex min-w-0 flex-1 flex-col gap-3">
-              <p className="text-ink truncate text-[48px] leading-tight font-bold">{r.name}</p>
-              <Bar row={r} max={max} />
-              <div className="text-ink-muted flex items-center gap-10 text-[24px] font-medium whitespace-nowrap">
-                <Legend dot="bg-brand" label="Saldo" value={r.cash} />
-                <Legend dot="bg-brand-light" label="Nilai aset" value={r.holdings} />
-              </div>
-            </div>
-            {/* Kanan: total sebagai angka utama, rata kanan. */}
-            <div className="flex w-[480px] shrink-0 flex-col items-end gap-1">
-              <p className="text-ink-muted text-[24px] font-medium">Total</p>
-              {/* Angka sangat besar (≥ 11 karakter) dikecilkan supaya tetap muat. */}
-              <p
+    <section aria-label="Lima tim teratas" className="flex shrink-0 flex-col gap-3">
+      {/* Kepala kolom SEKALI di atas (pola tabel klasemen The Athletic), bukan label di tiap baris. */}
+      <div
+        aria-hidden
+        className="text-ink-muted flex gap-6 text-[24px] font-semibold tracking-[0.08em] uppercase"
+      >
+        <span className="w-24 shrink-0" />
+        <div className="flex min-w-0 flex-1 items-end pr-10 pl-8">
+          <span className="min-w-0 flex-1">Tim</span>
+          <span className={cn("pr-4 text-right", COL_CASH)}>Saldo</span>
+          <span className={cn("pr-4 text-right", COL_HOLD)}>Nilai aset</span>
+          <span className={cn("pr-4 text-right", COL_TOTAL)}>Total</span>
+        </div>
+      </div>
+      <div className="flex gap-6">
+        {/* Kolom badge: tetap, tidak ikut bergeser */}
+        <ol aria-hidden className="flex shrink-0 flex-col gap-[12px]">
+          {rows.map((_, i) => (
+            <li key={i} className="grid h-[144px] w-24 place-items-center">
+              <span
                 className={cn(
-                  "tnum text-ink leading-[1.05] font-bold whitespace-nowrap",
-                  formatNumber(r.total).length >= 11 ? "text-[62px]" : "text-[76px]",
+                  "text-ink-on-accent rounded-control grid size-24 place-items-center text-[56px] font-bold",
+                  BADGE[i],
                 )}
               >
-                {formatNumber(r.total)}
-              </p>
-            </div>
-          </li>
-        ))}
-      </ol>
+                {i + 1}
+              </span>
+            </li>
+          ))}
+        </ol>
+
+        {/* Urutan DOM kartu dibuat STABIL (menurut id tim) dan posisinya diatur lewat translateY. Memindahkan simpul
+          DOM akan membatalkan transisi CSS, sehingga kartu tidak akan bergeser halus. */}
+        <ol aria-hidden className="relative min-w-0 flex-1" style={{ height }}>
+          {stable.map((r) => (
+            <li
+              key={r.teamId}
+              className="board-card border-line bg-card shadow-card rounded-panel absolute inset-x-0 flex h-[144px] items-center border pr-10 pl-8"
+              style={{ transform: `translateY(${rows.indexOf(r) * (CARD_H + GAP)}px)` }}
+            >
+              <p className="text-ink min-w-0 flex-1 truncate text-[52px] leading-tight font-bold">{r.name}</p>
+              {/* Tiga kolom angka dengan lebar tetap, sejajar dengan kepala tabel di atas papan. */}
+              <Num value={r.cash} className={COL_CASH} />
+              <Num value={r.holdings} className={COL_HOLD} />
+              <Num value={r.total} strong className={COL_TOTAL} />
+            </li>
+          ))}
+        </ol>
+      </div>
 
       {/* Versi untuk pembaca layar: berurutan menurut peringkat. */}
       <ol className="sr-only">
@@ -161,33 +161,25 @@ function Board({ rows }: { rows: LeaderRow[] }) {
   );
 }
 
-/** Batang komposisi: panjang isi = total ÷ total tim teratas; di dalamnya saldo (kiri) lalu nilai aset (kanan). */
-function Bar({ row, max }: { row: LeaderRow; max: number }) {
-  const fill = max > 0 ? Math.max(0, Math.min(1, row.total / max)) : 0;
-  const parts = row.cash + row.holdings;
-  const cash = parts > 0 ? row.cash / parts : 0;
+/** Sel angka tabel: rata kanan, garis tipis di kiri sebagai pemisah kolom; `strong` = kolom Total (angka utama). */
+function Num({ value, strong = false, className }: { value: number; strong?: boolean; className: string }) {
+  const text = formatNumber(value);
   return (
-    <div className="bg-soft h-[18px] w-full overflow-hidden rounded-full">
-      <div
-        className="flex h-full overflow-hidden rounded-full transition-[width] duration-700 ease-out"
-        style={{ width: `${fill * 100}%` }}
-      >
-        <div
-          className="bg-brand h-full transition-[width] duration-700"
-          style={{ width: `${cash * 100}%` }}
-        />
-        <div className="bg-brand-light h-full flex-1" />
-      </div>
-    </div>
-  );
-}
-
-function Legend({ dot, label, value }: { dot: string; label: string; value: number }) {
-  return (
-    <p className="flex items-baseline gap-3">
-      <span aria-hidden className={cn("size-[14px] shrink-0 self-center rounded-full", dot)} />
-      <span>{label}</span>
-      <span className="tnum text-ink font-bold">{formatNumber(value)}</span>
+    <p
+      className={cn(
+        "tnum border-line flex h-[88px] items-center justify-end border-l pr-4 pl-4 text-right leading-none whitespace-nowrap",
+        strong ? "text-ink font-bold" : "text-ink font-semibold",
+        strong
+          ? text.length >= 11
+            ? "text-[60px]"
+            : "text-[72px]"
+          : text.length >= 11
+            ? "text-[42px]"
+            : "text-[50px]",
+        className,
+      )}
+    >
+      {text}
     </p>
   );
 }
