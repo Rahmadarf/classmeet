@@ -43,7 +43,7 @@ export function AssetList({
   return (
     <section
       aria-label="Daftar aset"
-      className="rounded-panel border-line bg-card flex flex-col gap-3 overflow-hidden border p-4 xl:sticky xl:top-4 xl:max-h-[calc(100dvh-2rem)]"
+      className="rounded-panel border-line bg-card shadow-card flex flex-col gap-3 overflow-hidden border p-4 xl:sticky xl:top-4 xl:max-h-[calc(100dvh-2rem)]"
     >
       <label className="relative block">
         <span className="sr-only">Cari aset</span>

@@ -47,7 +47,7 @@ export function OpenOrders({
   return (
     <section
       aria-label="Order terbuka"
-      className="rounded-panel border-line bg-card flex flex-col gap-2.5 border p-4"
+      className="rounded-panel border-line bg-card shadow-card flex flex-col gap-2.5 border p-4"
     >
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-brand-text text-xs font-semibold tracking-[0.12em] uppercase">

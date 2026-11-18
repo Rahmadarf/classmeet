@@ -802,3 +802,17 @@ Diuji di peramban (akun tim, 1440 × 900, HTTPS): tinggi dokumen 1141 px; order 
 ### Order book: pembatas antar-kolom di dalam baris (18 Nov)
 
 Permintaan pengguna: tiap baris order book (Freq, Lot, harga) diberi garis pemisah agar mudah dibaca. `components/market/order-book.tsx`: garis vertikal tipis (`divide-x`, hitam 15–25 % transparan) di antara kolom pada baris kepala dan semua sel (sisi bid dan offer; sel kosong juga), dengan padding per kolom. Lebar kolom diubah dari tiga sama besar menjadi 3 : 3 : 6 (bid: Freq, Lot, Bid) dan 6 : 3 : 3 (offer: Offer, Lot, Freq) supaya angka harga tidak menempel pada garis dan kolom baris sejajar dengan kepalanya. Baris milik tim (garis biru) tetap mempertahankan garis biru dan pembatasnya. Diuji di peramban (akun tim, 1440 × 900) pada Adaro dan BCA; tsc dan eslint lolos.
+
+## Latar halaman putih (18 Nov)
+
+Permintaan pengguna: latar semua halaman putih; pemisah memakai garis tepi (outline) dan bayangan.
+
+- `app/globals.css`: `--page` dari `#f3f6ff` (biru pucat) menjadi `#ffffff`; `--border` sedikit lebih tegas (`#d3dcf7` → `#cbd5f5`) supaya garis terlihat di atas putih; `--shadow-card` diperkuat dua lapis (`0 1px 3px rgba(13,43,227,.10), 0 4px 16px rgba(13,43,227,.08)`). `--bg-0` (isian/field) dan `--bg-2`/`--bg-3` (ubin, baris tabel, chip) tidak diubah: tetap biru pucat sebagai lapisan di dalam kartu putih.
+- Semua panel (`rounded-panel` + `bg-card`) kini punya garis `border-line` **dan** `shadow-card`: 13 panel di `components/market/*` (order book, detail aset, order terbuka, daftar aset, form order, pemberitahuan bangkrut), `components/orders/orders-board.tsx` (3), dan `components/display/market-screen.tsx` (4); kartu pos di layar publik (`posts-screen.tsx`) diberi bayangan. Sidebar (laptop) diberi bayangan ke kanan dan garis tepi; bilah atas ponsel dan bilah atas penjaga diberi `shadow-card`.
+- Dialog, tooltip, dan toast tidak berubah (sudah memakai `shadow-dialog`).
+
+Perubahan token `:root` baru terbaca setelah server dev dimulai ulang (dilakukan; server dev milik pengguna ikut dihentikan dan dijalankan ulang lewat konfigurasi `classmeet-dev-https`).
+
+Diperiksa lewat tangkapan layar (HTTPS, akun nyata): `body` `rgb(255, 255, 255)`; tim (Pasar, Beranda, Portofolio), admin (Tim), penjaga (ponsel), layar display (peringkat, pasar, pos), dan login. Kartu terpisah jelas dari latar oleh garis + bayangan. `docs/DESIGN.md` dan docs/07 masih menyebut latar biru pucat; tidak saya ubah (perlu pembaruan oleh pemilik dokumen).
+
+Belum diperiksa satu per satu: halaman Order dan Riwayat tim (diambil, tidak diperiksa terperinci), halaman admin selain Tim, dialog yang sedang terbuka di atas latar putih, dan layar < 1280 px.

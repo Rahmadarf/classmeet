@@ -141,7 +141,7 @@ export function MarketScreen({ initial, live = true }: { initial: MarketBoardDat
               {/* Indeks gabungan */}
               <section
                 aria-label="Indeks gabungan"
-                className="border-line bg-card rounded-panel flex w-[1240px] shrink-0 flex-col gap-[18px] self-stretch border p-7"
+                className="border-line bg-card shadow-card rounded-panel flex w-[1240px] shrink-0 flex-col gap-[18px] self-stretch border p-7"
               >
                 <div className="flex items-center gap-5">
                   <div className="flex flex-col gap-0.5">
@@ -269,7 +269,7 @@ export function MarketScreen({ initial, live = true }: { initial: MarketBoardDat
             <div className="flex shrink-0 items-start gap-5 leading-normal">
               <section
                 aria-label="Berita terbaru"
-                className="border-line bg-card rounded-panel flex w-[1240px] shrink-0 flex-col gap-1.5 border p-5"
+                className="border-line bg-card shadow-card rounded-panel flex w-[1240px] shrink-0 flex-col gap-1.5 border p-5"
               >
                 <p className="text-brand-text text-[13px] font-semibold tracking-[0.12em] uppercase">
                   Berita terbaru
@@ -285,7 +285,7 @@ export function MarketScreen({ initial, live = true }: { initial: MarketBoardDat
               </section>
               <section
                 aria-label="Transaksi terakhir"
-                className="border-line bg-card rounded-panel flex min-w-0 flex-1 flex-col gap-2 border p-5"
+                className="border-line bg-card shadow-card rounded-panel flex min-w-0 flex-1 flex-col gap-2 border p-5"
               >
                 <p className="text-brand-text text-[13px] font-semibold tracking-[0.12em] uppercase">
                   Transaksi terakhir
@@ -335,7 +335,7 @@ function Movers({ title, movers, empty }: { title: string; movers: Mover[]; empt
   return (
     <section
       aria-label={title}
-      className="border-line bg-card rounded-panel flex flex-col gap-2.5 border px-6 py-5"
+      className="border-line bg-card shadow-card rounded-panel flex flex-col gap-2.5 border px-6 py-5"
     >
       <p className="text-brand-text text-[13px] font-semibold tracking-[0.12em] uppercase">{title}</p>
       {movers.length === 0 ? (

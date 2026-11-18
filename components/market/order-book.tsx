@@ -38,7 +38,7 @@ export function OrderBook({
   return (
     <section
       aria-label="Order book"
-      className="rounded-panel border-line bg-card flex flex-col gap-3 border p-5"
+      className="rounded-panel border-line bg-card shadow-card flex flex-col gap-3 border p-5"
     >
       <div className="border-line flex items-baseline justify-between gap-3 border-b pb-3">
         <h2 className="text-brand-text text-xs font-semibold tracking-[0.12em] uppercase">Order book</h2>

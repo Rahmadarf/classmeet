@@ -14,7 +14,7 @@ export function BankruptNotice({ assets }: { assets: BankruptAsset[] }) {
         <li
           key={a.id}
           role="status"
-          className="rounded-panel border-bad-text bg-card text-ink flex min-h-14 items-center gap-3.5 border px-5 py-3.5"
+          className="rounded-panel border-bad-text bg-card shadow-card text-ink flex min-h-14 items-center gap-3.5 border px-5 py-3.5"
         >
           <TrendingDown className="text-bad-text size-[22px] shrink-0" aria-hidden />
           <p className="min-w-0 flex-1 text-lg font-semibold">

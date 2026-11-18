@@ -227,7 +227,7 @@ export function OrderForm({
   return (
     <section
       aria-label="Form order"
-      className="rounded-panel border-line bg-card flex flex-col gap-3.5 border p-5"
+      className="rounded-panel border-line bg-card shadow-card flex flex-col gap-3.5 border p-5"
     >
       <div role="tablist" aria-label="Sisi order" className="rounded-tabs bg-field flex gap-1.5 p-1">
         {(["buy", "sell"] as const).map((s) => (

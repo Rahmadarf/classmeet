@@ -33,7 +33,7 @@ export function AppShell({
   return (
     <div className="flex min-h-dvh">
       <aside
-        className="border-line bg-sidebar sticky top-0 hidden h-dvh w-[260px] shrink-0 flex-col gap-6 border-r p-4 lg:flex"
+        className="border-line bg-sidebar sticky top-0 z-10 hidden h-dvh w-[260px] shrink-0 flex-col gap-6 border-r p-4 shadow-[3px_0_16px_rgba(13,43,227,0.08)] lg:flex"
         aria-label="Navigasi"
       >
         <Brand subtitle={brandSubtitle} />
@@ -44,7 +44,7 @@ export function AppShell({
       <div className="flex min-w-0 flex-1 flex-col">
         {banner}
         {/* Di bawah 1024 px sidebar disembunyikan: tim dan admin bekerja dari laptop. */}
-        <header className="border-line bg-sidebar flex items-center gap-3 border-b px-4 py-3 lg:hidden">
+        <header className="border-line bg-sidebar shadow-card flex items-center gap-3 border-b px-4 py-3 lg:hidden">
           <Brand subtitle={brandSubtitle} />
         </header>
         <main

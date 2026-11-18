@@ -172,7 +172,7 @@ export function OrdersBoard({ initial }: { initial: OrdersInitial }) {
 
       <section
         aria-label="Order antre"
-        className="rounded-panel border-line bg-card flex flex-col gap-2.5 border p-5"
+        className="rounded-panel border-line bg-card shadow-card flex flex-col gap-2.5 border p-5"
       >
         <h2 className="text-brand-text text-xs font-semibold tracking-[0.12em] uppercase">Order antre</h2>
         {open.length === 0 ? (
@@ -237,7 +237,7 @@ export function OrdersBoard({ initial }: { initial: OrdersInitial }) {
 
       <section
         aria-label="Riwayat order hari ini"
-        className="rounded-panel border-line bg-card flex flex-col gap-2.5 border p-5"
+        className="rounded-panel border-line bg-card shadow-card flex flex-col gap-2.5 border p-5"
       >
         <h2 className="text-brand-text text-xs font-semibold tracking-[0.12em] uppercase">
           Riwayat order hari ini
@@ -282,7 +282,7 @@ export function OrdersBoard({ initial }: { initial: OrdersInitial }) {
 
 function Stat({ label, value, note }: { label: string; value: string; note: string }) {
   return (
-    <div className="rounded-panel border-line bg-card flex min-w-0 flex-col gap-1.5 border p-[18px]">
+    <div className="rounded-panel border-line bg-card shadow-card flex min-w-0 flex-col gap-1.5 border p-[18px]">
       <p className="text-ink-muted text-[11px] font-semibold tracking-[0.1em] uppercase">{label}</p>
       <p className="money text-ink truncate text-[30px] leading-tight font-bold">{value}</p>
       <p className="text-ink-muted text-[13px]">{note}</p>

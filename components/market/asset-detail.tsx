@@ -20,7 +20,7 @@ export function AssetDetail({ asset, band }: { asset: MarketAsset; band: Band | 
   return (
     <section
       aria-label={`Detail ${asset.name}`}
-      className="rounded-panel border-line bg-card flex flex-col gap-4 border p-5"
+      className="rounded-panel border-line bg-card shadow-card flex flex-col gap-4 border p-5"
     >
       <div className="flex items-center gap-3">
         <span

@@ -25,7 +25,7 @@ export function GuardShell({
   const [open, setOpen] = useState(false);
   return (
     <div className="bg-page flex min-h-dvh flex-col">
-      <header className="border-line bg-sidebar sticky top-0 z-30 flex items-center gap-3 border-b px-5 py-3.5">
+      <header className="border-line bg-sidebar shadow-card sticky top-0 z-30 flex items-center gap-3 border-b px-5 py-3.5">
         <button
           type="button"
           onClick={() => setOpen(true)}

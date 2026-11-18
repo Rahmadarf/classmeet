@@ -13,7 +13,7 @@
 :root {
   color-scheme: light;
 
-  --page: #f3f6ff;
+  --page: #ffffff; /* latar semua halaman putih; pemisah = garis (--border) + bayangan (--shadow-card) */
   --bg-0: #f3f6ff;
   --bg-1: #ffffff;
   --bg-2: #eaf0ff;
@@ -21,7 +21,7 @@
   --sidebar: #ffffff;
   --sidebar-card: #eaf0ff;
   --nav-active: #eaf0ff;
-  --border: #d3dcf7;
+  --border: #cbd5f5;
   --border-strong: #8e9cd6;
   --overlay: rgba(10, 33, 180, 0.55);
 
@@ -65,7 +65,7 @@
   --radius-tab: 12px;
   --radius-tabs: 16px;
 
-  --shadow-card: 0 2px 12px rgba(13, 43, 227, 0.06);
+  --shadow-card: 0 1px 3px rgba(13, 43, 227, 0.1), 0 4px 16px rgba(13, 43, 227, 0.08);
   --shadow-dialog: 0 8px 32px rgba(13, 43, 227, 0.16);
   --shadow-hero: 0 8px 32px rgba(13, 43, 227, 0.28);
 

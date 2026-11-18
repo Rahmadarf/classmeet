@@ -146,7 +146,7 @@ export function PostsScreen({
               <li
                 key={p.id}
                 className={cn(
-                  "rounded-row flex items-center border",
+                  "rounded-row shadow-card flex items-center border",
                   z.row,
                   p.isOpen ? "border-ok-text/45 bg-ok/[.09]" : "border-line bg-card",
                 )}
