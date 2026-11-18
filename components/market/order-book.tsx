@@ -40,7 +40,7 @@ export function OrderBook({
       aria-label="Order book"
       className="rounded-panel border-line bg-card flex flex-col gap-3 border p-5"
     >
-      <div className="flex items-baseline justify-between gap-3">
+      <div className="border-line flex items-baseline justify-between gap-3 border-b pb-3">
         <h2 className="text-brand-text text-xs font-semibold tracking-[0.12em] uppercase">Order book</h2>
         <p className="text-ink-muted text-xs">
           Jarak 1 fraksi = {formatRupiah(tickFor(lastPrice))} · {LEVELS} level
@@ -55,32 +55,36 @@ export function OrderBook({
         </div>
       ) : (
         <>
-          <div
-            className="text-ink-muted grid grid-cols-2 gap-3 text-[11px] font-semibold tracking-[0.06em]"
-            aria-hidden
-          >
-            <div className="grid grid-cols-3 px-2.5">
-              <span>Freq</span>
-              <span>Lot</span>
-              <span className="text-right">Bid</span>
+          {/* Garis tengah memisahkan sisi beli (kiri) dan sisi jual (kanan); jatuh di tengah celah antar-kolom. */}
+          <div className="relative flex flex-col gap-3">
+            <span aria-hidden className="bg-line-strong absolute inset-y-0 left-1/2 w-px -translate-x-1/2" />
+            <div
+              className="text-ink-muted border-line grid grid-cols-2 gap-6 border-b pb-2 text-[11px] font-semibold tracking-[0.06em]"
+              aria-hidden
+            >
+              <div className="grid grid-cols-3 px-2.5">
+                <span>Freq</span>
+                <span>Lot</span>
+                <span className="text-right">Bid</span>
+              </div>
+              <div className="grid grid-cols-3 px-2.5">
+                <span>Offer</span>
+                <span>Lot</span>
+                <span className="text-right">Freq</span>
+              </div>
             </div>
-            <div className="grid grid-cols-3 px-2.5">
-              <span>Offer</span>
-              <span>Lot</span>
-              <span className="text-right">Freq</span>
-            </div>
+
+            <ol className="flex flex-col gap-1.5" aria-label="Level harga, terbaik di atas">
+              {rows.map((row, i) => (
+                <li key={i} className="grid grid-cols-2 gap-6">
+                  <Cell side="bid" level={row.bid} maxLots={maxLots} />
+                  <Cell side="offer" level={row.offer} maxLots={maxLots} />
+                </li>
+              ))}
+            </ol>
           </div>
 
-          <ol className="flex flex-col gap-1" aria-label="Level harga, terbaik di atas">
-            {rows.map((row, i) => (
-              <li key={i} className="grid grid-cols-2 gap-3">
-                <Cell side="bid" level={row.bid} maxLots={maxLots} />
-                <Cell side="offer" level={row.offer} maxLots={maxLots} />
-              </li>
-            ))}
-          </ol>
-
-          <div className="flex items-center gap-3 text-xs">
+          <div className="border-line flex items-center gap-3 border-t pt-3 text-xs">
             <p className="text-ok-text flex-1 font-semibold">Total bid {formatNumber(totalBid)} lot</p>
             <p className="tnum text-ink shrink-0 font-bold">Terakhir {formatRupiah(lastPrice)}</p>
             <p className="text-bad-text flex-1 text-right font-semibold">

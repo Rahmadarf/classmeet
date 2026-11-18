@@ -17,11 +17,16 @@ export const DialogDescription = DialogPrimitive.Description;
  */
 export const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(function DialogContent({ className, children, ...props }, ref) {
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
+    /** Mengganti latar belakang (bawaan: biru transparan `--overlay`), mis. abu-abu buram untuk dialog berita. */
+    overlayClassName?: string;
+  }
+>(function DialogContent({ className, overlayClassName, children, ...props }, ref) {
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-[color:var(--overlay)]" />
+      <DialogPrimitive.Overlay
+        className={cn("fixed inset-0 z-50 bg-[color:var(--overlay)]", overlayClassName)}
+      />
       <DialogPrimitive.Content
         ref={ref}
         className={cn(

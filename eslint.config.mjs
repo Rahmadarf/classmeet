@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Berkas unduhan resmi Supabase self-hosted (bukan kode aplikasi).
+    "deploy/**",
   ]),
 ]);
 

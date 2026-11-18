@@ -786,3 +786,15 @@ Setelah pengguna memasang CA Caddy di keychain sistem macOS, peramban uji meneri
 - Kiosk: konteks aman, tanpa pesan "Kamera hanya bisa dipakai lewat HTTPS"; tim masuk lewat kartu QR → `/team/market` dengan 30 aset, tanpa pesan "Data belum bisa diperbarui".
 
 Belum: kamera fisik (peramban uji tanpa perangkat kamera), ponsel nyata (CA harus dipasang di tiap perangkat), build produksi (`start:https`), dan perubahan IP laptop.
+
+## Perbaikan tampilan Pasar dan dialog berita (18 Nov)
+
+Permintaan pengguna (tim, halaman Pasar dan pop-up berita):
+
+1. **Halaman Pasar bisa digulir jauh melewati isinya.** Diukur: tinggi dokumen 1997 px padahal isi hanya ±1141 px (±850 px kosong di bawah). Penyebab: daftar aset yang bisa digulir (`ul` dengan `overflow-y-auto`) berada di dalam kartu `sticky` tanpa `overflow`, dan Chrome menambahkan tinggi gulir daftar itu (1684 px) ke tinggi dokumen. Perbaikan: `overflow-hidden` pada kartu daftar aset (`components/market/asset-list.tsx`, dengan komentar alasannya). Hasil: tinggi dokumen 1141 px (sama dengan isi). Halaman tetap bisa digulir seperlunya bila isinya lebih tinggi dari layar (1141 > 900 px pada 1440 × 900), tanpa ruang kosong.
+2. **Order book diberi pembatas** (`components/market/order-book.tsx`): garis di bawah judul, garis di bawah baris kepala kolom, garis vertikal di tengah yang memisahkan sisi beli (bid) dan jual (offer), dan garis di atas baris total. Celah antar-kolom dan antar-baris sedikit dilebarkan agar garis tidak menempel pada sel.
+3. **Dialog detail berita** (`components/team/news-dialog.tsx`, `components/ui/dialog.tsx`): latar belakang abu-abu netral buram (`bg-neutral-500/35` + `backdrop-blur-md`) lewat properti baru `overlayClassName` pada `DialogContent` (dialog lain tetap memakai latar biru `--overlay`); kotak 560 → 760 px, padding lebih besar; judul 24 → 32 px, isi 18 → 22 px (jarak baris 1,7), tanggal 14 → 16 px.
+
+Perbaikan terkait: `tsconfig.json` (`exclude: deploy`), `eslint.config.mjs` (`deploy/**`), dan `.prettierignore` mengabaikan folder `deploy/` yang berisi berkas unduhan Supabase (membuat `tsc` dan `next build` gagal setelah `stack/` ada).
+
+Diuji di peramban (akun tim, 1440 × 900, HTTPS): tinggi dokumen 1141 px; order book dengan garis pemisah (diperiksa lewat tangkapan layar); dialog berita 760 px, huruf 32/22 px, latar abu-abu buram. tsc, eslint, vitest (104 tes) lolos. Belum: layar lebih sempit dari 1280 px dan dialog yang diisi berita sangat panjang (tinggi maksimum 88 % layar, isi menggulir di dalam kotak).

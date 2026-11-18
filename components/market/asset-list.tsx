@@ -8,6 +8,9 @@ import { isSuspended, type MarketAsset } from "@/lib/market/data";
 import { cn } from "@/lib/utils";
 
 /**
+ * `overflow-hidden` pada kartu WAJIB: tanpanya daftar yang bisa digulir di dalam kartu `sticky` ikut menambah tinggi
+ * dokumen (±850 px ruang kosong di bawah halaman Pasar, sehingga halaman bisa digulir jauh melewati isinya).
+ *
  * Kolom kiri Pasar: pencarian + daftar aset (Figma `Daftar aset`, 1121:709).
  * Harga = harga transaksi terakhir; chip = selisih terhadap harga acuan (▲/▼ + teks, bukan hanya warna).
  */
@@ -40,7 +43,7 @@ export function AssetList({
   return (
     <section
       aria-label="Daftar aset"
-      className="rounded-panel border-line bg-card flex flex-col gap-3 border p-4 xl:sticky xl:top-4 xl:max-h-[calc(100dvh-2rem)]"
+      className="rounded-panel border-line bg-card flex flex-col gap-3 overflow-hidden border p-4 xl:sticky xl:top-4 xl:max-h-[calc(100dvh-2rem)]"
     >
       <label className="relative block">
         <span className="sr-only">Cari aset</span>
