@@ -816,3 +816,18 @@ Perubahan token `:root` baru terbaca setelah server dev dimulai ulang (dilakukan
 Diperiksa lewat tangkapan layar (HTTPS, akun nyata): `body` `rgb(255, 255, 255)`; tim (Pasar, Beranda, Portofolio), admin (Tim), penjaga (ponsel), layar display (peringkat, pasar, pos), dan login. Kartu terpisah jelas dari latar oleh garis + bayangan. `docs/DESIGN.md` dan docs/07 masih menyebut latar biru pucat; tidak saya ubah (perlu pembaruan oleh pemilik dokumen).
 
 Belum diperiksa satu per satu: halaman Order dan Riwayat tim (diambil, tidak diperiksa terperinci), halaman admin selain Tim, dialog yang sedang terbuka di atas latar putih, dan layar < 1280 px.
+
+## Layout baru layar publik "Peringkat" (18 Nov)
+
+Permintaan pengguna: cari referensi leaderboard di Refero, terapkan **layout dan posisi saja** pada `/display/leaderboard`, tanpa mengubah warna.
+
+**Referensi Refero** (pencarian "leaderboard ranking top 5 with rank numbers and scores" dan "live leaderboard podium top 3 …", web): Duolingo (papan liga: judul + keterangan di atas, baris berperingkat dengan nama di kiri dan skor di kanan, sorotan untuk posisi atas), Product Hunt "Kitty Points Leaderboard" (tiap baris: nama di kiri, **batang komposisi berwarna di bawah nama beserta legenda angka per komponen**, skor besar rata kanan), Pexels Leaderboard (nomor peringkat besar di kiri, nama + statistik, isi di kanan), Brilliant Leagues (kartu baris putih berlapis dengan satu baris disorot). Yang dipakai: skor utama besar rata kanan, nama + batang komposisi + legenda di kiri, judul + keterangan di header.
+
+**Perubahan** (`components/display/leaderboard-screen.tsx`; tidak ada warna baru, hanya token yang sudah dipakai: `brand`, `brand-light`, `soft`, `ink`, badge peringkat tetap):
+- Baris kartu: sebelumnya nama + tiga angka sama besar (Total, Saldo, Nilai aset) berjajar; kini **kiri**: nama, **batang komposisi** (panjang isi = total ÷ total tim teratas, terbagi saldo `brand` | nilai aset `brand-light`) dan legenda "● Saldo … ● Nilai aset …"; **kanan**: **Total** sebagai angka utama (76 px, 62 px bila ≥ 11 karakter), rata kanan.
+- Header: judul "Peringkat Tim" + keterangan "Total = saldo + nilai aset" di kanan (menyembunyikan diri saat layar tunggu).
+- Tinggi kartu 160 → 152 px dan jarak 16 → 14 px agar header baru dan keterangan kaki tetap muat di 1080 px. Badge peringkat tetap di tempat (kolom terpisah); mekanisme animasi (DOM stabil menurut id tim + `translateY` menurut peringkat) tidak berubah; batang dan segmen juga beranimasi lewat transisi lebar.
+
+Diuji (HTTPS, 1920 × 1080, data nyata): semua lima baris dan kaki "Angka dalam rupiah" muat tanpa terpotong; dengan respons `get_leaderboard` yang ditiru (Tim Rajawali jadi juara) urutan kartu berpindah (posisi Y 0/166/332/498/664 mengikuti peringkat baru) dan lebar batang berubah. tsc, eslint, vitest (104 tes) lolos.
+
+Catatan: perbandingan batang relatif terhadap tim teratas, jadi saat satu tim jauh di depan (data uji: 200 juta vs ±10 juta) batang tim lain tampak pendek; angka tetap tertera. Belum diuji: layar tunggu (disembunyikan admin) setelah perubahan header, dan nama tim sangat panjang.

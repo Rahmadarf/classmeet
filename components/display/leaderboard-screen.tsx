@@ -11,8 +11,8 @@ import { cn } from "@/lib/utils";
 
 /** docs/07 §5: layar publik memuat ulang `get_leaderboard()` tiap ±5 detik (tanpa Realtime). */
 const POLL_MS = 5_000;
-const CARD_H = 160;
-const GAP = 16;
+const CARD_H = 152;
+const GAP = 14;
 
 /** Warna badge menurut POSISI (bukan tim): 1 kuning, 2 biru muda, 3 oranye, 4–5 abu (DESIGN.md §6). */
 const BADGE = ["bg-accent-2", "bg-brand-light", "bg-accent", "bg-rank-gray", "bg-rank-gray"] as const;
@@ -59,6 +59,13 @@ export function LeaderboardScreen({
             C
           </div>
           <p className="text-ink text-[36px] font-bold">CLASSMEET MARKET</p>
+          {/* Judul + keterangan di kanan (pola judul/subjudul papan peringkat di Duolingo dan Pexels). */}
+          {result && !result.hidden ? (
+            <div className="ml-auto text-right">
+              <p className="text-ink text-[40px] leading-tight font-bold">Peringkat Tim</p>
+              <p className="text-ink-muted text-[22px]">Total = saldo + nilai aset</p>
+            </div>
+          ) : null}
         </header>
 
         {result === null ? (
@@ -86,12 +93,13 @@ function Board({ rows }: { rows: LeaderRow[] }) {
   }
   const height = rows.length * CARD_H + (rows.length - 1) * GAP;
   const stable = [...rows].sort((a, b) => a.teamId.localeCompare(b.teamId));
+  const max = Math.max(0, ...rows.map((r) => r.total));
   return (
     <section aria-label="Lima tim teratas" className="flex shrink-0 gap-6">
       {/* Kolom badge: tetap, tidak ikut bergeser */}
-      <ol aria-hidden className="flex shrink-0 flex-col gap-4">
+      <ol aria-hidden className="flex shrink-0 flex-col gap-[14px]">
         {rows.map((_, i) => (
-          <li key={i} className="grid h-[160px] w-24 place-items-center">
+          <li key={i} className="grid h-[152px] w-24 place-items-center">
             <span
               className={cn(
                 "text-ink-on-accent rounded-control grid size-24 place-items-center text-[56px] font-bold",
@@ -110,16 +118,32 @@ function Board({ rows }: { rows: LeaderRow[] }) {
         {stable.map((r) => (
           <li
             key={r.teamId}
-            className="board-card border-line bg-card shadow-card rounded-panel absolute inset-x-0 flex h-[160px] items-center gap-[40px] border pr-10 pl-8"
+            className="board-card border-line bg-card shadow-card rounded-panel absolute inset-x-0 flex h-[152px] items-center gap-[48px] border pr-10 pl-8"
             style={{ transform: `translateY(${rows.indexOf(r) * (CARD_H + GAP)}px)` }}
           >
-            <p className="text-ink w-[420px] shrink-0 truncate text-[48px] leading-tight font-bold">
-              {r.name}
-            </p>
-            <div className="flex-1" />
-            <Figure label="Total" value={r.total} />
-            <Figure label="Saldo" value={r.cash} />
-            <Figure label="Nilai aset" value={r.holdings} />
+            {/* Kiri: nama, batang komposisi (panjang = total relatif terhadap tim teratas; terbagi saldo | nilai aset),
+                lalu rincian angka (pola batang komposisi + legenda di papan Product Hunt). */}
+            <div className="flex min-w-0 flex-1 flex-col gap-3">
+              <p className="text-ink truncate text-[48px] leading-tight font-bold">{r.name}</p>
+              <Bar row={r} max={max} />
+              <div className="text-ink-muted flex items-center gap-10 text-[24px] font-medium whitespace-nowrap">
+                <Legend dot="bg-brand" label="Saldo" value={r.cash} />
+                <Legend dot="bg-brand-light" label="Nilai aset" value={r.holdings} />
+              </div>
+            </div>
+            {/* Kanan: total sebagai angka utama, rata kanan. */}
+            <div className="flex w-[480px] shrink-0 flex-col items-end gap-1">
+              <p className="text-ink-muted text-[24px] font-medium">Total</p>
+              {/* Angka sangat besar (≥ 11 karakter) dikecilkan supaya tetap muat. */}
+              <p
+                className={cn(
+                  "tnum text-ink leading-[1.05] font-bold whitespace-nowrap",
+                  formatNumber(r.total).length >= 11 ? "text-[62px]" : "text-[76px]",
+                )}
+              >
+                {formatNumber(r.total)}
+              </p>
+            </div>
           </li>
         ))}
       </ol>
@@ -137,20 +161,34 @@ function Board({ rows }: { rows: LeaderRow[] }) {
   );
 }
 
-function Figure({ label, value }: { label: string; value: number }) {
+/** Batang komposisi: panjang isi = total ÷ total tim teratas; di dalamnya saldo (kiri) lalu nilai aset (kanan). */
+function Bar({ row, max }: { row: LeaderRow; max: number }) {
+  const fill = max > 0 ? Math.max(0, Math.min(1, row.total / max)) : 0;
+  const parts = row.cash + row.holdings;
+  const cash = parts > 0 ? row.cash / parts : 0;
   return (
-    <div className="flex w-[330px] shrink-0 flex-col gap-1.5">
-      <p className="text-ink-muted text-[22px] font-medium">{label}</p>
-      {/* Angka sangat besar (≥ 11 karakter) dikecilkan supaya tetap muat di kolomnya. */}
-      <p
-        className={cn(
-          "tnum text-ink leading-[1.1] font-bold whitespace-nowrap",
-          formatNumber(value).length >= 11 ? "text-[46px]" : "text-[56px]",
-        )}
+    <div className="bg-soft h-[18px] w-full overflow-hidden rounded-full">
+      <div
+        className="flex h-full overflow-hidden rounded-full transition-[width] duration-700 ease-out"
+        style={{ width: `${fill * 100}%` }}
       >
-        {formatNumber(value)}
-      </p>
+        <div
+          className="bg-brand h-full transition-[width] duration-700"
+          style={{ width: `${cash * 100}%` }}
+        />
+        <div className="bg-brand-light h-full flex-1" />
+      </div>
     </div>
+  );
+}
+
+function Legend({ dot, label, value }: { dot: string; label: string; value: number }) {
+  return (
+    <p className="flex items-baseline gap-3">
+      <span aria-hidden className={cn("size-[14px] shrink-0 self-center rounded-full", dot)} />
+      <span>{label}</span>
+      <span className="tnum text-ink font-bold">{formatNumber(value)}</span>
+    </p>
   );
 }
 
