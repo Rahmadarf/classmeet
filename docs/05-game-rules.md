@@ -9,7 +9,7 @@ Dokumen ini menjadi acuan **panitia** dan **developer**. Angka bertanda *(defaul
 Tim dengan **net worth tertinggi** saat status game `finished` menang.
 
 ```
-net worth = saldo bebas + saldo terkunci di order + Σ jumlah unit × harga transaksi terakhir
+net worth = saldo bebas + saldo terkunci di order + Σ jumlah unit × harga peringkat (VWAP 10 menit)
 ```
 
 Setiap tim **mulai dari Rp 0**. Satu-satunya sumber uang adalah **hadiah pos** (setelah disetujui admin). Setelah punya uang, tim berdagang; uang bertambah atau berkurang lewat trading, dan nilai aset yang dipegang ikut naik-turun mengikuti harga.
@@ -44,7 +44,7 @@ Setiap tim **mulai dari Rp 0**. Satu-satunya sumber uang adalah **hadiah pos** (
 Ringkasan; rincian, parameter, dan contoh angka di [`12-order-book.md`](12-order-book.md).
 
 1. **Hanya saat pasar `open`.** Saat `setup`, `paused`, atau `finished`, memasang dan membatalkan order ditolak. Saat game ditutup (`finished`), semua order antre dibatalkan otomatis dan kuncinya dikembalikan.
-2. **Dua jenis lawan.** Bandar panitia selalu memasang 5 bid dan 5 offer di sekitar harga acuan; tim juga saling mencocokkan order. Harga yang tampil dan dihitung adalah **harga transaksi terakhir**. Harga acuan hanya digeser berita.
+2. **Dua jenis lawan.** Bandar panitia selalu memasang 5 bid dan 5 offer di sekitar harga acuan; tim juga saling mencocokkan order. Harga yang tampil adalah **harga transaksi terakhir**; harga yang dihitung untuk net worth dan peringkat adalah **harga peringkat** (VWAP 10 menit, `rank_price`). Harga acuan hanya digeser berita.
 3. **Order.** `limit` (harga + lot, antre sampai terisi, dibatalkan, atau pasar ditutup) dan `market` (lot saja, menyapu paling banyak 5 level harga terbaik, sisanya dibatalkan). 1 lot = 1 unit aset. Harga harus kelipatan fraksi (Rp 500 / 1.000 / 2.500 menurut rentang harga) dan berada dalam ±15 % harga acuan (ARA/ARB) serta batas min/maks aset.
 4. **Pencocokan** otomatis di server: harga terbaik dulu, lalu yang masuk lebih dulu; harga transaksi = harga order yang sudah antre; boleh sebagian (*partial fill*). Order tim yang sama tidak dicocokkan satu sama lain.
 5. **Kunci.** Order beli limit menahan `harga × lot + biaya` dari saldo; order jual menahan lot dari kepemilikan. Pembatalan mengembalikan sisa kunci. Saldo bebas dan lot bebas tidak bisa dipakai dua kali.
@@ -356,7 +356,7 @@ Diisi panitia. Kolom `penjaga` menjadi akun `guard`.
 
 ## 7. Penilaian dan penentuan juara
 
-1. Peringkat berdasarkan **net worth** pada saat status `finished`. Net worth = saldo bebas + saldo terkunci + Σ jumlah unit × **harga transaksi terakhir**. Beranda tim menampilkan tiga angka: **total**, **saldo saat ini**, dan **nilai seluruh aset menurut harga terakhir**. **Konsekuensi:** naik-turun harga langsung memengaruhi peringkat tanpa perlu menjual; order yang masih antre dibatalkan otomatis saat game ditutup sehingga tidak ada kunci yang menggantung. **Risiko yang dicatat:** dua tim bisa bersekongkol menggeser harga terakhir dengan jual-beli lot kecil antar mereka; batas ARA/ARB dan audit `trades` membatasi, tetapi tidak menghilangkannya (lihat `12-order-book.md` §7).
+1. Peringkat berdasarkan **net worth** pada saat status `finished`. Net worth = saldo bebas + saldo terkunci + Σ jumlah unit × **harga peringkat** (VWAP transaksi 10 menit terakhir; bila volume jendela kurang dari 5 lot, kekurangannya diisi harga peringkat sebelumnya). Beranda tim menampilkan tiga angka: **total**, **saldo saat ini**, dan **nilai seluruh aset menurut harga peringkat**. **Konsekuensi:** naik-turun harga langsung memengaruhi peringkat tanpa perlu menjual; order yang masih antre dibatalkan otomatis saat game ditutup sehingga tidak ada kunci yang menggantung. **Mitigasi kolusi (diputuskan 17 Nov):** peringkat memakai VWAP 10 menit, bukan harga terakhir, sehingga satu transaksi kecil tidak menggeser nilai aset; pelaku harus berdagang ≥ 5 lot terus-menerus. Risiko **tidak hilang**: dua tim yang rela membayar biaya 0,25 % dan terus berdagang masih bisa menggeser harga sampai batas ARA/ARB (lihat `12-order-book.md` §7).
 2. **Seri:** tim dengan saldo tunai lebih besar menang. Jika masih seri, juri/panitia memutuskan; sistem membagi peringkat yang sama.
 3. **Leaderboard tampil di ruang publik**, di layar yang login sebagai akun `display`. **Tim tidak melihat leaderboard di akun mereka**; mereka hanya melihat saldo dan portofolio sendiri. Konsekuensinya tim tidak tahu posisinya kecuali melihat layar publik.
 4. **Pembekuan.** Sekitar 15 menit sebelum akhir, admin membekukan leaderboard. Layar publik menampilkan 5 tim teratas saat pembekuan (tanpa lencana atau penanda bahwa data dibekukan), sementara admin tetap melihat data langsung. Saat game ditutup (`finished`), leaderboard otomatis dibekukan.

@@ -1,0 +1,40 @@
+{
+  "_catatan": "DATA CONTOH untuk pengembangan (30 aset = 6 sektor x 5). 25 aset pertama dari docs/05-game-rules.md §5; sektor Energi (5 aset) ditambahkan atas permintaan 17 Nov. Harga rekaan. Harus diganti data panitia sebelum acara. Stok dan batas harga dihitung skrip (tingkatan stok doc 05 §5; batas 30 % / 300 %).",
+  "assets": [
+    { "sector": "Teknologi", "symbol": "AP", "name": "Apple", "price": 800000 },
+    { "sector": "Teknologi", "symbol": "MI", "name": "Microsoft", "price": 750000 },
+    { "sector": "Teknologi", "symbol": "SA", "name": "Samsung", "price": 450000 },
+    { "sector": "Teknologi", "symbol": "XI", "name": "Xiaomi", "price": 250000 },
+    { "sector": "Teknologi", "symbol": "TE", "name": "Telkom Indonesia", "price": 150000 },
+
+    { "sector": "Pangan", "symbol": "NE", "name": "Nestlé", "price": 380000 },
+    { "sector": "Pangan", "symbol": "KH", "name": "Kraft Heinz", "price": 280000 },
+    { "sector": "Pangan", "symbol": "DA", "name": "Danone", "price": 200000 },
+    { "sector": "Pangan", "symbol": "MA", "name": "Mayora", "price": 130000 },
+    { "sector": "Pangan", "symbol": "IN", "name": "Indofood", "price": 120000 },
+
+    { "sector": "Keuangan", "symbol": "BC", "name": "BCA", "price": 700000 },
+    { "sector": "Keuangan", "symbol": "VI", "name": "Visa", "price": 600000 },
+    { "sector": "Keuangan", "symbol": "MD", "name": "Mandiri", "price": 500000 },
+    { "sector": "Keuangan", "symbol": "BR", "name": "BRI", "price": 400000 },
+    { "sector": "Keuangan", "symbol": "PA", "name": "PayPal", "price": 300000 },
+
+    { "sector": "Transportasi", "symbol": "AI", "name": "Airbus", "price": 650000 },
+    { "sector": "Transportasi", "symbol": "TO", "name": "Toyota", "price": 450000 },
+    { "sector": "Transportasi", "symbol": "HO", "name": "Honda", "price": 400000 },
+    { "sector": "Transportasi", "symbol": "GR", "name": "Grab", "price": 300000 },
+    { "sector": "Transportasi", "symbol": "GA", "name": "Garuda Indonesia", "price": 150000 },
+
+    { "sector": "Konsumen dan kesehatan", "symbol": "LO", "name": "L'Oréal", "price": 500000 },
+    { "sector": "Konsumen dan kesehatan", "symbol": "PF", "name": "Pfizer", "price": 380000 },
+    { "sector": "Konsumen dan kesehatan", "symbol": "UN", "name": "Unilever", "price": 180000 },
+    { "sector": "Konsumen dan kesehatan", "symbol": "KA", "name": "Kalbe Farma", "price": 140000 },
+    { "sector": "Konsumen dan kesehatan", "symbol": "SM", "name": "Sido Muncul", "price": 110000 },
+
+    { "sector": "Energi", "symbol": "CV", "name": "Chevron", "price": 550000 },
+    { "sector": "Energi", "symbol": "SL", "name": "Shell", "price": 420000 },
+    { "sector": "Energi", "symbol": "PE", "name": "Pertamina", "price": 350000 },
+    { "sector": "Energi", "symbol": "PN", "name": "PLN", "price": 170000 },
+    { "sector": "Energi", "symbol": "AD", "name": "Adaro", "price": 130000 }
+  ]
+}

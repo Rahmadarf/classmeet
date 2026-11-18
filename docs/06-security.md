@@ -119,7 +119,7 @@ Tambahkan `rate_limited` ke tabel error ([04-rpc-contracts](04-rpc-contracts.md#
 - [ ] Uji: akun `team` mencoba `update teams set cash = ...` lewat REST → **ditolak**.
 - [ ] Uji: `admin_set_price`, `admin_queue_news`, `admin_run_news_cycle` **tidak ada** sebagai fungsi; akun `admin` mengubah `assets.price` atau menulis `price_history`/`news` setelah game dibuka → `game_started_locked`.
 - [ ] Uji: akun `guard`, `admin`, `display` memanggil `place_order` atau `get_order_book` → `forbidden`; `authenticated` memanggil `process_house_quotes`, `process_market_cycle`, `ob_match`, `ob_cancel` → ditolak.
-- [ ] Uji: tim membaca `orders`/`trades` → hanya baris miliknya; tim menulis langsung ke `orders`/`trades` → ditolak; `update` pada `orders`, `trades`, `assets.last_price`, dan parameter order book tanpa penanda sistem setelah game dibuka → `game_started_locked`.
+- [ ] Uji: tim membaca `orders`/`trades` → hanya baris miliknya; tim menulis langsung ke `orders`/`trades` → ditolak; `update` pada `orders`, `trades`, `assets.last_price`, `assets.rank_price`, dan parameter order book tanpa penanda sistem setelah game dibuka → `game_started_locked`.
 - [ ] Uji: akun `team` memanggil `get_leaderboard` → `forbidden`; `select` dari `v_team_net_worth` dan `leaderboard_snapshot` → ditolak.
 - [ ] Uji: akun `guard` membaca `teams` → kosong; memanggil `admin_adjust_cash` → `forbidden`.
 - [ ] Uji: hadiah pos **langsung** mengubah saldo, hadiah ganda dengan `request_id` sama (termasuk paralel) menambah sekali, dan setelah `finished` ditolak.

@@ -1,0 +1,126 @@
+{
+  "_catatan": "DATA CONTOH untuk pengembangan (12 berita; pola doc 05 §4: empat kalimat inti berisi petunjuk sifat aset, dua kalimat pengecoh tanpa kata kunci aset). Efek ditulis per simbol aset (4–7 aset, tidak nol, maksimum 1500 bps). Kumpulan sungguhan (±220 berita) disusun panitia. Judul harus unik: skrip seed melewati berita yang judulnya sudah ada.",
+  "news": [
+    {
+      "title": "Ponsel terjangkau diserbu pembeli di negara berkembang",
+      "body": "Penjualan ponsel terjangkau dengan volume besar naik tajam di negara berkembang. Operator melaporkan jumlah pelanggan seluler dan pemakaian paket data bertambah pesat. Produsen ponsel kelas premium justru menunda peluncuran produk baru di kawasan yang sama. Pengamat menilai persaingan harga akan makin ketat. Sebuah seminar tentang desain antarmuka digelar di beberapa kampus. Komunitas hobi fotografi mengumumkan acara kumpul bulanan.",
+      "effects": [
+        { "symbol": "XI", "pct_bps": 1300 },
+        { "symbol": "TE", "pct_bps": 900 },
+        { "symbol": "AP", "pct_bps": -800 },
+        { "symbol": "SA", "pct_bps": 900 }
+      ]
+    },
+    {
+      "title": "Kemarau panjang ganggu pasokan bahan pangan",
+      "body": "Kemarau panjang membuat panen tepung dan minyak goreng turun, sementara perkebunan sendiri milik produsen mi instan ikut terdampak. Pabrikan saus dan makanan kalengan mengeluhkan rantai pasok bahan baku yang tersendat. Warung dan toko kecil melaporkan stok biskuit dan permen menipis. Permintaan jamu dan herbal justru naik karena orang menjaga kebugaran. Festival musik tahunan dijadwalkan ulang ke bulan depan. Sebuah lomba lari amal tetap berjalan.",
+      "effects": [
+        { "symbol": "IN", "pct_bps": -1100 },
+        { "symbol": "KH", "pct_bps": -1000 },
+        { "symbol": "MA", "pct_bps": -900 },
+        { "symbol": "SM", "pct_bps": 900 }
+      ]
+    },
+    {
+      "title": "Maskapai nasional catat rekor penumpang",
+      "body": "Maskapai nasional mencatat jumlah penumpang tertinggi sepanjang tahun dan membuka rute penerbangan baru. Penjualan tiket penerbangan secara daring melonjak lewat pembayaran daring dan dompet digital. Pembuat pesawat penumpang menerima tambahan pesanan pesawat dari beberapa maskapai. Kebutuhan bahan bakar penerbangan ikut naik. Sebuah pameran fotografi udara dibuka di pusat kota. Klub sepeda lipat mengadakan konvoi akhir pekan.",
+      "effects": [
+        { "symbol": "GA", "pct_bps": 1400 },
+        { "symbol": "AI", "pct_bps": 1000 },
+        { "symbol": "PE", "pct_bps": 900 },
+        { "symbol": "PA", "pct_bps": 800 }
+      ]
+    },
+    {
+      "title": "Harga batu bara melonjak, biaya pembangkit ikut naik",
+      "body": "Ekspor batu bara dari tambang besar meningkat tajam setelah permintaan luar negeri pulih. Pembangkit listrik yang bergantung pada batu bara menghadapi biaya bahan baku lebih tinggi, sementara tarif listrik belum boleh naik. Permintaan minyak mentah global ikut menguat dan mendorong pengeboran minyak lepas pantai. Pedagang bahan bakar eceran menyebut stok bensin aman. Sebuah pameran kerajinan tangan dibuka di balai kota. Sekolah mengumumkan jadwal ujian tengah semester.",
+      "effects": [
+        { "symbol": "AD", "pct_bps": 1300 },
+        { "symbol": "PN", "pct_bps": -1000 },
+        { "symbol": "CV", "pct_bps": 800 },
+        { "symbol": "SL", "pct_bps": 800 }
+      ]
+    },
+    {
+      "title": "Kredit usaha kecil tumbuh pesat di desa",
+      "body": "Penyaluran kredit UMKM lewat jaringan desa tumbuh pesat berkat program pembiayaan mikro. Transaksi nontunai domestik di kalangan nasabah menengah-atas naik karena promosi kartu bank. Penyaluran kredit korporasi untuk proyek pemerintah justru melambat karena anggaran ditinjau ulang. Platform dompet digital mencatat lonjakan pengguna baru. Seorang penyanyi lokal merilis album baru. Sebuah turnamen catur antar-RW berakhir tadi malam.",
+      "effects": [
+        { "symbol": "BR", "pct_bps": 1300 },
+        { "symbol": "BC", "pct_bps": 900 },
+        { "symbol": "MD", "pct_bps": -900 },
+        { "symbol": "PA", "pct_bps": 800 }
+      ]
+    },
+    {
+      "title": "Belanja daring akhir tahun pecahkan rekor",
+      "body": "Belanja daring akhir tahun memecahkan rekor dengan pembayaran lintas negara yang meningkat. Jaringan pembayaran global memproses lebih banyak transaksi dibanding periode yang sama tahun lalu. Layanan ojek dan pengantaran makanan kewalahan melayani pesanan sehingga mitra pengemudi ditambah. Bank swasta besar melaporkan lonjakan transaksi kartu. Sebuah museum membuka pameran lukisan klasik. Tim futsal sekolah lolos ke babak final.",
+      "effects": [
+        { "symbol": "VI", "pct_bps": 1100 },
+        { "symbol": "PA", "pct_bps": 1000 },
+        { "symbol": "GR", "pct_bps": 1000 },
+        { "symbol": "BC", "pct_bps": 800 }
+      ]
+    },
+    {
+      "title": "Wabah flu musiman, apotek ramai",
+      "body": "Wabah flu musiman membuat penjualan obat bebas dan minuman kesehatan melonjak lewat distribusi apotek. Permintaan jamu dan suplemen herbal ikut naik. Produsen obat resep dan vaksin menerima tambahan pesanan dari rumah sakit. Penjualan sabun dan sampo antikuman meningkat di toko swalayan. Kunjungan ke salon kecantikan turun karena banyak orang memilih di rumah. Sebuah bazar buku murah dibuka di aula kota.",
+      "effects": [
+        { "symbol": "KA", "pct_bps": 1300 },
+        { "symbol": "SM", "pct_bps": 1100 },
+        { "symbol": "PF", "pct_bps": 1000 },
+        { "symbol": "UN", "pct_bps": 800 },
+        { "symbol": "LO", "pct_bps": -800 }
+      ]
+    },
+    {
+      "title": "Kelangkaan komponen chip tahan produksi",
+      "body": "Kelangkaan komponen chip membuat pabrik besar elektronik menurunkan produksi. Peluncuran produk perangkat premium terpaksa ditunda beberapa bulan. Produsen mobil melaporkan penjualan mobil tertahan karena stok kendaraan menipis. Pabrik otomotif sepeda motor juga memangkas shift kerja. Seorang pelukis mengadakan pameran tunggal. Pemerintah kota meresmikan taman bermain baru.",
+      "effects": [
+        { "symbol": "SA", "pct_bps": -1100 },
+        { "symbol": "AP", "pct_bps": -900 },
+        { "symbol": "TO", "pct_bps": -900 },
+        { "symbol": "HO", "pct_bps": -800 }
+      ]
+    },
+    {
+      "title": "Pemerintah umumkan proyek infrastruktur besar",
+      "body": "Pemerintah mengumumkan proyek infrastruktur besar yang dibiayai bank BUMN lewat kredit korporasi. Perluasan jaringan transmisi listrik menjadi bagian dari paket proyek tersebut. Pembangunan kabel dan menara untuk jaringan internet pedesaan ikut dijadwalkan. Dealer resmi kendaraan niaga menerima pertanyaan pengadaan armada dinas. Sebuah konser amal digelar di lapangan kota. Lomba mewarnai anak berlangsung meriah.",
+      "effects": [
+        { "symbol": "MD", "pct_bps": 1300 },
+        { "symbol": "PN", "pct_bps": 1000 },
+        { "symbol": "TE", "pct_bps": 900 },
+        { "symbol": "TO", "pct_bps": 800 }
+      ]
+    },
+    {
+      "title": "Tren perawatan kulit viral di media sosial",
+      "body": "Tren perawatan kulit menjadi viral dan membuat penjualan kosmetik meningkat tajam. Produk sabun dan sampo bermerek ikut diburu karena promosi bundel. Gaya hidup sehat mendorong konsumsi produk susu dan yoghurt. Produsen jamu menawarkan suplemen herbal untuk kulit. Sebuah pertandingan bola voli persahabatan digelar. Kelompok pecinta tanaman mengadakan tukar bibit.",
+      "effects": [
+        { "symbol": "LO", "pct_bps": 1400 },
+        { "symbol": "UN", "pct_bps": 900 },
+        { "symbol": "DA", "pct_bps": 800 },
+        { "symbol": "SM", "pct_bps": 800 }
+      ]
+    },
+    {
+      "title": "Aturan baru batasi impor bahan baku makanan",
+      "body": "Aturan baru membatasi impor bahan baku, sehingga rantai pasok pabrikan saus dan makanan kalengan terganggu. Produsen makanan bayi dan cokelat global dengan merek global menghadapi biaya bahan lebih tinggi. Produsen mi instan dengan perkebunan sendiri justru diuntungkan karena pasokan bahan terjamin. Pabrik biskuit dan permen yang menjual ke warung serta ekspor Asia ikut menikmati permintaan. Sebuah festival kuliner jalanan dibuka. Pemerintah daerah menggelar lomba kebersihan kampung.",
+      "effects": [
+        { "symbol": "KH", "pct_bps": -1200 },
+        { "symbol": "NE", "pct_bps": -1000 },
+        { "symbol": "IN", "pct_bps": 1000 },
+        { "symbol": "MA", "pct_bps": 900 }
+      ]
+    },
+    {
+      "title": "Ledakan layanan komputasi awan dan kecerdasan buatan",
+      "body": "Perusahaan besar beramai-ramai berlangganan layanan komputasi awan dan perangkat lunak perusahaan yang memakai kecerdasan buatan. Pengembang aplikasi memperluas ekosistem aplikasi mereka mengikuti lonjakan permintaan. Produsen komponen chip menerima pesanan dalam jumlah besar untuk pusat data. Operator jaringan menambah kapasitas untuk paket data korporasi. Sebuah lomba cipta puisi digelar di perpustakaan kota. Kelompok pecinta kucing menggelar kontes tahunan.",
+      "effects": [
+        { "symbol": "MI", "pct_bps": 1400 },
+        { "symbol": "AP", "pct_bps": 800 },
+        { "symbol": "SA", "pct_bps": 900 },
+        { "symbol": "TE", "pct_bps": 800 }
+      ]
+    }
+  ]
+}

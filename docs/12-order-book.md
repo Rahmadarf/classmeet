@@ -41,6 +41,7 @@ Status: **diputuskan dan diimplementasikan 17 Nov 2026** (SQL di `03-database.md
 | Sapuan maksimum market order | 5 level dari harga terbaik |
 | ARA/ARB | ±15 % dari harga acuan awal hari |
 | Pembulatan harga acuan | ke fraksi terdekat |
+| Harga peringkat (net worth) | VWAP transaksi `rank_window_minutes` = 10 menit; bila volume jendela < `rank_min_lots` = 5, kekurangannya diisi harga peringkat sebelumnya (atau acuan) |
 
 ## 4. Bandar panitia
 
@@ -77,10 +78,11 @@ Status: **diputuskan dan diimplementasikan 17 Nov 2026** (SQL di `03-database.md
 ## 7. Nilai aset dan peringkat
 
 ```
-net worth = saldo + saldo terkunci + Σ (qty + qty terkunci) × harga transaksi terakhir
+net worth = saldo + saldo terkunci + Σ (qty + qty terkunci) × harga peringkat (rank_price)
 ```
 
-- Harga transaksi terakhir dipakai penuh, sesuai keputusan. **Risiko yang dicatat:** dua tim bisa bersekongkol menjual satu lot kecil ke satu sama lain untuk mendorong harga terakhir sebelum pembekuan. Mitigasi bawaan: batas ARA/ARB, pembekuan 15 menit sebelum akhir, dan audit transaksi. Opsi tambahan yang belum diputuskan: memakai VWAP 10 menit atau mengecualikan transaksi antar-tim di bawah 2 lot.
+- **Diputuskan 17 Nov: peringkat memakai VWAP 10 menit** (`assets.rank_price`), bukan harga terakhir. Rumus: `(Σ harga × lot dalam jendela + harga peringkat sebelumnya × max(5 − volume jendela, 0)) / max(volume jendela, 5)`; tanpa transaksi sebelumnya, pengisinya harga acuan. Contoh: satu lot @702.500 saat acuan 700.000 hanya menggeser peringkat ke 700.500 (seperlima dari selisih); lima lot dalam 10 menit baru mengikuti harga transaksi sepenuhnya. Harga terakhir tetap tampil di UI dan indeks.
+- **Risiko yang tersisa:** mitigasi ini menaikkan biaya kolusi, tidak menghilangkannya. Dua tim yang berdagang ≥ 5 lot dalam 10 menit tetap menggeser peringkat, dibatasi ARA/ARB ±15 % dan biaya 0,25 % per sisi. Pelengkap: pembekuan leaderboard 15 menit sebelum akhir dan audit `trades`. Mengecualikan transaksi antar-tim kecil tidak dipilih.
 - Biaya transaksi dibayar ke panitia, jadi uang tim tidak bertambah dari biaya.
 
 ## 8. Contoh
@@ -126,7 +128,7 @@ Hal yang berbeda dari tabel di §1–§9 setelah dibangun dan diuji:
 | Hal | Rancangan awal | Yang dibangun | Alasan |
 |-----|----------------|---------------|--------|
 | Batas ARA/ARB | ±15 % dari acuan **awal hari** | ±`band_bps` (15 %) dari **harga acuan saat ini** | Skema tidak punya konsep hari. Batas ikut bergeser dengan berita; tim tetap tak bisa mendorong harga lebih dari 15 % dari acuan |
-| Harga tampil sesudah berita | Tidak diatur | `last_price` disetel ulang ke acuan baru saat berita berlaku | Tanpa ini, net worth tertinggal sampai ada transaksi |
+| Harga tampil sesudah berita | Tidak diatur | `last_price` dan `rank_price` disetel ulang ke acuan baru saat berita berlaku | Tanpa ini, net worth tertinggal sampai ada transaksi |
 | Serialisasi | Tidak diatur | Satu kunci penasihat `ob_lock()` untuk semua fungsi order book | Pencocokan menyentuh baris tim lawan; dua pencocokan pada aset berbeda bisa saling menunggu (kebuntuan). Lihat `04` §3.1 |
 | Uang bandar | "Uang panitia tidak dihitung" | `game_settings.house_cash` membukukan selisihnya | Supaya konservasi uang bisa diperiksa: Σ(saldo + terkunci) + `house_cash` = Σ modal masuk |
 | Kunci order beli | `harga × lot × (1 + biaya)` | `lot × (harga + ceil(harga × biaya))` | Biaya dibulatkan ke atas per pencocokan; jumlah ini tidak pernah kurang |
@@ -135,7 +137,7 @@ Hal yang berbeda dari tabel di §1–§9 setelah dibangun dan diuji:
 | Kuotasi bandar yang menyilang order tim | Tidak diatur | Dicocokkan seperti order biasa (harga maker = harga order tim) | Mencegah order book silang |
 | Aset berharga kecil | Tidak diatur | Bila 15 % dari harga kurang dari 5 fraksi, level bandar dipotong; aset berharga Rp 1.000 (data uji) tidak mendapat kuotasi sama sekali | Hanya mengenai data uji; harga nyata Rp 110.000–800.000 memuat ≥ 33 fraksi |
 
-Berkas yang sudah diubah: `03-database.md` (tabel `orders`, `trades`, kolom kunci, parameter, view net worth, RLS, penguncian), `04-rpc-contracts.md` (§3.1, `process_news_cycle`, `admin_set_game_state`, `get_my_summary`, error code, jadwal), `05`, `06`, `07`, `08`, `09`, `10`, `11`, `01`, `02`, `tests/`. Figma: Pasar, Order terbuka, Display pasar sudah digambar; belum: status Pasar tutup/jeda, form dengan galat, tab Jual dan Market aktif.
+Berkas yang sudah diubah: `03-database.md` (tabel `orders`, `trades`, kolom kunci, parameter, view net worth, RLS, penguncian), `04-rpc-contracts.md` (§3.1, `process_news_cycle`, `admin_set_game_state`, `get_my_summary`, error code, jadwal), `05`, `06`, `07`, `08`, `09`, `10`, `11`, `01`, `02`, `tests/`. Figma: Pasar, Order terbuka, Display pasar sudah digambar; juga sudah: Pasar dijeda, error isian, Jual+Market (Desain Web › Rally Game, frame "Tim — Pasar (...)"). Belum: Pasar ditutup permanen.
 
 ## 11. Hal yang masih terbuka
 

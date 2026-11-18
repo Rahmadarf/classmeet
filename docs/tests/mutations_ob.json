@@ -1,0 +1,382 @@
+[
+[
+"M1 biaya dibulatkan ke bawah",
+"(p_price * p_qty * p_bps + 9999) / 10000",
+"(p_price * p_qty * p_bps) / 10000",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M2 prioritas harga beli terbalik (offer termahal dulu)",
+"order by x.price asc, x.id asc limit 1 for update;",
+"order by x.price desc, x.id asc limit 1 for update;",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M3 prioritas waktu terbalik",
+"order by x.price desc, x.id asc limit 1 for update;",
+"order by x.price desc, x.id desc limit 1 for update;",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M4 harga transaksi = harga limit penyerang, bukan maker",
+"    v_cost := m.price * v_n;",
+"    v_cost := coalesce(o.price, m.price) * v_n;",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M5 self-trade tidak dicegah (sisi jual penyerang)",
+"x.side = 'buy' and x.status in ('open', 'partial')\n         and x.team_id is distinct from o.team_id",
+"x.side = 'buy' and x.status in ('open', 'partial')",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M5b self-trade tidak dicegah (sisi beli penyerang)",
+"x.side = 'sell' and x.status in ('open', 'partial')\n         and x.team_id is distinct from o.team_id",
+"x.side = 'sell' and x.status in ('open', 'partial')",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M6 batas sapuan market dihapus",
+"    exit when o.kind = 'market' and v_levels > v_sweep;\n",
+"",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M7 pembatalan tidak mengembalikan saldo",
+"                       cash        = cash        + o.lock_per_lot * o.remaining\n",
+"                       cash        = cash\n",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M8 lot terkunci penjual tidak dikurangi saat terisi",
+"set qty = qty - v_n, locked_qty = locked_qty - v_n,",
+"set qty = qty - v_n,",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M9 market jual yang dibatalkan tidak membuka kunci lot",
+"      update holdings set locked_qty = locked_qty - o.remaining\n       where team_id = o.team_id and asset_id = o.asset_id;\n    end if;\n    update orders set remaining = o.remaining, status = 'cancelled'",
+"      null;\n    end if;\n    update orders set remaining = o.remaining, status = 'cancelled'",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M10 offer bandar tak dibatasi persediaan",
+"      v_n := least(v_n, v_stock);\n",
+"",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M11 uang bandar tidak dibukukan",
+"    update game_settings set house_cash = house_cash + v_house;",
+"    null;",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M12 ARA/ARB: batas ikut ditolak (off-by-one)",
+"if p_price < v_lo or p_price > v_hi then",
+"if p_price <= v_lo or p_price >= v_hi then",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M13 cek fraksi harga dihapus",
+"    if p_price % public.tick_for(p_price) <> 0 then raise exception 'invalid_tick'; end if;\n",
+"",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M14 idempotensi dimatikan",
+"      return v_ex;                                 -- permintaan ulang yang sama",
+"      null;",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M15 market beli tidak membatasi sesuai saldo",
+"      while v_n > 0 and m.price * v_n + public.ob_fee(m.price, v_n, v_fee) > v_cash loop",
+"      while false loop",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M16 harga terakhir tidak diperbarui",
+"    update assets set last_price = v_lastfill, last_trade_at = now() where id = o.asset_id;",
+"    update assets set last_trade_at = now() where id = o.asset_id;",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M17 penutupan game tidak membatalkan order",
+"    perform public.ob_cancel_all();                  -- pasar ditutup: semua order antre dibatalkan, kunci dikembalikan\n",
+"",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M18 net worth mengabaikan saldo terkunci",
+"(t.cash + t.locked_cash + coalesce(sum(h.qty",
+"(t.cash + coalesce(sum(h.qty",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M19 bandar tidak memasang ulang kuotasi setelah berita",
+"    perform public.process_house_quotes();          -- bandar memusatkan kuotasi ke acuan baru\n",
+"",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M20 cost_basis tidak dikurangi saat jual",
+"      v_out := (v_oldc * v_n) / v_oldq;",
+"      v_out := 0;",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M21 place_order tanpa ob_lock (kebuntuan)",
+"  perform public.ob_lock();\n  perform 1 from teams where id = v_uid for update;\n  if not found then raise exception 'team_not_found'; end if;\n\n  select * into v_ex",
+"  perform 1 from teams where id = v_uid for update;\n  if not found then raise exception 'team_not_found'; end if;\n\n  select * into v_ex",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M25 cancel_order boleh membatalkan order tim lain",
+"  select * into v_ord from orders where id = p_order_id and team_id = v_uid for update;",
+"  select * into v_ord from orders where id = p_order_id for update;",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M27 lot terkunci bisa dijual lagi",
+"where team_id = v_uid and asset_id = p_asset_id and qty - locked_qty >= p_qty;",
+"where team_id = v_uid and asset_id = p_asset_id and qty >= p_qty;",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M28 place_order tidak memeriksa status pasar",
+"  select state, fee_bps into v_state, v_fee from game_settings;\n  if v_state <> 'open' then raise exception 'market_closed'; end if;",
+"  select state, fee_bps into v_state, v_fee from game_settings;",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M29 selisih kunci beli tidak dikembalikan",
+"cash        = cash + v_blpl * v_n - v_cost - v_fb",
+"cash        = cash - v_cost - v_fb",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M30 bandar ikut dikenai biaya (uang tercipta)",
+"    v_fs := case when v_seller is not null then public.ob_fee(m.price, v_n, v_fee) else 0 end;",
+"    v_fs := public.ob_fee(m.price, v_n, v_fee);",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M31 offer bandar pertama berjarak 0 dari acuan",
+"      v_p := v_p + public.tick_for(v_p);\n      exit when v_p > v_hi;",
+"      exit when v_p > v_hi;",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M32 partial penyerang ditandai open",
+"                      status = case when v_filled > 0 then 'partial' else 'open' end",
+"                      status = 'open'",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M33 trade tidak mencatat taker_side benar",
+"values (o.asset_id, m.price, v_n, v_buy_ord, v_sell_ord, v_buyer, v_seller, v_fb, v_fs, o.side);",
+"values (o.asset_id, m.price, v_n, v_buy_ord, v_sell_ord, v_buyer, v_seller, v_fb, v_fs, 'buy');",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M34 isi ulang bandar tidak membatalkan kuotasi lama",
+"    update orders set status = 'cancelled', closed_at = now()\n     where asset_id = a.id and is_house and status in ('open', 'partial');\n",
+"",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M35 siklus pasar tidak menghormati jeda isi ulang",
+"  if g.house_refreshed_at is null or now() >= g.house_refreshed_at + make_interval(secs => g.house_refresh_seconds) then",
+"  if true then",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M36 bid bandar melewati batas bawah ARB",
+"      exit when v_p < v_lo or v_p < 1;",
+"      exit when v_p < 1;",
+[
+"run_ob.py",
+"run_ob2.py",
+"run_ob3.py"
+]
+],
+[
+"M34 tanpa pengisi: penyebut hanya volume jendela",
+"greatest(w.q, v_minlots))",
+"greatest(w.q, 1))",
+[
+"run_ob4.py",
+"run_ob.py",
+"run2.py"
+]
+],
+[
+"M35 jendela waktu diabaikan",
+"and t.created_at >= now() - make_interval(mins => v_win)",
+"and true",
+[
+"run_ob4.py",
+"run_ob.py",
+"run2.py"
+]
+],
+[
+"M36 net worth memakai harga terakhir, bukan peringkat",
+"coalesce(sum(h.qty * coalesce(a.rank_price, a.price)), 0)::bigint as holdings_value",
+"coalesce(sum(h.qty * coalesce(a.last_price, a.price)), 0)::bigint as holdings_value",
+[
+"run_ob4.py",
+"run_ob.py",
+"run2.py"
+]
+],
+[
+"M37 berita tidak menyetel ulang rank_price",
+"set last_price = price, rank_price = price where id = r.asset_id",
+"set last_price = price where id = r.asset_id",
+[
+"run_ob4.py",
+"run_ob.py",
+"run2.py"
+]
+],
+[
+"M38 pengisi berbobot penuh walau volume cukup",
+"greatest(v_minlots - w.q, 0))\n",
+"v_minlots)\n",
+[
+"run_ob4.py",
+"run_ob.py",
+"run2.py"
+]
+]
+]

@@ -30,7 +30,7 @@ Urutan blok `sql` pada dokumen ini adalah urutan eksekusi migrasi, setelah semua
 | `get_market_index()` | team, admin, display | SQL + uji | IKC dan indeks sektor (bobot sama rata) |
 | `process_house_quotes(asset?)` | internal | SQL + uji | Pasang ulang kuotasi bandar (5 bid + 5 offer) |
 | `process_market_cycle()` | internal / `pg_cron` (tiap 10 detik) | SQL + uji | Isi ulang kuotasi bandar tiap `house_refresh_seconds` |
-| `get_my_summary()` | team | SQL + uji | Saldo bebas, saldo terkunci, nilai aset (harga terakhir), net worth sendiri |
+| `get_my_summary()` | team | SQL + uji | Saldo bebas, saldo terkunci, nilai aset (harga peringkat), net worth sendiri |
 | `get_leaderboard()` | admin, display | SQL + uji | Peringkat. **Ditolak untuk tim dan penjaga** |
 | `resolve_team_qr(qr_token)` | guard, admin | SQL + uji | QR → id, nama, dan **saldo** tim (saldo ditampilkan di form hadiah, diputuskan 16 Nov) |
 | `resolve_team_code(code)` | guard, admin | SQL + uji | Kode cadangan → id, nama, dan saldo tim (tidak dipakai UI) |
@@ -168,12 +168,14 @@ declare
   v_levels  int := 0;
   v_lastp   bigint;
   v_lastfill bigint;
+  v_win     int;
+  v_minlots int;
   v_filled  int := 0;
   v_house   bigint := 0;
 begin
   perform set_config('classmeet.system', 'on', true);
   select * into o from orders where id = p_order for update;
-  select fee_bps, sweep_levels into v_fee, v_sweep from game_settings;
+  select fee_bps, sweep_levels, rank_window_minutes, rank_min_lots into v_fee, v_sweep, v_win, v_minlots from game_settings;
 
   loop
     exit when o.remaining = 0;
@@ -287,7 +289,16 @@ begin
   end if;
 
   if v_lastfill is not null then
-    update assets set last_price = v_lastfill, last_trade_at = now() where id = o.asset_id;
+    -- harga peringkat: VWAP jendela (termasuk pencocokan ini) dilapis harga peringkat sebelumnya bila volume < rank_min_lots
+    update assets a
+       set last_price = v_lastfill, last_trade_at = now(),
+           rank_price = round((w.pq + coalesce(a.rank_price, a.price)::numeric * greatest(v_minlots - w.q, 0))
+                              / greatest(w.q, v_minlots))
+      from (select coalesce(sum(t.price * t.qty), 0)::numeric as pq, coalesce(sum(t.qty), 0) as q
+              from trades t
+             where t.asset_id = o.asset_id
+               and t.created_at >= now() - make_interval(mins => v_win)) w
+     where a.id = o.asset_id;
   end if;
   if v_house <> 0 then
     update game_settings set house_cash = house_cash + v_house;
@@ -1094,7 +1105,7 @@ begin
        returning price into v_new;
       get diagnostics v_found = row_count;
       if v_found then
-        update assets set last_price = price where id = r.asset_id;   -- harga tampil menyusul acuan baru
+        update assets set last_price = price, rank_price = price where id = r.asset_id;   -- harga tampil dan peringkat menyusul acuan baru
         insert into price_history (asset_id, price, news_id, reason)
         values (r.asset_id, v_new, v_live.id, 'berita');
       end if;

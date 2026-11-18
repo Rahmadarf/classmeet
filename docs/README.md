@@ -10,7 +10,7 @@ Web simulasi bursa saham + game pos untuk lomba classmeet. Tim **mulai dari Rp 0
 >
 > Revisi 7 (17 Nov): berita dipilih dan dijadwalkan sepenuhnya oleh **sistem**; jeda perubahan harga acak 3–15 menit; panitia tidak bisa mengubah harga, berita, atau parameternya sejak game dibuka (penguncian database, [05](05-game-rules.md) §4.1a). Menggantikan aturan "efek 15 menit / jeda 5 menit / antrean admin" di revisi 2.
 >
-> Revisi 8 (17 Nov): trading diganti **order book** (bandar panitia + order antar-tim, limit/market, partial fill, biaya 0,25 % per sisi, peringkat memakai harga transaksi terakhir). SQL, RPC, dan tes sudah ada ([12](12-order-book.md), [04](04-rpc-contracts.md) §3.1); `buy_item`, `sell_item`, dan tabel `transactions` dihapus. UI masih desain Figma. Risiko terbuka: manipulasi harga terakhir oleh dua tim bersekongkol.
+> Revisi 8 (17 Nov): trading diganti **order book** (bandar panitia + order antar-tim, limit/market, partial fill, biaya 0,25 % per sisi, peringkat memakai harga peringkat VWAP 10 menit). SQL, RPC, dan tes sudah ada ([12](12-order-book.md), [04](04-rpc-contracts.md) §3.1); `buy_item`, `sell_item`, dan tabel `transactions` dihapus. UI masih desain Figma. Risiko tersisa: dua tim yang rela berdagang ≥ 5 lot per 10 menit masih bisa menggeser peringkat (dibatasi ARA/ARB).
 >
 > Revisi 2: harga **tidak lagi acak**; hanya berubah lewat berita yang dipilih admin (efek 15 menit setelah tayang, jeda 5 menit, antrean otomatis); tanpa batas pegang per tim (dihapus 16 Nov); stok ditetapkan di awal; dashboard tim hanya tiga angka; game diakhiri manual; folder `app/` tanpa `src/`. Sebelumnya (revisi 1): modal Rp 0, tanpa batas kunjungan, leaderboard hanya di ruang publik, hadiah lewat QR → pengajuan → ACC admin.
 >

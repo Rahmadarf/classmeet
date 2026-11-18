@@ -1,0 +1,40 @@
+# Dipakai oleh docker-compose.https.yml (menggantikan Caddyfile bawaan Supabase).
+#
+#   https://<PROXY_DOMAIN>        API Supabase (auth, rest, realtime) + Studio (dengan kata sandi dasbor)
+#   https://<PROXY_DOMAIN>:3443   aplikasi Classmeet (Next.js di mesin host, port 3000)
+#
+# PROXY_DOMAIN = alamat IP LAN atau nama lokal mesin ini (mis. 192.168.1.10). Untuk alamat/nama lokal Caddy menerbitkan
+# sertifikat dari CA internalnya; perangkat harus mempercayai CA itu (lihat README, bagian HTTPS).
+{
+	# Satu CA internal; tidak perlu Let's Encrypt (tidak ada internet saat acara).
+	local_certs
+	# Peramban dan curl TIDAK mengirim SNI saat alamatnya berupa IP (https://192.168.x.x). Tanpa ini Caddy tidak tahu
+	# sertifikat mana yang dipakai dan menjawab "tlsv1 alert internal error".
+	default_sni {$PROXY_DOMAIN}
+}
+
+{$PROXY_DOMAIN} {
+	tls internal
+
+	@supabase_api path /auth/v1/* /rest/v1/* /graphql/v1 /realtime/v1/* /storage/v1/* /functions/v1/* /mcp /sso/* /.well-known/oauth-authorization-server/auth/v1
+
+	handle @supabase_api {
+		reverse_proxy api-gw:8000
+	}
+
+	handle {
+		basic_auth {
+			# PROXY_AUTH_PASSWORD diganti hash bcrypt saat kontainer mulai (lihat docker-compose.caddy.yml)
+			{$PROXY_AUTH_USERNAME} {$PROXY_AUTH_PASSWORD}
+		}
+		reverse_proxy studio:3000
+	}
+
+	header -server
+}
+
+{$PROXY_DOMAIN}:3443 {
+	tls internal
+	reverse_proxy host.docker.internal:3000
+	header -server
+}

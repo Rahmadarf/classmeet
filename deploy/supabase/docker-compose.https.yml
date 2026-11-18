@@ -1,0 +1,13 @@
+# Tambahan untuk HTTPS di jaringan lokal (LAN). Dipakai BERSAMA docker-compose.caddy.yml resmi:
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.caddy.yml:docker-compose.https.yml
+# (10-up.sh --https menyetel ini dan menyalin Caddyfile.classmeet menimpa volumes/proxy/caddy/Caddyfile). Caddy memakai
+# CA internalnya sendiri untuk alamat IP/nama lokal.
+#
+# Mengapa perlu: kamera pemindai (kiosk dan penjaga) hanya jalan di HTTPS atau localhost; halaman HTTPS tidak boleh
+# memanggil API HTTP (mixed content). Maka API Supabase dan aplikasi Next sama-sama dilayani lewat HTTPS oleh Caddy.
+services:
+  caddy:
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # Caddy meneruskan ke aplikasi Next yang berjalan di mesin host (port 3000)
+    ports:
+      - "3443:3443"

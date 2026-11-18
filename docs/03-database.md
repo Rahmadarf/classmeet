@@ -241,6 +241,7 @@ create table assets (
   max_price      bigint not null,
   stock          int not null check (stock >= 0),     -- persediaan BANDAR (panitia); stok awal seluruhnya dipegang bandar
   last_price     bigint check (last_price > 0),       -- harga transaksi terakhir; null sebelum ada transaksi/berita. Inilah harga yang tampil dan dihitung
+  rank_price     bigint check (rank_price > 0),       -- harga PERINGKAT: VWAP jendela waktu (game_settings.rank_window_minutes), dilapis harga peringkat sebelumnya bila volume tipis. Dipakai net worth dan leaderboard; null sebelum ada transaksi
   last_trade_at  timestamptz,
   base_price     bigint check (base_price > 0),       -- harga acuan saat pasar pertama dibuka, penyebut indeks IKC
   init_stock     int check (init_stock >= 0),         -- stok awal bandar, dasar lot per level kuotasi
@@ -252,7 +253,7 @@ create table assets (
 create index on assets (sector);
 ```
 
-`price` kini adalah **harga acuan**: hanya berubah oleh efek berita dan menjadi pusat kuotasi bandar serta dasar batas ARA/ARB. `last_price` adalah harga transaksi terakhir (tampil di UI dan dipakai menghitung net worth); saat berita berlaku `last_price` disetel ulang ke acuan baru. `stock` adalah persediaan bandar. Tidak ada batas kepemilikan per tim (dihapus 16 Nov); pembatasnya stok bandar, order tim lain, dan saldo. Stok awal ditentukan per aset berdasarkan harga (murah: banyak, mahal: sedikit).
+`price` kini adalah **harga acuan**: hanya berubah oleh efek berita dan menjadi pusat kuotasi bandar serta dasar batas ARA/ARB. `last_price` adalah harga transaksi terakhir (hanya tampil di UI dan indeks). **`rank_price` adalah harga peringkat** (diputuskan 17 Nov, mitigasi kolusi): VWAP semua transaksi aset itu dalam `rank_window_minutes` terakhir (10), ditambah harga peringkat sebelumnya (atau harga acuan bila belum ada) sebagai pengisi sebanyak `rank_min_lots − volume jendela` lot bila volume jendela kurang dari `rank_min_lots` (5). Jadi satu transaksi kecil di pasar sepi hanya menggeser sebagian; harga baru sepenuhnya mengikuti transaksi bila volume jendela sudah mencapai `rank_min_lots`. Saat berita berlaku `last_price` dan `rank_price` disetel ulang ke acuan baru. `stock` adalah persediaan bandar. Tidak ada batas kepemilikan per tim (dihapus 16 Nov); pembatasnya stok bandar, order tim lain, dan saldo. Stok awal ditentukan per aset berdasarkan harga (murah: banyak, mahal: sedikit).
 
 ### 3.5 `holdings`
 
@@ -414,6 +415,8 @@ create table game_settings (
   band_bps                  int not null default 1500 check (band_bps between 100 and 5000), -- ARA/ARB: +/- dari harga acuan
   house_levels              int not null default 5 check (house_levels between 1 and 10),    -- jumlah level bid dan offer bandar
   sweep_levels              int not null default 5 check (sweep_levels between 1 and 10),    -- level maksimum yang disapu satu order market
+  rank_window_minutes       int not null default 10 check (rank_window_minutes between 1 and 120),  -- jendela VWAP harga peringkat
+  rank_min_lots             int not null default 5 check (rank_min_lots between 1 and 100),         -- volume jendela minimum; kekurangannya diisi harga peringkat sebelumnya
   house_refresh_seconds     int not null default 300 check (house_refresh_seconds >= 10),
   house_refreshed_at        timestamptz,
   house_cash                bigint not null default 0,   -- selisih uang bandar: terima (+) dan bayar (-) termasuk biaya; uang tim + house_cash = hadiah + koreksi
@@ -440,7 +443,7 @@ Yang **dihapus**: `initial_cash` (modal selalu 0), `max_qty_per_trade` dan `asse
 
 - `price_step`: harga dibulatkan ke kelipatan ini (default Rp 100). Dengan efek 8–14 %, aset berharga di bawah ±Rp 1.000 hampir tidak bergerak; jaga `price_step` jauh lebih kecil dari `harga × persen`.
 - `news_delay_min_minutes` / `news_delay_max_minutes`: jeda acak antara berita terbit dan harga berubah (3 dan 15 menit). Diundi per berita dalam **detik**, antara min dan (maks − 10 detik) karena penjadwal berjalan tiap 10 detik, sehingga perubahan nyata tidak melewati 15 menit.
-- `fee_bps`, `band_bps`, `house_levels`, `sweep_levels`, `house_refresh_seconds`: parameter order book (doc 12 §3). Terkunci setelah game dibuka. `house_cash` dan `house_refreshed_at` hanya ditulis fungsi sistem.
+- `fee_bps`, `band_bps`, `house_levels`, `sweep_levels`, `house_refresh_seconds`, `rank_window_minutes`, `rank_min_lots`: parameter order book (doc 12 §3). Terkunci setelah game dibuka. `house_cash` dan `house_refreshed_at` hanya ditulis fungsi sistem.
 - `started_at`: terisi sekali saat pasar pertama kali dibuka; sejak itu harga, kumpulan berita, dan pengaturan berita terkunci (§3.13).
 - `news_next_allowed_at`: waktu paling awal berita berikutnya boleh terbit = saat harga berubah + `news_gap_minutes` (default 0). Kosong (`null`) berarti boleh kapan saja (awal game).
 - `paused_at`: dipakai untuk menggeser waktu efek dan jeda saat game dilanjutkan dari status `paused`.
@@ -504,6 +507,7 @@ create trigger assets_price_lock
      or old.max_price is distinct from new.max_price
      or old.is_active is distinct from new.is_active
      or old.last_price is distinct from new.last_price
+     or old.rank_price is distinct from new.rank_price
      or old.last_trade_at is distinct from new.last_trade_at
      or old.base_price is distinct from new.base_price
      or old.init_stock is distinct from new.init_stock)
@@ -533,6 +537,8 @@ create trigger game_settings_news_lock
      or old.band_bps is distinct from new.band_bps
      or old.house_levels is distinct from new.house_levels
      or old.sweep_levels is distinct from new.sweep_levels
+     or old.rank_window_minutes is distinct from new.rank_window_minutes
+     or old.rank_min_lots is distinct from new.rank_min_lots
      or old.house_refresh_seconds is distinct from new.house_refresh_seconds
      or old.house_refreshed_at is distinct from new.house_refreshed_at
      or old.house_cash is distinct from new.house_cash)
@@ -552,10 +558,10 @@ Yang **tidak** terkunci: stok bandar (berubah lewat pencocokan), saldo (koreksi 
 
 ## 4. Kalkulasi net worth
 
-**Aturan (diputuskan 17 Nov, menggantikan aturan harga beli 16 Nov):** nilai aset dihitung menurut **harga transaksi terakhir** (`assets.last_price`, atau harga acuan bila belum ada transaksi). Uang yang tertahan di order beli dan aset yang tertahan di order jual tetap milik tim dan ikut dihitung:
+**Aturan (diputuskan 17 Nov, menggantikan aturan harga beli 16 Nov):** nilai aset dihitung menurut **harga peringkat** (`assets.rank_price`: VWAP 10 menit, atau harga acuan bila belum ada transaksi; lihat §3.4). Uang yang tertahan di order beli dan aset yang tertahan di order jual tetap milik tim dan ikut dihitung:
 
 ```
-net worth = cash + locked_cash + Σ holdings.qty × coalesce(last_price, price)
+net worth = cash + locked_cash + Σ holdings.qty × coalesce(rank_price, price)
 ```
 
 `holdings.qty` sudah memuat lot yang terkunci. Kolom `cash` pada view adalah **total** (bebas + tertahan) supaya `cash + holdings_value = net_worth` pada papan peringkat; `avail_cash` memisahkannya.
@@ -565,8 +571,8 @@ create or replace view v_team_net_worth as
 select t.id as team_id,
        t.name,
        (t.cash + t.locked_cash)::bigint as cash,
-       coalesce(sum(h.qty * coalesce(a.last_price, a.price)), 0)::bigint as holdings_value,
-       (t.cash + t.locked_cash + coalesce(sum(h.qty * coalesce(a.last_price, a.price)), 0))::bigint as net_worth,
+       coalesce(sum(h.qty * coalesce(a.rank_price, a.price)), 0)::bigint as holdings_value,
+       (t.cash + t.locked_cash + coalesce(sum(h.qty * coalesce(a.rank_price, a.price)), 0))::bigint as net_worth,
        t.cash as avail_cash,
        t.locked_cash
 from teams t

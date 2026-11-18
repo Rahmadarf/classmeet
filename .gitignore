@@ -32,6 +32,12 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+
+# keluaran skrip seed (memuat kredensial akun uji; jangan di-commit)
+/scripts/.seed-output.local.json
+# kartu QR tim hasil print-qr.ts (memuat kredensial; jangan di-commit)
+/scripts/.qr-output.local/
 
 # vercel
 .vercel
@@ -39,3 +45,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# disalin dari node_modules oleh scripts/copy-zxing-wasm.mjs
+/public/vendor/
+
+# Playwright MCP (artefak uji lokal)
+/.playwright-mcp/
+
+# Supabase self-hosted (Docker): berkas unduhan resmi + .env berisi rahasia, dan dump DB berisi data sensitif
+/deploy/supabase/stack/
+/deploy/supabase/dump/

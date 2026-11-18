@@ -30,8 +30,8 @@ Palet dibuat dari dua sumber: **biru royal situs IT FEST** (identitas: tombol ut
 |-----|----------------|-----------------|
 | `#306FF8` | Biru jubah | Dasar `--blue` (ubin inisial), digelapkan sedikit menjadi `#2A5FE6` agar teks putih di atasnya lolos 5,4:1 |
 | `#82AFF9` | Sorotan jubah | **Biru muda**: peringkat 2, isian pil, hiasan. **Bukan teks** di latar terang |
-| `#FA9F1F` | Api, sepatu | **Oranye**: aksen saja (penanda menu aktif, lambang, peringkat 3, gradasi hero). Sebagai teks memakai varian gelap `--accent-text` |
-| `#FBCD3A` | Api, ujung kuning | **Kuning**: peringkat 1, banner, awal gradasi hero. Hanya isian |
+| `#FA9F1F` | Api, sepatu | **Oranye**: aksen saja (penanda menu aktif, lambang, peringkat 3). Sebagai teks memakai varian gelap `--accent-text` |
+| `#FBCD3A` | Api, ujung kuning | **Kuning**: peringkat 1, banner. Hanya isian |
 | `#25EEEF` | Layar visor | **Sian**: isian chip dan indikator; sebagai teks memakai `--cyan-text` |
 | `#F2F1F2` | Rambut dan badan | Tidak dipakai lagi sebagai teks sidebar (sidebar kini putih); tersedia untuk teks di atas `--primary` bila perlu |
 | `#C2BFC9` | Bayangan rambut | Tidak dipakai |
@@ -73,15 +73,15 @@ Aksen terang (oranye, kuning, sian) sebagai **isian** tetap dari maskot. Sebagai
 |-------|-----|-------|
 | `--primary` | `#0D2BE3` | **Tombol utama** (Beli, Kirim, Konfirmasi, Simpan, Tutup pasar) dan checkbox. Isian saja |
 | `--on-primary` | `#FFFFFF` | Teks dan ikon di atas `--primary` (kontras 8,5:1) |
-| `--accent` | `#FA9F1F` | **Aksen saja**: penanda menu aktif 3 px, lambang, badge peringkat 3, ujung gradasi hero. Isian saja; **bukan lagi tombol utama** |
+| `--accent` | `#FA9F1F` | **Aksen saja**: penanda menu aktif 3 px, lambang, badge peringkat 3. Isian saja; **bukan lagi tombol utama** |
 | `--accent-text` | `#A35500` | Oranye sebagai teks/ikon (uang keluar di Riwayat, titik stok rendah) |
-| `--accent-2` | `#FBCD3A` | Peringkat 1, banner sesi, ujung terang gradasi hero. Isian saja |
+| `--accent-2` | `#FBCD3A` | Peringkat 1, banner sesi. Isian saja |
 | `--blue` | `#2A5FE6` | Ubin inisial aset (huruf putih), bentuk dekoratif |
 | `--blue-text` / `--link` | `#2A55D6` / `#0D2BE3` | Eyebrow, tombol sekunder (garis + teks) / tautan |
 | `--blue-light` | `#82AFF9` | Peringkat 2, isian dekoratif. Bukan teks |
 | `--cyan` | `#25EEEF` | Isian chip harga naik, cincin fokus (di atas latar terang diberi garis `--cyan-text`), indikator koneksi |
 | `--cyan-text` | `#00717A` | Harga naik, uang masuk, lencana Baru (teks) |
-| `--flame` | gradasi `#FBCD3A → #FA9F1F` (135°) | **Kartu hero** Beranda |
+| `--hero` | gradasi `#2A5FE6 → #0D2BE3` (135°) | **Kartu hero** Beranda (diubah ke biru 17 Nov; gradasi oranye dihapus) |
 
 ### 2.4 Pengecualian semantik: hijau dan merah
 
@@ -127,11 +127,11 @@ Garis: `--border` terhadap putih 1,37 dan `--border-strong` 2,47. Garis `--borde
 3. **Naik/turun harga:** naik = chip isian `--cyan` 16 % + teks `--cyan-text` + ▲ + tanda `+`; turun = chip isian `--bad` 16 % + teks `--bad-text` + ▼ + tanda `−`, di kanan nama aset. Warna tidak pernah satu-satunya penanda (WCAG 1.4.1). Turun tidak memakai oranye agar tidak bertabrakan dengan tombol Beli.
 4. **Uang masuk/keluar di Riwayat:** `+` dengan `--cyan-text`, `−` dengan `--accent-text`; ikon panah ikut tampil.
 5. **Biru ubin `--blue`** tidak untuk teks. Ia dipakai pada ubin inisial (huruf putih, tebal), ilustrasi, dan grafik.
-6. **Kuning `--accent-2`** hanya untuk isian: peringkat 1, banner, gradasi hero. Bukan tombol dan bukan teks.
+6. **Kuning `--accent-2`** hanya untuk isian: peringkat 1, banner. Bukan tombol dan bukan teks.
 7. **Sian `--cyan`** hanya untuk isian kecil (chip, indikator "hidup", cincin fokus). Teks sian memakai `--cyan-text`.
 8. **Hijau/merah** hanya sesuai §2.4.
 9. Maksimal **tiga warna aksen** pada satu layar kecuali layar publik.
-10. **Sidebar putih**, dipisah dari halaman biru pucat oleh garis `--border` dan bayangan kartu; item aktif memakai `--nav-active` + penanda oranye 3 px + teks `--blue-text`. Oranye hanya aksen kecil (penanda, lambang, badge 3, gradasi hero), tidak pernah tombol.
+10. **Sidebar putih**, dipisah dari halaman biru pucat oleh garis `--border` dan bayangan kartu; item aktif memakai `--nav-active` + penanda oranye 3 px + teks `--blue-text`. Oranye hanya aksen kecil (penanda, lambang, badge 3), tidak pernah tombol.
 11. **Kedalaman** dibuat dengan putih di atas biru pucat plus bayangan biru halus (§5), bukan dengan bayangan abu atau hitam.
 
 ## 4. Tipografi
@@ -182,12 +182,12 @@ Nama mengikuti [07-ui-ux §7](07-ui-ux.md#7-komponen-bersama).
 | **AppShell penjaga (ponsel)** | Bilah atas putih (`--sidebar`, garis bawah `--border`) dengan tombol menu (`--sidebar-card`) + logo + nama acara, laci putih di kiri |
 | **Laci / sidebar** | Latar `--sidebar`; item terpilih `--nav-active` dengan penanda 3 px `--accent` (oranye) di tepi kiri, ikon dan teks `--blue-text`; item biasa ikon dan teks `--text-muted`, nama aktif tim `--text` |
 | **Kartu akun (dasar sidebar)** | Latar `--sidebar-card`, garis `--border`, padding 14. Baris identitas: ubin inisial `--bg-3` (huruf `--text`), nama tim `--text`, peran `--text-muted`. Di bawahnya tombol **Selesai** (admin: **Keluar**) selebar kartu: tombol sekunder (garis 2 px `--blue-text`, ikon keluar + teks `--blue-text`), tinggi 44, di tengah |
-| **Banner sesi hampir habis (tim)** | Strip selebar area isi di **paling atas**, latar `--accent-2`, teks `--text-on-accent` (13,20). Kiri: ikon jam, judul "Sesi segera berakhir" (tebal) + "Sentuh layar untuk melanjutkan."; kanan: pil putih berisi hitung mundur "Keluar dalam 0:30" (Sora, `--text`). Hanya di 30 detik terakhir; hitung mundur berkedip (dimatikan bila `prefers-reduced-motion`). Setiap sentuhan menutupnya dan mengatur ulang sesi 5 menit |
+| **Banner sesi hampir habis (tim)** | Strip selebar area isi di **paling atas**, latar `--accent-2`, teks `--text-on-accent` (13,20). Kiri: ikon jam, judul "Sesi segera berakhir" (tebal) + "Sentuh layar untuk melanjutkan."; kanan: pil putih berisi hitung mundur "Keluar dalam 0:30" (SF Pro Bold, `--text`). Hanya di 30 detik terakhir; hitung mundur berkedip (dimatikan bila `prefers-reduced-motion`). Setiap sentuhan menutupnya dan mengatur ulang sesi 5 menit |
 | **PageHeader** | Eyebrow `--blue-text`; judul `--text`; subjudul `--text-muted`; chip berlatar `--bg-1` bergaris `--border` |
 | **Kartu panel** | `--bg-1` putih, radius 24, garis `--border`, bayangan kartu, padding 24 |
-| **HeroBalanceCard** | Gradasi `--flame`; **semua teks `--text-on-accent`** (kontras ≥ 9,54); angka Total memakai Angka hero; Saldo dan Nilai aset di bawahnya; tombol mata di kanan atas berlatar putih 40 %. **Tidak ada tombol Ke Pasar** |
+| **HeroBalanceCard** | Gradasi `--hero` (biru `#2A5FE6 → #0D2BE3`); **semua teks `--on-primary` putih** (kontras ≥ 5,4 di ujung terang, 8,5 di ujung gelap); bayangan `0 8px 32px rgba(13,43,227,0.28)`; angka Total memakai Angka hero; Saldo dan Nilai aset di bawahnya; tombol mata di kanan atas berlatar putih 20 %, ikon putih. **Tidak ada tombol Ke Pasar** |
 | **Kartu Berita (Beranda)** | Kartu panel **di bawah** kartu hero, selebar penuh. Eyebrow `TETAP TERHUBUNG`, judul Berita, baris berita (ubin ikon `--bg-3`, judul + lencana Baru isian `--cyan` teks `--text-on-accent`, isi dua baris, waktu, ›) |
-| **AssetCard (Pasar)** | `--bg-1` putih bergaris `--border`. Baris atas: ubin inisial 44 px `--blue` (huruf putih, tebal), nama aset `--text` (boleh dua baris), **chip perubahan** di kanan (§3.3). Lalu harga Sora 26 px `--text`; titik stok `--cyan` (aman) atau `--accent` (rendah) + "stok 10 · punya 3" (`--text-muted`); tombol **Beli** `--primary` lebar penuh |
+| **AssetCard (Pasar)** | `--bg-1` putih bergaris `--border`. Baris atas: ubin inisial 44 px `--blue` (huruf putih, tebal), nama aset `--text` (boleh dua baris), **chip perubahan** di kanan (§3.3). Lalu harga SF Pro Bold 26 px `--text`; titik stok `--cyan` (aman) atau `--accent` (rendah) + "stok 10 · punya 3" (`--text-muted`); tombol **Beli** `--primary` lebar penuh |
 | **ListRow** | Tanpa latar sendiri di dalam kartu; pemisah `--border`; saat disentuh `--bg-2`; ubin kiri 48 px `--bg-3` |
 | **Ubin nomor pos** | `--bg-3`, nomor `--text` |
 | **StatusPill** | Isian `--ok` atau `--bad` pada 16 %, garis dan teks `--ok-text`/`--bad-text`, titik berwarna di kiri |
@@ -195,16 +195,17 @@ Nama mengikuti [07-ui-ux §7](07-ui-ux.md#7-komponen-bersama).
 | **Tombol utama** | Isian `--primary`, teks `--on-primary`, tebal 600, radius 16; saat ditekan `--primary-hover` `#0A21B4`. Dipakai untuk Beli, Kirim, Konfirmasi, Simpan koreksi, Tutup/Buka pasar, Unduh hasil akhir. Tombol nonaktif (hanya Unduh hasil akhir): `--primary` 45 % |
 | **Tombol sekunder** | Garis 2 px `--blue-text`, teks `--blue-text`, latar putih/transparan |
 | **Kolom isian** | Latar `--bg-0`, garis `--border-strong`, garis `--blue-text` saat fokus, teks `--text`, placeholder `--text-dim` |
+| **Tooltip harga peringkat (Beranda)** | Pemicu: ikon info 14 px (lingkaran + "i", putih 90 %) di samping label NILAI ASET pada kartu hero; saat disentuh atau difokus muncul sorotan lingkaran putih 22 % 24 px. Isi: kartu `--bg-1` putih, 344 px, padding 16/14, radius 10, garis `--border`, bayangan dialog biru; judul "Harga peringkat" (SF Pro Semibold 13, `--text`) dan isi 12,5 px (`--text-muted`): "Nilai aset dihitung dari rata-rata harga transaksi 10 menit terakhir, bukan harga terakhir. Peringkat memakai angka ini, jadi satu transaksi kecil tidak langsung menggeser nilai." Diletakkan di area kosong kanan angka, panah kiri menunjuk ikon, garis tipis putih 55 % menghubungkan. Jangan menutup angka Saldo, Nilai aset, atau Total. Figma: `Tim — Beranda (tooltip harga peringkat)` |
 | **Dialog beli** | `--bg-1` putih, radius 24, bayangan dialog, di atas `--overlay`; tombol Konfirmasi `--primary`, Batal sekunder; galat inline `--bad-text` dengan ikon |
-| **Lembar form nominal (penjaga)** | Muncul **di halaman yang sama** dengan layar pindai: lembar dari bawah, `--bg-1`, radius atas 24, pegangan `--border-strong`, di atas `--overlay`. Isi berurutan: eyebrow `TIM TERBACA` (`--blue-text`), nama tim (Sora 24), **kotak Saldo tim saat ini** (latar `--bg-2`, label `--text-muted` 12 px, angka Sora 28 px `--text`), label Nominal, kolom nominal (garis `--blue-text`), tombol **Kirim Rp …** `--primary`, tombol Batal sekunder |
+| **Lembar form nominal (penjaga)** | Muncul **di halaman yang sama** dengan layar pindai: lembar dari bawah, `--bg-1`, radius atas 24, pegangan `--border-strong`, di atas `--overlay`. Isi berurutan: eyebrow `TIM TERBACA` (`--blue-text`), nama tim (SF Pro Bold 24), **kotak Saldo tim saat ini** (latar `--bg-2`, label `--text-muted` 12 px, angka SF Pro Bold 28 px `--text`), label Nominal, kolom nominal (garis `--blue-text`), tombol **Kirim Rp …** `--primary`, tombol Batal sekunder |
 | **Toast** | `--bg-1` putih dengan bayangan dialog dan garis kiri 4 px (`--ok` sukses, `--bad` gagal, `--cyan` info); galat penjaga tetap tampil sampai ditutup |
 | **EmptyState** | Ikon garis `--blue-text`, judul `--text`, keterangan `--text-muted` |
 | **Layar publik (papan peringkat)** | Dua kolom terpisah dengan jarak 24 px: **kolom badge tetap** (badge 96 px) dan **daftar tim** (kartu `--bg-1` selebar sisa layar: nama tim di kiri; Total, Saldo, Nilai aset berjajar; angka Display `--text`, label `--text-muted`). Badge: 1 `--accent-2`, 2 `--blue-light`, 3 `--accent`, **4 dan 5 abu `#99A1B3`**; angka badge `--text-on-accent`. Hanya kartu tim yang bergeser saat peringkat berubah; badge tidak ikut bergerak. Kontras tinggi untuk proyektor: angka ≥ 56 px, `--text` murni |
-| **Layar `/kiosk`** | Latar `--page`; bingkai pratinjau kamera garis `--blue-text` 3 px; teks "Scan QR untuk trading" Sora 40 px `--text` |
-| **Tabel admin** | Di dalam kartu panel `--bg-1` (radius 24). Kepala kolom 12 px SemiBold `--text-muted` huruf kapital; baris dipisah garis bawah 1 px `--border`, jarak antarkolom 12 px, tinggi baris ±56 px. Kolom angka rata kanan (Sora SemiBold); satu kolom teks utama selebar sisa (FILL), kolom lain lebar tetap yang jumlahnya tidak melebihi lebar dalam kartu (±1068 px). Teks sel wajib bisa membungkus per kata. Kode aset memakai `--blue-text` |
+| **Layar `/kiosk`** | Latar `--page`; bingkai pratinjau kamera garis `--blue-text` 3 px; teks "Scan QR untuk trading" SF Pro Bold 40 px `--text` |
+| **Tabel admin** | Di dalam kartu panel `--bg-1` (radius 24). Kepala kolom 12 px SemiBold `--text-muted` huruf kapital; baris dipisah garis bawah 1 px `--border`, jarak antarkolom 12 px, tinggi baris ±56 px. Kolom angka rata kanan (SF Pro Semibold); satu kolom teks utama selebar sisa (FILL), kolom lain lebar tetap yang jumlahnya tidak melebihi lebar dalam kartu (±1068 px). Teks sel wajib bisa membungkus per kata. Kode aset memakai `--blue-text` |
 | **Pil aksi (audit)** | Isian warna aksi 16 %, teks varian gelapnya, 13 px SemiBold, radius 8: `payout_awarded` `--cyan-text`, `adjust_cash` `--accent-text`, `set_price` `--blue-text`, `set_state`/`set_post_open` `--blue-text`, `rotate_team_qr` `--bad-text` |
 | **Chip filter** | Radius penuh, 14 px SemiBold; aktif: isian `--bg-3` + garis `--blue-text` + teks `--text`; tidak aktif: garis `--border-strong` + teks `--text-muted` |
-| **Dialog admin (Koreksi saldo)** | Lebar 520, `--bg-1`, radius 24, garis `--border`, di atas `--overlay`. Isi: eyebrow `KOREKSI SALDO` (`--blue-text`), nama tim (Sora 26), saldo sekarang, kolom Selisih dan Alasan (wajib), kotak **Saldo sesudah** (`--bg-2`, angka `--text`), catatan audit, tombol Batal (sekunder) dan Simpan koreksi (`--primary`) |
+| **Dialog admin (Koreksi saldo)** | Lebar 520, `--bg-1`, radius 24, garis `--border`, di atas `--overlay`. Isi: eyebrow `KOREKSI SALDO` (`--blue-text`), nama tim (SF Pro Bold 26), saldo sekarang, kolom Selisih dan Alasan (wajib), kotak **Saldo sesudah** (`--bg-2`, angka `--text`), catatan audit, tombol Batal (sekunder) dan Simpan koreksi (`--primary`) |
 | **Banner peringatan** | Isian `--accent-2` 25 %, garis `--accent-2`, ikon ⚠ dan teks `--text` 15 px; dipakai di Ekspor |
 | **Kerangka (skeleton)** | Blok `--bg-2` dengan kilau `--bg-3` |
 
@@ -221,7 +222,7 @@ Nama mengikuti [07-ui-ux §7](07-ui-ux.md#7-komponen-bersama).
 
 ## 8. Pembeda dari IT FEST
 
-Situs IT FEST memakai latar biru royal gelap-terang, aksen lime, judul Space Grotesk. **Classmeet kini terang**, jadi kemiripan latar berkurang; yang tetap menautkan identitas adalah biru royal pada tombol utama dan tautan. Pembedanya: halaman terang, aksen **oranye** (bukan lime), warna sekunder sian dan kuning dari maskot, judul Sora + isi Plus Jakarta Sans, hero **gradasi api**, dan logo sendiri. Struktur halaman meniru IT FEST ([07 §0](07-ui-ux.md#0-kerangka-layout-bersama-acuan-it-fest)). Logo IT FEST tidak dipakai; logo, nama, dan teks tetap milik Classmeet.
+Situs IT FEST memakai latar biru royal gelap-terang, aksen lime, judul Space Grotesk. **Classmeet kini terang**, jadi kemiripan latar berkurang; yang tetap menautkan identitas adalah biru royal pada tombol utama dan tautan. Pembedanya: halaman terang, aksen **oranye** (bukan lime), warna sekunder sian dan kuning dari maskot, judul SF Pro Bold + isi Plus Jakarta Sans, hero **gradasi api**, dan logo sendiri. Struktur halaman meniru IT FEST ([07 §0](07-ui-ux.md#0-kerangka-layout-bersama-acuan-it-fest)). Logo IT FEST tidak dipakai; logo, nama, dan teks tetap milik Classmeet.
 
 Maskot memuat logo "Techno Fair 26" di dadanya. **Jangan memakai gambar maskot utuh di website** tanpa menghapus atau memastikan hak pakai logo itu; dokumen ini hanya mengambil warnanya, sesuai keputusanmu.
 
@@ -244,7 +245,7 @@ Maskot memuat logo "Techno Fair 26" di dadanya. **Jangan memakai gambar maskot u
   --accent: #FA9F1F;  --accent-text: #A35500;  --accent-2: #FBCD3A;
   --blue: #2A5FE6;    --blue-text: #2A55D6;    --link: #0D2BE3;  --blue-light: #82AFF9;
   --cyan: #25EEEF;    --cyan-text: #00717A;
-  --flame: linear-gradient(135deg, #FBCD3A 0%, #FA9F1F 100%);
+  --hero: linear-gradient(135deg, #2A5FE6 0%, #0D2BE3 100%);
 
   /* pengecualian semantik, hanya §2.4 */
   --ok: #34D399;  --ok-text: #09704A;
@@ -287,7 +288,7 @@ Di Figma, token ini ada sebagai variabel koleksi **"Classmeet / warna"** (`page`
 - [ ] Naik/turun, status pos, dan hadiah masuk/keluar terbaca tanpa warna (ikon + teks/tanda).
 - [ ] Toggle pos terbaca di bawah sinar matahari dan tanpa warna (posisi bulatan berbeda).
 - [ ] Hanya satu tombol `--primary` per layar kecuali daftar aset.
-- [ ] Kartu hero terbaca dari jarak laptop (teks gelap di atas gradasi api).
+- [ ] Kartu hero terbaca dari jarak laptop (teks putih di atas gradasi biru).
 - [ ] Sidebar putih terpisah jelas dari halaman `--page` (garis `--border` terlihat) dan oranye tidak muncul sebagai tombol.
 - [ ] Layar publik terbaca dari jarak jauh di proyektor (angka ≥ 56 px) dan tidak silau; badge peringkat tetap di tempat saat kartu bergeser.
 - [ ] Font `tnum` diuji; angka rupiah rata di kolom.

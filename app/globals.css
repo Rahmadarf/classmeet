@@ -1,26 +1,249 @@
 @import "tailwindcss";
 
+/*
+ * Token Classmeet Market — docs/DESIGN.md §2–§5, dengan skala radius dari
+ * docs/13-prompt-implementasi.md (pesan implementasi menang atas DESIGN.md §5).
+ * Mode terang saja. TIDAK ADA permukaan hitam atau hampir hitam (DESIGN.md §0).
+ *
+ * Padanan nama DESIGN.md → utilitas Tailwind:
+ *   --page → page · --bg-1 → card · --bg-0 → field · --bg-2 → soft · --bg-3 → tint
+ *   --border → line · --border-strong → line-strong · --text* → ink / ink-muted / ink-dim
+ *   --blue → brand · --blue-text → brand-text · --blue-light → brand-light
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+
+  --page: #f3f6ff;
+  --bg-0: #f3f6ff;
+  --bg-1: #ffffff;
+  --bg-2: #eaf0ff;
+  --bg-3: #d6e0ff;
+  --sidebar: #ffffff;
+  --sidebar-card: #eaf0ff;
+  --nav-active: #eaf0ff;
+  --border: #d3dcf7;
+  --border-strong: #8e9cd6;
+  --overlay: rgba(10, 33, 180, 0.55);
+
+  --text: #0b1437;
+  --text-muted: #434d7e;
+  --text-dim: #5c6694;
+  --text-on-accent: #03071e; /* hanya teks, bukan latar */
+
+  --primary: #0d2be3;
+  --primary-hover: #0a21b4;
+  --on-primary: #ffffff;
+
+  --accent: #fa9f1f;
+  --accent-text: #a35500;
+  --accent-2: #fbcd3a;
+  --blue: #2a5fe6;
+  --blue-text: #2a55d6;
+  --link: #0d2be3;
+  --blue-light: #82aff9;
+  --cyan: #25eeef;
+  --cyan-text: #00717a;
+  --hero: linear-gradient(
+    167deg,
+    #2a5fe6 14.6%,
+    #0d2be3 85.4%
+  ); /* sudut dan titik berhenti dari Figma (167°), bukan 135° DESIGN.md */
+
+  /* pengecualian semantik, hanya DESIGN.md §2.4 */
+  --ok: #34d399;
+  --ok-text: #09704a;
+  --bad: #f87171;
+  --bad-text: #c0262d;
+
+  --rank-gray: #99a1b3;
+
+  /* skala radius (pesan implementasi): panel/kartu 10, tombol/ubin/input 8,
+     baris daftar 14, tab 12 (kontainer 16), chip dan pil bulat penuh */
+  --radius-panel: 10px;
+  --radius-control: 8px;
+  --radius-row: 14px;
+  --radius-tab: 12px;
+  --radius-tabs: 16px;
+
+  --shadow-card: 0 2px 12px rgba(13, 43, 227, 0.06);
+  --shadow-dialog: 0 8px 32px rgba(13, 43, 227, 0.16);
+  --shadow-hero: 0 8px 32px rgba(13, 43, 227, 0.28);
+
+  --focus-ring: 0 0 0 2px var(--bg-1), 0 0 0 5px var(--blue-text);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-page: var(--page);
+  --color-card: var(--bg-1);
+  --color-field: var(--bg-0);
+  --color-soft: var(--bg-2);
+  --color-tint: var(--bg-3);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-card: var(--sidebar-card);
+  --color-nav-active: var(--nav-active);
+  --color-line: var(--border);
+  --color-line-strong: var(--border-strong);
+
+  --color-ink: var(--text);
+  --color-ink-muted: var(--text-muted);
+  --color-ink-dim: var(--text-dim);
+  --color-ink-on-accent: var(--text-on-accent);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-on-primary: var(--on-primary);
+
+  --color-accent: var(--accent);
+  --color-accent-text: var(--accent-text);
+  --color-accent-2: var(--accent-2);
+  --color-brand: var(--blue);
+  --color-brand-text: var(--blue-text);
+  --color-link: var(--link);
+  --color-brand-light: var(--blue-light);
+  --color-cyan: var(--cyan);
+  --color-cyan-text: var(--cyan-text);
+
+  --color-ok: var(--ok);
+  --color-ok-text: var(--ok-text);
+  --color-bad: var(--bad);
+  --color-bad-text: var(--bad-text);
+  --color-rank-gray: var(--rank-gray);
+
+  --radius-panel: var(--radius-panel);
+  --radius-control: var(--radius-control);
+  --radius-row: var(--radius-row);
+  --radius-tab: var(--radius-tab);
+  --radius-tabs: var(--radius-tabs);
+
+  --shadow-card: var(--shadow-card);
+  --shadow-dialog: var(--shadow-dialog);
+  --shadow-hero: var(--shadow-hero);
+
+  /* SF Pro hanya terpakai bila terpasang di perangkat (Apple); tidak dimuat sebagai berkas web.
+     Windows jatuh ke Inter yang dimuat lewat next/font (--font-inter). */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", var(--font-inter), Inter, system-ui,
+    sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  background: var(--page);
+  color: var(--text);
+  color-scheme: light;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Angka uang: lebar digit sama supaya kolom rapi (uji pada Inter, lihat docs/13-log-implementasi.md). */
+.money,
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Cincin fokus terlihat untuk semua kontrol (DESIGN.md §5). */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-control);
+}
+
+/* DESIGN.md §7: isian otomatis, bilah gulir, seleksi — tanpa kilat gelap atau kuning. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--bg-0) inset;
+  -webkit-text-fill-color: var(--text);
+}
+
+* {
+  scrollbar-color: var(--bg-3) var(--page);
+}
+
+::selection {
+  background: var(--bg-3);
+  color: var(--text);
+}
+
+/* Kerangka (skeleton): blok --bg-2 dengan kilau --bg-3. */
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, var(--bg-2) 0%, var(--bg-3) 50%, var(--bg-2) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+  border-radius: var(--radius-control);
+}
+
+/* Berkedip untuk hitung mundur sesi: cincin biru berdenyut, TEKS TETAP penuh (tidak memudar), kontras aman. */
+@keyframes ring-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(13, 43, 227, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 5px rgba(13, 43, 227, 0.35);
+  }
+}
+
+.ring-pulse {
+  animation: ring-pulse 1s ease-in-out infinite;
+}
+
+/* Sorot singkat saat harga berubah (docs/07 §4). Penanda naik/turun tetap ▲/▼ + teks, bukan warna ini. */
+@keyframes price-flash {
+  from {
+    background-color: var(--bg-3);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+.price-flash {
+  animation: price-flash 1.2s ease-out;
+  border-radius: 6px;
+}
+
+/* Kartu papan peringkat bergeser halus saat urutan berubah; kartu baru memudar masuk (layar publik). */
+.board-card {
+  transition: transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: board-card-in 400ms ease-out;
+}
+
+@keyframes board-card-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .skeleton {
+    background: var(--bg-2);
+  }
 }

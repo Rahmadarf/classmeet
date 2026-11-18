@@ -2,7 +2,7 @@
 
 Rancangan SQL di [03-database](03-database.md) dan [04-rpc-contracts](04-rpc-contracts.md) dijalankan di **PostgreSQL 16 sungguhan** (instance lokal sementara, dengan stub minimal untuk `auth.uid()`, skema `auth`, dan peran `anon` / `authenticated` yang meniru Supabase). Laporan ini menggantikan versi sebelumnya dan mencakup **revisi aturan ketiga**, termasuk **penghapusan sistem ACC** (hadiah langsung masuk saldo lewat `award_payout`; tabel `payout_requests`, `admin_review_payout`, dan batas nominal pos dihapus; 13 Nov): berita dipilih **sistem secara acak berbatas** dari kumpulan berita `ready` (efek 15 menit, jeda 5 menit), pasar dibuka/ditutup admin, tombol Tersedia pos, dan pencatatan login laptop (`log_kiosk_event`). Batas pegang kumulatif dan ketiadaan pergerakan acak dari revisi kedua tetap berlaku.
 
-Cara kerja: skrip [`tests/build2.py`](tests/build2.py) mengambil **semua blok `sql` dari dokumen** secara berurutan (31 blok; blok bertanda `-- [lewati-uji]` dilewati), memuatnya ke database kosong, lalu tujuh skrip uji ([`run1.py`](tests/run1.py), [`run2.py`](tests/run2.py), [`run2n.py`](tests/run2n.py), [`run3.py`](tests/run3.py), [`run_ob.py`](tests/run_ob.py), [`run_ob2.py`](tests/run_ob2.py), [`run_ob3.py`](tests/run_ob3.py)) memanggil fungsi atas nama pengguna berbeda lewat koneksi terpisah (`set role authenticated` + `request.jwt.claim.sub`). Yang diuji adalah SQL yang tertulis di dokumen, bukan salinan terpisah.
+Cara kerja: skrip [`tests/build2.py`](tests/build2.py) mengambil **semua blok `sql` dari dokumen** secara berurutan (31 blok; blok bertanda `-- [lewati-uji]` dilewati), memuatnya ke database kosong, lalu delapan skrip uji ([`run1.py`](tests/run1.py), [`run2.py`](tests/run2.py), [`run2n.py`](tests/run2n.py), [`run3.py`](tests/run3.py), [`run_ob.py`](tests/run_ob.py), [`run_ob2.py`](tests/run_ob2.py), [`run_ob3.py`](tests/run_ob3.py), [`run_ob4.py`](tests/run_ob4.py)) memanggil fungsi atas nama pengguna berbeda lewat koneksi terpisah (`set role authenticated` + `request.jwt.claim.sub`). Yang diuji adalah SQL yang tertulis di dokumen, bukan salinan terpisah.
 
 ## Ringkasan
 
@@ -14,13 +14,32 @@ Cara kerja: skrip [`tests/build2.py`](tests/build2.py) mengambil **semua blok `s
 | Siklus berita, jeda acak, pause/resume, konkurensi, tombol pos (`run2n`) | **132 dari 132 lulus** |
 | Konkurensi dan stres, sudah dialihkan ke `place_order` (`run3`) | **89 dari 89 lulus** |
 | **Order book** (revisi 8): pencocokan, prioritas harga-waktu, parsial, market, self-trade, kunci kas/lot, bandar, ARA/ARB, tick, idempotensi, hak akses (`run_ob`) | **250 dari 250 lulus** |
-| Order book: acak 270 transaksi, konkurensi 12 thread (~276 transaksi, 5,3 dtk), invarian (`run_ob2`) | **179 dari 179 lulus** |
+| Order book: acak 270 transaksi, konkurensi 12 thread (~276 transaksi, 5,3 dtk), invarian, penguncian (`run_ob2`) | **182 dari 182 lulus** |
 | Order book: pemeriksaan tambahan hasil mutasi M6/M10 (`run_ob3`) | **22 dari 22 lulus** |
-| **Total** | **829 pemeriksaan, 0 gagal** (120 + 37 + 132 + 89 + 250 + 179 + 22) |
+| Harga peringkat VWAP: pengisi, jendela waktu, perhitungan ulang dari `trades` (`run_ob4`) | **15 dari 15 lulus** |
+| **Total** | **847 pemeriksaan, 0 gagal** (120 + 37 + 132 + 89 + 250 + 182 + 22 + 15) |
 | Kekekalan uang (Σ (saldo + saldo terkunci) + kas bandar = Σ hadiah + koreksi) | Lulus, termasuk setelah stres acak dan setelah tutup game |
 | Kekekalan unit (stok + Σ pegangan tim = stok awal, semua aset uji) | Lulus, stok tidak pernah negatif |
 | Paling banyak satu berita `live` (status `queued` sudah dihapus) | Lulus setelah stres dan setelah 8 pemanggil bersamaan saat kosong |
 | Berita yang dipilih sistem tidak pernah membuat harga aset aktif keluar dari `min_price`/`max_price` | Lulus pada uji pemilih berbatas (termasuk kasus pembulatan tepat ke batas) |
+
+## Staging di Supabase Cloud (17 Nov)
+
+Project `classmeet-staging` (ref `sjqboaqkhykmzconskvn`, region ap-southeast-1, Postgres 17). SQL dari dokumen (tanpa stub `auth`) dimasukkan sebagai lima migrasi: skema + RLS, order book inti, pasar/hadiah/status game, leaderboard/berita/hak akses, `pg_cron`.
+
+**Terbukti di Supabase asli**
+- Semua migrasi masuk tanpa error pada skema `auth` dan peran bawaan Supabase.
+- Hak eksekusi: `anon` tidak bisa menjalankan satu fungsi pun; 10 fungsi internal (`process_*`, `ob_*`, `check_news_effects`, `news_would_hit_bounds`, `freeze_leaderboard_internal`) tertutup juga untuk `authenticated` (dicek lewat `has_function_privilege`).
+- Smoke test satu transaksi (di-rollback): game dibuka admin → bandar memasang 10 order; tim A market beli 3 lot terisi; A jual limit 2 lot, B beli limit terisi 2 lot; `get_order_book` 10 baris untuk tim, `forbidden` untuk admin; `anon` ditolak `permission denied`; tim A membaca 0 order milik tim B lewat tabel (RLS); invarian uang (Σ saldo + `house_cash` = modal awal) dan unit (stok + pegangan = stok awal) terpenuhi.
+- `pg_cron` 1.6.4: jadwal `10 seconds` benar-benar jalan, 5 eksekusi per pekerjaan dalam 40 detik, semuanya `succeeded`. Ini menutup catatan lama "interval detik butuh pg_cron 1.5+".
+- `realtime.send` berjalan tanpa error; publikasi `supabase_realtime` berisi `assets, game_settings, news_feed, payouts, posts`.
+- Advisor keamanan: hanya temuan yang disengaja (RPC `security definer` untuk `authenticated` dengan pemeriksaan peran di dalamnya; `leaderboard_snapshot` tanpa kebijakan karena hanya lewat `get_leaderboard`) dan lima fungsi pembantu murni tanpa `search_path` tetap (tidak berbahaya, bisa dirapikan).
+
+**Belum teruji di Supabase asli** (sandbox tidak punya koneksi langsung ke database, hanya lewat alat manajemen)
+- Suite penuh (847 pemeriksaan, tanpa harga peringkat di staging) **belum diulang** di sana; yang berjalan hanyalah smoke test di atas. Tidak ada uji konkurensi 12 thread, uji acak, maupun mutasi di Supabase.
+- Login nyata lewat GoTrue, JWT dan PostgREST (`/rest/v1/rpc/...`) dari klien sungguhan.
+- Pengiriman Realtime Broadcast ke klien WebSocket, dan perilaku lewat Cloudflare Tunnel (jalur Docker self-hosted).
+- Beban di paket gratis (batas koneksi, jeda otomatis project tidak aktif).
 
 ## Revisi 8 (17 Nov): order book menggantikan beli/jual langsung
 
@@ -30,7 +49,7 @@ Yang dibuktikan: harga-waktu, maker price, fee 25 bps dibulatkan ke atas per tra
 
 ### Uji mutasi order book
 
-33 mutan (M1–M36, tanpa M22–M24, M26) dijalankan **satu per satu**, masing-masing terhadap `run_ob`, `run_ob2`, `run_ob3`. **Semua 33 tertangkap** (minimal 1 baris FAIL). Beberapa mutan juga membuat satu skrip crash karena fungsi melempar error; crash itu tidak dihitung sebagai tangkapan, hanya FAIL yang dihitung.
+38 mutan (M1–M38, tanpa M22–M24, M26) dijalankan **satu per satu**. M1–M36 (33 mutan) terhadap `run_ob`, `run_ob2`, `run_ob3`: **semua 33 tertangkap** (minimal 1 baris FAIL). Lima mutan harga peringkat (M34–M38: tanpa pengisi, jendela waktu diabaikan, net worth memakai harga terakhir, berita tidak menyetel ulang `rank_price`, pengisi berbobot penuh) dijalankan terhadap `run_ob4`, `run_ob`, `run2`; **semua 5 tertangkap**. Beberapa mutan juga membuat satu skrip crash karena fungsi melempar error; crash itu tidak dihitung sebagai tangkapan, hanya FAIL yang dihitung.
 
 Catatan jujur:
 
@@ -40,12 +59,12 @@ Catatan jujur:
 
 ### Belum teruji / risiko tersisa revisi 8
 
-- **Kolusi dua tim memanipulasi harga terakhir** (peringkat memakai harga terakhir): hanya dibatasi ARA/ARB dan jejak `trades`; tidak ada mitigasi (opsi: VWAP atau minimal lot).
+- **Kolusi dua tim**: dimitigasi sebagian oleh harga peringkat VWAP 10 menit (17 Nov); dua tim yang berdagang ≥ 5 lot per 10 menit tetap bisa menggeser peringkat sampai batas ARA/ARB. Angka 10 menit dan 5 lot belum dituning. Perubahan ini belum diterapkan ke staging Supabase (migrasi 02–04 perlu dibuat ulang).
 - Kunci penjaga tidak menghentikan pemilik database atau `service_role`.
 - Parameter order book terkunci setelah game dibuka; harus dituning di gladi.
 - Aset murah (±Rp 1.000) tidak mendapat kuotasi bandar.
 - `ob_lock` menserialkan semua order: cukup untuk beban rencana (12 thread, ~276 transaksi dalam 5 dtk), belum diuji di ponsel/jaringan nyata maupun di Supabase sungguhan.
-- UI baru berupa desain Figma; state Pasar tutup/jeda, error form, dan tab Jual/Market aktif belum digambar.
+- UI baru berupa desain Figma; state Pasar dijeda, error isian, dan Jual+Market sudah digambar. Belum: state Pasar ditutup permanen (game selesai).
 - Jalur online `scripts/import-news.ts` belum diuji terhadap Supabase.
 
 ## Revisi 7 (17 Nov): berita diundi sistem, waktu acak 3–15 menit, harga terkunci setelah game dibuka
@@ -188,4 +207,4 @@ Catatan jujur tentang hasil mutasi:
 
 ## Cara mengulang
 
-Skrip ada di folder [`tests/`](tests/). Nyalakan PostgreSQL 16 sementara, jalankan `python3 tests/build2.py` (membuat `full2.sql` dari dokumen), lalu `python3 tests/mk_tpl.py` (template database), dan `run1.py`, `run2.py`, `run2n.py`, `run3.py`, `run_ob.py`, `run_ob2.py`, `run_ob3.py`. Skrip mengasumsikan klaster di `/tmp/pgdata`, port 54329, soket `/tmp`; ubah konstanta di `tests/t2.py` bila berbeda. `tests/mut.py` menjalankan uji mutasi (lihat komentar di dalamnya). Di project Supabase staging, ulangi pada klien Supabase sungguhan sebelum dipakai.
+Skrip ada di folder [`tests/`](tests/). Nyalakan PostgreSQL 16 sementara, jalankan `python3 tests/build2.py` (membuat `full2.sql` dari dokumen), lalu `python3 tests/mk_tpl.py` (template database), dan `run1.py`, `run2.py`, `run2n.py`, `run3.py`, `run_ob.py`, `run_ob2.py`, `run_ob3.py`, `run_ob4.py`. Skrip mengasumsikan klaster di `/tmp/pgdata`, port 54329, soket `/tmp`; ubah konstanta di `tests/t2.py` bila berbeda. `tests/mut.py` menjalankan uji mutasi (lihat komentar di dalamnya). Untuk Supabase Cloud ada dua berkas: [`tests/staging_smoke.sql`](tests/staging_smoke.sql) (satu transaksi yang selalu di-rollback; hasil ada di pesan galat `HASIL: {...}`, nilai harapan di komentar kepalanya) dan [`tests/staging_cron_check.sql`](tests/staging_cron_check.sql) (pg_cron, hak eksekusi, Realtime; jalankan per kueri). Keduanya belum menguji login, JWT, PostgREST, atau pengiriman Realtime ke klien sungguhan; ulangi pada klien Supabase sungguhan sebelum dipakai.

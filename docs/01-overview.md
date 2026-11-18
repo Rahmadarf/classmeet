@@ -65,7 +65,7 @@ Satu akun hanya punya satu peran.
 
 | Istilah | Arti |
 |---------|------|
-| Net worth | Saldo (bebas + terkunci di order) + Σ unit × **harga transaksi terakhir** tiap aset (diputuskan 17 Nov; menggantikan harga beli 16 Nov) |
+| Net worth | Saldo (bebas + terkunci di order) + Σ unit × **harga peringkat** tiap aset: VWAP transaksi 10 menit terakhir, dilapis harga peringkat sebelumnya bila volume kurang dari 5 lot (diputuskan 17 Nov; menggantikan harga beli 16 Nov) |
 | Aset | Barang yang diperdagangkan, misalnya saham perusahaan nyata dengan harga rekaan. Punya harga dan stok |
 | Stok | Jumlah unit aset yang tersedia di pasar |
 | Pos | Titik game fisik. Dijaga satu penjaga |

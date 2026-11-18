@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Jalankan layanan Supabase yang dipakai Classmeet dan tunggu sampai database sehat.
+#   ./10-up.sh            jalankan (HTTP; gerbang API di port 8000)
+#   ./10-up.sh --https    jalankan dengan Caddy (HTTPS LAN; lihat README, bagian HTTPS)
+#   ./10-up.sh down       hentikan (data tetap di stack/volumes/db/data)
+#   ./10-up.sh logs       ikuti log
+set -euo pipefail
+source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+need docker
+need_stack
+
+MODE="${1:-up}"
+case "$MODE" in
+  down) dc down; exit 0 ;;
+  logs) dc logs -f --tail 100 "${SERVICES[@]}"; exit 0 ;;
+  up|--https) ;;
+  *) die "pilihan: up | --https | down | logs" ;;
+esac
+
+if [ "$MODE" = "--https" ]; then
+  [ "$(get_env SUPABASE_PUBLIC_URL | cut -c1-8)" = "https://" ] \
+    || die "SUPABASE_PUBLIC_URL harus https://... (jalankan ./00-setup-stack.sh dengan URL https, mis. https://192.168.1.10)."
+  cp "$HERE/Caddyfile.classmeet" "$STACK/volumes/proxy/caddy/Caddyfile"
+  cp "$HERE/docker-compose.https.yml" "$STACK/docker-compose.https.yml"
+  # PROXY_DOMAIN = host dari SUPABASE_PUBLIC_URL (tanpa skema/port).
+  set_env PROXY_DOMAIN "$(get_env SUPABASE_PUBLIC_URL | sed -E 's#^https?://##; s#[:/].*$##')"
+  set_env COMPOSE_FILE "docker-compose.yml:docker-compose.caddy.yml:docker-compose.https.yml"
+  SERVICES+=(caddy)
+fi
+
+info "Menjalankan: ${SERVICES[*]} (pertama kali mengunduh image, bisa beberapa GB) ..."
+dc up -d "${SERVICES[@]}"
+
+info "Menunggu database sehat ..."
+for _ in $(seq 1 60); do
+  state="$(docker inspect -f '{{.State.Health.Status}}' "$DB_CONTAINER" 2>/dev/null || echo none)"
+  [ "$state" = "healthy" ] && break
+  sleep 2
+done
+[ "$(docker inspect -f '{{.State.Health.Status}}' "$DB_CONTAINER" 2>/dev/null || echo none)" = "healthy" ] \
+  || die "database belum sehat. Lihat: ./10-up.sh logs"
+
+dc ps
+echo
+echo "Berikutnya: dump dari cloud (./20-dump-cloud.sh) lalu ./30-restore-local.sh"
