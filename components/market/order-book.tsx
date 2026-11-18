@@ -62,15 +62,15 @@ export function OrderBook({
               className="text-ink-muted border-line grid grid-cols-2 gap-6 border-b pb-2 text-[11px] font-semibold tracking-[0.06em]"
               aria-hidden
             >
-              <div className="grid grid-cols-3 px-2.5">
-                <span>Freq</span>
-                <span>Lot</span>
-                <span className="text-right">Bid</span>
+              <div className="divide-ink/25 grid grid-cols-[3fr_3fr_6fr] divide-x">
+                <span className="px-2.5">Freq</span>
+                <span className="px-2.5">Lot</span>
+                <span className="px-2.5 text-right">Bid</span>
               </div>
-              <div className="grid grid-cols-3 px-2.5">
-                <span>Offer</span>
-                <span>Lot</span>
-                <span className="text-right">Freq</span>
+              <div className="divide-ink/25 grid grid-cols-[6fr_3fr_3fr] divide-x">
+                <span className="px-2.5">Offer</span>
+                <span className="px-2.5">Lot</span>
+                <span className="px-2.5 text-right">Freq</span>
               </div>
             </div>
 
@@ -113,34 +113,36 @@ function Cell({ side, level, maxLots }: { side: "bid" | "offer"; level: BookLeve
     return (
       <div
         className={cn(
-          "rounded-control grid min-h-10 grid-cols-3 items-center px-2.5 py-2 text-sm",
+          "rounded-control divide-ink/15 grid min-h-10 items-center divide-x py-2 text-sm",
+          bid ? "grid-cols-[3fr_3fr_6fr]" : "grid-cols-[6fr_3fr_3fr]",
           bid ? "bg-ok/[.05]" : "bg-bad/[.05]",
         )}
       >
-        <span className="text-ink-dim">–</span>
-        <span />
-        <span />
+        <span className="text-ink-dim px-2.5">–</span>
+        <span className="h-full" />
+        <span className="h-full" />
       </div>
     );
   }
   // Kepekatan latar: 8 % (sedikit) sampai 22 % (terbanyak di antara 10 level yang tampil).
   const alpha = 0.08 + 0.14 * (level.lots / maxLots);
   const price = (
-    <span className={cn("tnum font-bold", bid ? "text-ok-text text-right" : "text-bad-text")}>
+    <span className={cn("tnum px-2.5 font-bold", bid ? "text-ok-text text-right" : "text-bad-text")}>
       {formatNumber(level.price)}
     </span>
   );
-  const lots = <span className="tnum text-ink font-semibold">{formatNumber(level.lots)}</span>;
+  const lots = <span className="tnum text-ink px-2.5 font-semibold">{formatNumber(level.lots)}</span>;
   const freq = (
-    <span className={cn("tnum text-ink-muted", !bid && "text-right")}>{formatNumber(level.freq)}</span>
+    <span className={cn("tnum text-ink-muted px-2.5", !bid && "text-right")}>{formatNumber(level.freq)}</span>
   );
   return (
     <div
       role="group"
       aria-label={`${bid ? "Bid" : "Offer"} ${formatNumber(level.price)}, ${level.lots} lot, ${level.freq} antrean${level.mine > 0 ? `, termasuk ${level.mine} lot milik timmu` : ""}`}
       className={cn(
-        "rounded-control grid min-h-10 grid-cols-3 items-center px-2.5 py-2 text-sm",
-        level.mine > 0 && "border-primary border-2 px-[8px]",
+        "rounded-control divide-ink/25 grid min-h-10 items-center divide-x py-2 text-sm",
+        bid ? "grid-cols-[3fr_3fr_6fr]" : "grid-cols-[6fr_3fr_3fr]",
+        level.mine > 0 && "border-primary border-2",
       )}
       style={{
         backgroundColor: `color-mix(in srgb, var(${bid ? "--ok" : "--bad"}) ${Math.round(alpha * 100)}%, transparent)`,

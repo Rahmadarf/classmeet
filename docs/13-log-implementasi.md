@@ -798,3 +798,7 @@ Permintaan pengguna (tim, halaman Pasar dan pop-up berita):
 Perbaikan terkait: `tsconfig.json` (`exclude: deploy`), `eslint.config.mjs` (`deploy/**`), dan `.prettierignore` mengabaikan folder `deploy/` yang berisi berkas unduhan Supabase (membuat `tsc` dan `next build` gagal setelah `stack/` ada).
 
 Diuji di peramban (akun tim, 1440 × 900, HTTPS): tinggi dokumen 1141 px; order book dengan garis pemisah (diperiksa lewat tangkapan layar); dialog berita 760 px, huruf 32/22 px, latar abu-abu buram. tsc, eslint, vitest (104 tes) lolos. Belum: layar lebih sempit dari 1280 px dan dialog yang diisi berita sangat panjang (tinggi maksimum 88 % layar, isi menggulir di dalam kotak).
+
+### Order book: pembatas antar-kolom di dalam baris (18 Nov)
+
+Permintaan pengguna: tiap baris order book (Freq, Lot, harga) diberi garis pemisah agar mudah dibaca. `components/market/order-book.tsx`: garis vertikal tipis (`divide-x`, hitam 15–25 % transparan) di antara kolom pada baris kepala dan semua sel (sisi bid dan offer; sel kosong juga), dengan padding per kolom. Lebar kolom diubah dari tiga sama besar menjadi 3 : 3 : 6 (bid: Freq, Lot, Bid) dan 6 : 3 : 3 (offer: Offer, Lot, Freq) supaya angka harga tidak menempel pada garis dan kolom baris sejajar dengan kepalanya. Baris milik tim (garis biru) tetap mempertahankan garis biru dan pembatasnya. Diuji di peramban (akun tim, 1440 × 900) pada Adaro dan BCA; tsc dan eslint lolos.
