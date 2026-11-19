@@ -1,8 +1,7 @@
 "use client";
 
 import { ChevronRight, Newspaper } from "lucide-react";
-import { useState } from "react";
-import { NewsDialog } from "@/components/team/news-dialog";
+import { useNewsReader } from "@/components/team/news-reader";
 import type { NewsItem } from "@/lib/team/data";
 
 /**
@@ -10,7 +9,7 @@ import type { NewsItem } from "@/lib/team/data";
  * tidak pernah tampil (tabel `news_feed` memang tidak memuatnya).
  */
 export function NewsStrip({ latest }: { latest: NewsItem | null }) {
-  const [open, setOpen] = useState<NewsItem | null>(null);
+  const { open } = useNewsReader();
   const body = (
     <>
       <Newspaper className="text-accent-text size-[22px] shrink-0" aria-hidden />
@@ -28,7 +27,7 @@ export function NewsStrip({ latest }: { latest: NewsItem | null }) {
       {latest ? (
         <button
           type="button"
-          onClick={() => setOpen(latest)}
+          onClick={() => open(latest)}
           className="rounded-panel border-line bg-card shadow-card hover:bg-soft flex min-h-14 w-full items-center gap-3.5 border px-5 py-3.5 text-left transition-colors"
         >
           {body}
@@ -39,7 +38,6 @@ export function NewsStrip({ latest }: { latest: NewsItem | null }) {
           {body}
         </div>
       )}
-      <NewsDialog item={open} onClose={() => setOpen(null)} />
     </>
   );
 }

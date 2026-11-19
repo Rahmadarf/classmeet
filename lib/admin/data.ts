@@ -242,6 +242,16 @@ export type CurrentNewsEffects = {
   events: { kind: "bankrupt" | "dividend" | "suspend"; symbol: string; name: string; value: number }[];
 };
 
+/** Satu berita yang sudah berlaku (`admin_applied_news`): hanya yang sudah diterapkan ke harga; tanpa waktu yang belum terjadi. */
+export type AppliedNews = {
+  id: string;
+  title: string;
+  publishedAt: string | null;
+  appliedAt: string | null;
+  assets: number;
+  event: { kind: "bankrupt" | "dividend" | "suspend"; symbol: string } | null;
+};
+
 /** Jumlah berita siap per jenis event (`get_news_pool_kinds`): hanya angka, boleh dilihat kapan saja. */
 export type PoolKindCount = { kind: "price" | "bankrupt" | "suspend" | "dividend"; ready: number };
 /** Cakupan event per aset (`news_pool_coverage`): HANYA sebelum game dibuka (sesudahnya database menolak). */
@@ -252,6 +262,7 @@ export type NewsPage = {
   pool: NewsPool | null;
   kinds: PoolKindCount[] | null;
   currentEffects: CurrentNewsEffects | null;
+  applied: AppliedNews[] | null;
   coverage: PoolCoverageRow[] | null;
   drafts: NewsDraft[];
   assets: NewsAssetOption[];
@@ -262,11 +273,12 @@ export type NewsPage = {
  * dan berita yang sudah tayang (`news_feed`) yang dimuat. Sebelum dibuka: daftar berita dengan jumlah aset terkena.
  */
 export async function fetchNewsPage(supabase: Db, locked: boolean): Promise<NewsPage | null> {
-  const [news, pool, kindRes, effRes] = await Promise.all([
+  const [news, pool, kindRes, effRes, appliedRes] = await Promise.all([
     fetchNews(supabase, 1),
     fetchNewsPool(supabase),
     supabase.rpc("get_news_pool_kinds"),
     supabase.rpc("admin_current_news_effects"),
+    supabase.rpc("admin_applied_news", { p_limit: 200 }),
   ]);
   if (!news) return null;
   const kinds: PoolKindCount[] | null =
@@ -277,6 +289,21 @@ export async function fetchNewsPage(supabase: Db, locked: boolean): Promise<News
             ? [{ kind: k.kind, ready: k.ready_count }]
             : [],
         );
+  const applied: AppliedNews[] | null =
+    appliedRes.error || !appliedRes.data
+      ? null
+      : appliedRes.data.map((r) => ({
+          id: r.news_id,
+          title: r.title,
+          publishedAt: r.published_at,
+          appliedAt: r.applied_at,
+          assets: r.n_assets,
+          event:
+            r.event_symbol &&
+            (r.event_kind === "bankrupt" || r.event_kind === "dividend" || r.event_kind === "suspend")
+              ? { kind: r.event_kind, symbol: r.event_symbol }
+              : null,
+        }));
   let currentEffects: CurrentNewsEffects | null = null;
   if (!effRes.error && effRes.data && effRes.data.length > 0) {
     const status = effRes.data[0].status === "live" ? "live" : "applied";
@@ -360,5 +387,5 @@ export async function fetchNewsPage(supabase: Db, locked: boolean): Promise<News
       })(),
     }));
   }
-  return { locked, current: news[0] ?? null, pool, kinds, currentEffects, coverage, drafts, assets };
+  return { locked, current: news[0] ?? null, pool, kinds, currentEffects, applied, coverage, drafts, assets };
 }

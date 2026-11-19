@@ -5,6 +5,7 @@ import { AccountCard, AppShell } from "@/components/shell/app-shell";
 import { SessionBanner } from "@/components/session/session-banner";
 import { FinishButton } from "@/components/session/finish-button";
 import { OfflineBanner } from "@/components/states";
+import { NewsReaderHost } from "@/components/team/news-reader";
 import { OpenOrdersCountProvider, TeamNav } from "@/components/team/open-orders-count";
 import { fetchOpenOrderCount } from "@/lib/market/data";
 import { createClient } from "@/lib/supabase/server";
@@ -58,7 +59,7 @@ async function TeamShell({ children }: { children: React.ReactNode }) {
           </AccountCard>
         }
       >
-        {children}
+        <NewsReaderHost>{children}</NewsReaderHost>
       </AppShell>
     </OpenOrdersCountProvider>
   );

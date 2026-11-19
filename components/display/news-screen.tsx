@@ -7,6 +7,7 @@ import { ScaledStage } from "@/components/display/scaled-stage";
 import { fetchNewsBoard, type NewsBoardData } from "@/lib/display/data";
 import { usePolling } from "@/lib/hooks/use-polling";
 import { dayKeyWib, formatDateWib, formatTimeWib } from "@/lib/money";
+import { firstParagraph, paragraphsOf } from "@/lib/team/news-text";
 import { createClient } from "@/lib/supabase/client";
 import type { NewsItem } from "@/lib/team/data";
 
@@ -110,9 +111,15 @@ function Featured({ item, now }: { item: NewsItem; now: number | null }) {
         <span className="line-clamp-3">{item.title}</span>
       </h1>
       <div className="bg-line h-px shrink-0" aria-hidden />
-      <p className="text-ink-muted min-h-0 text-[32px] leading-[1.5] [overflow-wrap:anywhere]">
-        <span className="line-clamp-8">{item.body}</span>
-      </p>
+      <div className="text-ink-muted flex min-h-0 flex-col gap-6 text-[29px] leading-[1.5] [overflow-wrap:anywhere]">
+        {paragraphsOf(item.body)
+          .slice(0, 2)
+          .map((p, i) => (
+            <p key={i}>
+              <span className={i === 0 ? "line-clamp-5" : "line-clamp-4"}>{p}</span>
+            </p>
+          ))}
+      </div>
       <div className="flex-1" />
       {age !== null ? <p className="text-ink-dim shrink-0 text-[22px] font-medium">{agoLabel(age)}</p> : null}
     </section>
@@ -148,7 +155,7 @@ function Timeline({ items, now }: { items: NewsItem[]; now: number | null }) {
                   {item.title}
                 </p>
                 <p className="text-ink-muted mt-1.5 line-clamp-2 text-[19px] leading-snug [overflow-wrap:anywhere]">
-                  {item.body}
+                  {firstParagraph(item.body)}
                 </p>
               </div>
             </li>

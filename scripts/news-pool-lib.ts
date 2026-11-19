@@ -81,6 +81,56 @@ export function makeRng(seed: string) {
 }
 type Rng = ReturnType<typeof makeRng>;
 
+/** Hash sederhana (deterministik) untuk memilih templat kalimat tanpa memakai RNG utama (urutan undian efek tidak boleh bergeser). */
+function hashOf(text: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
+  return h >>> 0;
+}
+
+const list = (names: string[]) =>
+  names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} dan ${names[names.length - 1]}`;
+
+/**
+ * Paragraf kedua berita: menyebut perusahaan yang diperkirakan naik dan turun (menurut efek sebenarnya), supaya pembaca dapat
+ * menebak aset mana yang bergerak. Nama diambil dari efek terbesar; sisanya disebut "bergerak tipis". Deterministik menurut judul.
+ */
+export function impactParagraph(title: string, effects: PoolEffect[], names: Map<string, string>): string {
+  const byMag = (a: PoolEffect, b: PoolEffect) => Math.abs(b.pct_bps) - Math.abs(a.pct_bps);
+  const up = effects.filter((e) => e.pct_bps > 0).sort(byMag);
+  const down = effects.filter((e) => e.pct_bps < 0).sort(byMag);
+  const nm = (e: PoolEffect) => names.get(e.symbol) ?? e.symbol;
+  const gain = list(up.slice(0, 4).map(nm));
+  const loss = list(down.slice(0, 3).map(nm));
+  const rest = effects.length - Math.min(up.length, 4) - Math.min(down.length, 3);
+  const h = hashOf(title);
+  let main: string;
+  if (up.length > 0 && down.length > 0) {
+    const t = [
+      `Pelaku pasar menilai saham ${gain} berpeluang menguat, sementara ${loss} diperkirakan melemah.`,
+      `Analis memperkirakan ${gain} menjadi penerima manfaat terbesar. Di sisi lain, ${loss} berisiko tertekan.`,
+      `Dampak paling terasa pada ${gain} yang diperkirakan naik, adapun ${loss} cenderung turun.`,
+      `Investor mencermati ${gain} yang diproyeksikan menguat serta ${loss} yang berpotensi turun.`,
+    ];
+    main = t[h % t.length];
+  } else if (up.length > 0) {
+    const t = [
+      `Pelaku pasar menilai saham ${gain} berpeluang menguat setelah kabar ini.`,
+      `Analis memperkirakan ${gain} menjadi penerima manfaat terbesar dari perkembangan ini.`,
+    ];
+    main = t[h % t.length];
+  } else {
+    const t = [
+      `Pelaku pasar menilai saham ${loss} berpotensi melemah setelah kabar ini.`,
+      `Analis memperkirakan ${loss} menjadi pihak yang paling tertekan oleh perkembangan ini.`,
+    ];
+    main = t[h % t.length];
+  }
+  const tail =
+    rest > 0 ? ` ${rest} emiten lain diperkirakan bergerak tipis mengikuti sentimen yang sama.` : "";
+  return `${main}${tail}`;
+}
+
 const clampBps = (bps: number, cap: number) => {
   const v = Math.max(-cap, Math.min(cap, Math.round(bps / 10) * 10));
   return v === 0 ? 10 : v;
@@ -103,6 +153,7 @@ function fillEffects(
 
 function priceNews(assets: PoolAsset[], cfg: PoolConfig, rng: Rng): PoolNews[] {
   const out: PoolNews[] = [];
+  const names = new Map(assets.map((a) => [a.symbol, a.name]));
   const bySector = new Map<SectorKey, PoolAsset[]>();
   for (const a of assets) {
     const k = SECTOR_KEY_BY_NAME[a.sector];
@@ -130,11 +181,13 @@ function priceNews(assets: PoolAsset[], cfg: PoolConfig, rng: Rng): PoolNews[] {
         const lead = ranked[0]?.[0];
         const base = theme[dir].b;
         const second = variant === 1 && lead ? ` ${SECTOR_CONTEXT[lead]}` : "";
+        const title = theme[dir].t[variant];
+        const effects = [...chosen].map(([symbol, pct_bps]) => ({ symbol, pct_bps }));
         out.push({
           kind: "price",
-          title: theme[dir].t[variant],
-          body: `${base}${second} ${rng.pick(NOISE)}`,
-          effects: [...chosen].map(([symbol, pct_bps]) => ({ symbol, pct_bps })),
+          title,
+          body: `${base}${second} ${rng.pick(NOISE)}\n\n${impactParagraph(title, effects, names)}`,
+          effects,
           event: null,
         });
       }
@@ -151,6 +204,7 @@ const idPct = (bps: number) => (bps / 100).toLocaleString("id-ID", { maximumFrac
 
 function eventNews(assets: PoolAsset[], cfg: PoolConfig, rng: Rng): PoolNews[] {
   const out: PoolNews[] = [];
+  const names = new Map(assets.map((a) => [a.symbol, a.name]));
   const kinds: { kind: Exclude<PoolKind, "price">; causes: Cause[]; count: number }[] = [
     { kind: "bankrupt", causes: BANKRUPT_CAUSES, count: cfg.perAsset.bankrupt },
     { kind: "suspend", causes: SUSPEND_CAUSES, count: cfg.perAsset.suspend },
@@ -191,11 +245,12 @@ function eventNews(assets: PoolAsset[], cfg: PoolConfig, rng: Rng): PoolNews[] {
         }
         const universe = kind === "bankrupt" ? assets.filter((a) => a.symbol !== asset.symbol) : assets;
         fillEffects(rng, chosen, universe, target, cfg.capBps);
+        const effects = [...chosen].map(([symbol, pct_bps]) => ({ symbol, pct_bps }));
         out.push({
           kind,
           title,
-          body: `${body} ${rng.pick(NOISE)}`,
-          effects: [...chosen].map(([symbol, pct_bps]) => ({ symbol, pct_bps })),
+          body: `${body} ${rng.pick(NOISE)}\n\n${impactParagraph(title, effects, names)}`,
+          effects,
           event: { symbol: asset.symbol, amount },
         });
       }
@@ -222,6 +277,8 @@ export function validatePool(
   for (const n of pool) {
     const tag = `"${n.title}"`;
     if (!n.title.trim() || !n.body.trim()) problems.push(`${tag}: judul/isi kosong`);
+    const paragraphs = n.body.split(/\n{2,}/).filter((p) => p.trim());
+    if (paragraphs.length < 2) problems.push(`${tag}: isi kurang dari 2 paragraf`);
     if (titles.has(n.title)) problems.push(`${tag}: judul ganda`);
     titles.add(n.title);
     if (n.effects.length < cfg.minAssets || n.effects.length > cfg.maxAssets)
@@ -267,7 +324,7 @@ export function poolToSql(pool: PoolNews[]): string {
     "begin",
   ];
   for (const n of pool) {
-    // idempoten: berita dengan judul yang sama tidak dimuat dua kali
+    // idempoten: berita dengan judul yang sama tidak dimuat dua kali; isi berita `ready` yang sudah ada diperbarui
     lines.push(`if not exists (select 1 from news where title = ${q(n.title)}) then`);
     lines.push(
       `insert into news (title, body, status, created_by) values (${q(n.title)}, ${q(n.body)}, 'ready', v_admin) returning id into v;`,
@@ -286,6 +343,9 @@ export function poolToSql(pool: PoolNews[]): string {
           `insert into news_events (news_id, asset_id, kind, amount) select v, id, ${q(n.kind)}, ${n.event.amount} from assets where symbol = ${q(n.event.symbol)};`,
         );
     }
+    lines.push(
+      `else update news set body = ${q(n.body)} where title = ${q(n.title)} and status in ('ready', 'draft') and body <> ${q(n.body)};`,
+    );
     lines.push("end if;");
   }
   lines.push("end", "$pool$;");
@@ -328,7 +388,12 @@ export function poolToMarkdown(pool: PoolNews[], assets: PoolAsset[]): string {
       out.push(
         `- **${n.title}**${n.event ? ` [${n.event.symbol} · ${name.get(n.event.symbol) ?? ""} · ${unit(n)}]` : ""}`,
       );
-      out.push(`  ${n.body}`);
+      out.push(
+        ...n.body
+          .split(/\n{2,}/)
+          .flatMap((p) => [`  ${p}`, ""])
+          .slice(0, -1),
+      );
       out.push(`  _${n.effects.length} aset:_ ${fx}`, "");
     }
   }

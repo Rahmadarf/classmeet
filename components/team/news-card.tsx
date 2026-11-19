@@ -1,10 +1,10 @@
 "use client";
 
 import { ChevronRight, Newspaper } from "lucide-react";
-import { useState } from "react";
 import { EmptyState } from "@/components/states";
 import { Card, CardHeader } from "@/components/ui/card";
-import { NewsDialog } from "@/components/team/news-dialog";
+import { useNewsReader } from "@/components/team/news-reader";
+import { firstParagraph } from "@/lib/team/news-text";
 import { dayKeyWib, formatDateWib, formatTimeWib } from "@/lib/money";
 import type { NewsItem } from "@/lib/team/data";
 
@@ -18,7 +18,7 @@ const FRESH_MS = 30 * 60 * 1000;
  * Efek harga TIDAK PERNAH tampil di sini (tabel `news_feed` memang tidak memuatnya).
  */
 export function NewsCard({ items, now }: { items: NewsItem[]; now: number | null }) {
-  const [open, setOpen] = useState<NewsItem | null>(null);
+  const { open: openNews } = useNewsReader();
 
   return (
     <Card aria-labelledby="berita-judul">
@@ -39,7 +39,7 @@ export function NewsCard({ items, now }: { items: NewsItem[]; now: number | null
               <li key={item.id} className="border-line border-t first:border-t-0">
                 <button
                   type="button"
-                  onClick={() => setOpen(item)}
+                  onClick={() => openNews(item)}
                   className="rounded-row hover:bg-soft flex w-full items-start gap-4 py-3.5 text-left transition-colors"
                 >
                   <span
@@ -57,7 +57,7 @@ export function NewsCard({ items, now }: { items: NewsItem[]; now: number | null
                         </span>
                       ) : null}
                     </span>
-                    <span className="text-ink-muted line-clamp-2 text-base">{item.body}</span>
+                    <span className="text-ink-muted line-clamp-2 text-base">{firstParagraph(item.body)}</span>
                     <time dateTime={item.publishedAt} className="tnum text-ink-dim text-sm">
                       {timeLabel(item.publishedAt, now)}
                     </time>
@@ -69,8 +69,6 @@ export function NewsCard({ items, now }: { items: NewsItem[]; now: number | null
           })}
         </ul>
       )}
-
-      <NewsDialog item={open} onClose={() => setOpen(null)} />
     </Card>
   );
 }

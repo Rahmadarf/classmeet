@@ -22,6 +22,7 @@ import {
   formatTimeSecondsWib,
   formatTimeWib,
 } from "@/lib/money";
+import { firstParagraph } from "@/lib/team/news-text";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -278,7 +279,9 @@ export function MarketScreen({ initial, live = true }: { initial: MarketBoardDat
                 {data.news ? (
                   <>
                     <p className="text-ink truncate text-[26px] font-bold">{data.news.title}</p>
-                    <p className="text-ink-muted line-clamp-2 text-[16px]">{data.news.body}</p>
+                    <p className="text-ink-muted line-clamp-2 text-[16px]">
+                      {firstParagraph(data.news.body)}
+                    </p>
                   </>
                 ) : (
                   <p className="text-ink-muted text-[22px] font-medium">Belum ada berita.</p>

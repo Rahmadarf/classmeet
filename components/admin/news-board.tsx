@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { restartNews, setNewsReady } from "@/app/admin/news/actions";
 import { DraftEffectsToggle, NewsEffects } from "@/components/admin/news-effects";
+import { NewsHistory } from "@/components/admin/news-history";
 import { NewsEventDialog } from "@/components/admin/news-event-dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -112,6 +113,8 @@ export function NewsBoard({ initial }: { initial: NewsPage }) {
           <p className="text-ink-muted text-lg">Belum ada berita yang tayang.</p>
         )}
       </Card>
+
+      {page.applied ? <NewsHistory items={page.applied} /> : null}
 
       {page.kinds ? (
         <Card aria-labelledby="jenis" className="flex flex-col gap-1.5">

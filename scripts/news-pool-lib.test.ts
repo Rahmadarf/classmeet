@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import assetsFile from "./data/assets.example.json";
-import { buildPool, DEFAULT_CONFIG, makeRng, poolToSql, validatePool, type PoolAsset } from "./news-pool-lib";
+import {
+  buildPool,
+  DEFAULT_CONFIG,
+  impactParagraph,
+  makeRng,
+  poolToSql,
+  validatePool,
+  type PoolAsset,
+} from "./news-pool-lib";
 
 const assets: PoolAsset[] = (assetsFile.assets as PoolAsset[]).map((a) => ({
   symbol: a.symbol,
@@ -63,6 +71,47 @@ describe("buildPool", () => {
   });
 });
 
+describe("isi berita dua paragraf", () => {
+  it("tiap berita minimal 2 paragraf dan paragraf kedua menyebut aset yang bergerak sesuai arah efeknya", () => {
+    const name = new Map(assets.map((a) => [a.symbol, a.name]));
+    for (const n of pool) {
+      const [, impact] = n.body.split(/\n{2,}/);
+      expect(n.body.split(/\n{2,}/).length).toBeGreaterThanOrEqual(2);
+      const top = [...n.effects].sort((a, b) => Math.abs(b.pct_bps) - Math.abs(a.pct_bps))[0];
+      // efek terbesar paling sering disebut; setidaknya satu nama aset berefek ada di paragraf kedua
+      expect(n.effects.some((e) => impact.includes(name.get(e.symbol) ?? "__"))).toBe(true);
+      expect(top).toBeDefined();
+    }
+  });
+
+  it("impactParagraph: yang naik disebut sebagai menguat, yang turun melemah, sisanya bergerak tipis", () => {
+    const names = new Map([
+      ["AA", "Apel"],
+      ["BB", "Bata"],
+      ["CC", "Cuka"],
+    ]);
+    const p = impactParagraph(
+      "Judul",
+      [
+        { symbol: "AA", pct_bps: 300 },
+        { symbol: "BB", pct_bps: -200 },
+        { symbol: "CC", pct_bps: 50 },
+      ],
+      names,
+    );
+    expect(p).toContain("Apel");
+    expect(p).toContain("Bata");
+    expect(p).toMatch(/menguat|naik|penerima manfaat/);
+    expect(p).toMatch(/melemah|turun|tertekan/);
+  });
+
+  it("deterministik menurut judul", () => {
+    const names = new Map([["AA", "Apel"]]);
+    const fx = [{ symbol: "AA", pct_bps: 100 }];
+    expect(impactParagraph("X", fx, names)).toBe(impactParagraph("X", fx, names));
+  });
+});
+
 describe("poolToSql", () => {
   it("memuat berita berstatus ready dengan efek dan event, tanda kutip di-escape", () => {
     const sql = poolToSql([
@@ -78,6 +127,7 @@ describe("poolToSql", () => {
     expect(sql).toContain("'ready'");
     expect(sql).toContain("insert into news_events");
     expect(sql).toContain("if not exists (select 1 from news where title");
+    expect(sql).toContain("else update news set body");
   });
 });
 
