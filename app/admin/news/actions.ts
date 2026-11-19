@@ -26,6 +26,23 @@ export async function setNewsReady(input: unknown): Promise<ActionResult> {
 }
 
 /**
+ * Mulai ulang berita (`admin_restart_news`): semua berita terpakai/tayang kembali ke kumpulan, daftar berita tim dan catatan
+ * event dikosongkan, jeda dan masa tenang event dimulai lagi. Harga dan saldo tidak berubah. Mengembalikan jumlah berita yang
+ * dikembalikan. Ditolak setelah game selesai.
+ */
+export async function restartNews(): Promise<ActionResult<number>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_restart_news");
+  if (error) {
+    const mapped = mapRpcError(error);
+    if (!mapped.code && !mapped.retryable)
+      console.error("[admin_restart_news] galat tak terduga:", error.message);
+    return { ok: false, ...mapped };
+  }
+  return { ok: true, data: typeof data === "number" ? data : 0 };
+}
+
+/**
  * Pasang/lepas aset bangkrut pada berita draf (`admin_set_news_bankruptcy`). Hanya SEBELUM game dibuka.
  * Mengembalikan jumlah berita LAIN yang masih punya efek harga pada aset itu (berita itu akan gagal terbit).
  */

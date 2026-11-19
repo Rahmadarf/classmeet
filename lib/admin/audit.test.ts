@@ -22,6 +22,7 @@ describe("categoryOf", () => {
     expect(categoryOf("freeze_leaderboard")).toBe("status");
     expect(categoryOf("guard_set_post_open")).toBe("pos");
     expect(categoryOf("set_news_ready")).toBe("berita");
+    expect(categoryOf("restart_news")).toBe("berita");
     expect(categoryOf("kiosk_idle_logout")).toBe("perangkat");
     expect(categoryOf("aneh")).toBe("lainnya");
   });

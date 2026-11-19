@@ -14,16 +14,17 @@ describe("buildPool", () => {
     expect(validatePool(pool, assets)).toEqual([]);
   });
 
-  it("tiap aset: tepat 1 bangkrut, 2 suspensi, 5 dividen (contoh panitia)", () => {
+  it("tiap aset: tepat 1 bangkrut, 5 suspensi, 10 dividen; total tepat 1000 berita", () => {
+    expect(pool).toHaveLength(1000);
     for (const a of assets) {
       const count = (k: string) => pool.filter((n) => n.kind === k && n.event?.symbol === a.symbol).length;
-      expect([count("bankrupt"), count("suspend"), count("dividend")]).toEqual([1, 2, 5]);
+      expect([count("bankrupt"), count("suspend"), count("dividend")]).toEqual([1, 5, 10]);
     }
   });
 
   it("tidak semua berita membawa event: berita harga mendominasi dan tanpa event", () => {
     const price = pool.filter((n) => n.kind === "price");
-    expect(price.length).toBeGreaterThanOrEqual(220);
+    expect(price.length).toBe(520);
     expect(price.every((n) => n.event === null)).toBe(true);
     expect(pool.filter((n) => n.kind !== "price").every((n) => n.event !== null)).toBe(true);
   });
@@ -76,6 +77,7 @@ describe("poolToSql", () => {
     expect(sql).toContain("'L''Oréal bagi dividen'");
     expect(sql).toContain("'ready'");
     expect(sql).toContain("insert into news_events");
+    expect(sql).toContain("if not exists (select 1 from news where title");
   });
 });
 

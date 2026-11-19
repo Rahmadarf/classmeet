@@ -14,7 +14,7 @@ Kode: `scripts/sql/news-engine-v2.sql` (SQL, dijalankan kamu), `scripts/news-poo
 |---|--------|---------|
 | 1 | Setiap berita mengubah harga **10–15 aset** (sebelumnya 4–7), maksimal ±15 % per aset (`max_effect_bps`) | `game_settings.min_news_assets/max_news_assets`, `check_news_effects` |
 | 2 | Event **bangkrut, suspensi, dividen** muncul menurut **peluang** yang dihitung dari kondisi pasar, bukan dilekatkan acak pada berita | `market_state()`, `event_chances()`, `pick_next_news()` |
-| 3 | Tiap aset punya **≥ 1 berita per jenis event** di kumpulan (contoh panitia: 1 bangkrut, 2 suspensi, 5 dividen per aset). Tidak semua berita membawa event; berita **harga saja** tetap mayoritas | `news_pool()`, `news_pool_coverage()` |
+| 3 | Tiap aset punya **≥ 1 berita per jenis event** di kumpulan (kumpulan kini 1 bangkrut, 5 suspensi, 10 dividen per aset; contoh awal panitia 1/2/5). Tidak semua berita membawa event; berita **harga saja** tetap mayoritas | `news_pool()`, `news_pool_coverage()` |
 | 4 | **Tidak ada event di masa tenang** (30 menit sejak pasar dibuka; pembukaan pertama, atau dibuka lagi setelah dijeda > 60 menit) dan tidak ada event bila ada event lain dalam 15 menit terakhir; satu aset tidak kena event lagi dalam 60 menit; bangkrut maks. 4 per game dan 2 per hari WIB | `game_settings.event_*`, `market_event_log` |
 | 5 | Berita **tidak ditentukan sebelumnya**. Tidak ada antrean atau kolom "berita berikutnya": `pick_next_news()` dipanggil hanya saat berita diterbitkan dan membandingkan kondisi pasar **sekarang** dengan berita yang **belum terpakai** | `process_news_cycle` → `pick_next_news` |
 | 6 | Satu berita membawa **paling banyak satu event**; aset bangkrut tidak punya efek harga di berita itu | `check_news_effects` |
@@ -50,12 +50,12 @@ Untuk tiap aset dalam berita: bernilai tinggi bila arah efek **berlawanan** deng
 terakhir, dan dikurangi bila harga akan menabrak batas. Dirata-ratakan per berita.
 
 ## 3. Kumpulan berita
-- Dibuat `npm run generate-news` dari tema di `scripts/data/news-themes.ts`: **252 berita harga** (63 tema × 2 arah × 2
-  varian) dan **240 berita event** (30 aset × [1 bangkrut + 2 suspensi + 5 dividen]); hasilnya `scripts/data/news-pool.json`
-  dan `docs/14-kumpulan-berita.md` untuk ditinjau. Teks fiksi; nama perusahaan memakai nama aset.
+- Dibuat `npm run generate-news` dari tema di `scripts/data/news-themes.ts` dan `news-themes-2.ts`: **1000 berita** =
+  **520 berita harga** (130 tema × 2 arah × 2 varian) dan **480 berita event** (30 aset × [1 bangkrut + 5 suspensi + 10 dividen]);
+  hasilnya `scripts/data/news-pool.json` dan `docs/14-kumpulan-berita.md` untuk ditinjau. Teks fiksi; nama perusahaan memakai nama aset.
 - Dimasukkan dengan `npm run seed` (berita `ready`, event lewat `admin_set_news_bankruptcy` / `admin_set_news_event`).
 - Kebutuhan: ±220 berita terbit per game (3 hari × 11 jam, rata-rata 9 menit per berita). Berita harga terpakai ±185, jadi
-  kumpulan 252 memberi cadangan ±27 %. Bila kumpulan harga habis, mesin memakai berita event sebagai cadangan.
+  kumpulan 520 memberi sekitar 2,8 kali kebutuhan. Bila kumpulan harga habis, mesin memakai berita event sebagai cadangan.
 - Admin (sebelum game dibuka): papan Berita menampilkan **cakupan event per aset** (30 × 3) dan jumlah per jenis.
   Sesudah dibuka: hanya jumlah per jenis (`get_news_pool_kinds`); `news_pool_coverage` ditolak (`game_started_locked`) supaya
   admin tidak tahu aset mana yang masih punya berita event.
@@ -65,20 +65,19 @@ terakhir, dan dikurangi bila harga akan menabrak batas. Dirata-ratakan per berit
 `classmeet.now`) di dalam transaksi yang di-ROLLBACK, memakai kumpulan berita yang sama. Jangan dijalankan saat acara
 berlangsung (menahan kunci `game_settings` beberapa menit).
 
-Hasil 3 hari permainan (kumpulan 492 berita, suhu 50, 3 benih berbeda):
+Hasil 3 hari permainan dengan kumpulan 1000 berita (suhu 50, 2 benih), setelah kumpulan 492 berita menghasilkan angka serupa:
 
 | Ukuran | Hasil | Target |
 |--------|-------|--------|
-| Berita terbit per game | 218–225 | ±220 |
-| Berita event / semua | 36–39 (±17 %) | "terkadang" |
-| Bangkrut per game | 2, 1, 2 (rata-rata 1,7) | kecil, maks. 4 |
-| Suspensi per game | 10, 15, 9 | |
-| Dividen per game | 27, 20, 26 | |
-| Event paling awal sesudah pasar dibuka | 33–72 menit | ≥ 30 menit |
-| Berita harga terpakai / tersedia | 179–188 / 252 (sisa 64–73) | tidak habis |
-| Perubahan harga akhir (simpangan baku) | 0,13–0,16 | |
+| Berita terbit per game | 213, 230 | ±220 |
+| Berita event / semua | 31, 40 (14–17 %) | "terkadang" |
+| Bangkrut per game | 0, 3 (dengan kumpulan 492: 2, 1, 2) | kecil, maks. 4 |
+| Suspensi / dividen per game | 10, 10 / 21, 25 | |
+| Event paling awal sesudah pasar dibuka | 43–103 menit | ≥ 30 menit |
+| Berita harga terpakai / tersedia | 182, 192 / 520 (sisa 328–338) | tidak habis |
+| Perubahan harga akhir (simpangan baku) | 0,16 | |
 | Aset di batas harga 30 % / 300 % pada akhir | 0 | sedikit |
-| Pergerakan harga terjauh sepanjang game | −35 % sampai +58 % | |
+| Pergerakan harga terjauh sepanjang game | −31 % sampai +47 % | |
 
 Pemilihan menurut kondisi pasar menahan ekstrem: pada benih yang sama, suhu 5000 (hampir acak murni) menghasilkan
 kenaikan sampai +122 % dan simpangan baku akhir 0,15–0,18, sedangkan suhu 50–80 menghasilkan maksimum +35–58 % dan
@@ -102,4 +101,13 @@ kenaikannya beragam (−9 % sampai +37 %), terbanyak pada kondisi naik, sesuai r
 4. Restart `npm run dev:https` bila halaman admin belum menampilkan kartu jenis berita (modul server lama masih terpasang).
 5. Game yang **sudah berjalan** memakai mesin baru langsung (skrip mengisi `market_opened_at` = saat skrip dijalankan), tetapi kumpulan berita harus sudah berisi
    berita `ready`; berita baru tidak bisa dimasukkan sesudah game dibuka.
+
+## 7. Memuat kumpulan dan tombol Mulai ulang berita
+- `npm run load-news` memuat 1000 berita langsung ke database Docker (berstatus `ready`; idempoten menurut judul; melewati penguncian game,
+  jadi bisa dipakai saat game sudah berjalan). Untuk game baru sebelum dibuka, cara resminya `npm run seed`.
+- **Admin → Berita → Mulai ulang berita** (`admin_restart_news`, `scripts/sql/news-restart.sql`; dengan dialog konfirmasi): berita yang sudah terbit
+  dan yang sedang tayang kembali ke kumpulan (`ready`; yang efek aktifnya di luar 10–15 aset menjadi `draft`), daftar berita tim dan catatan event
+  dikosongkan, jeda berita dihapus, dan masa tenang event dimulai lagi. **Harga, saldo, order, dan dividen yang sudah dibayar tidak berubah**; aset
+  yang sudah bangkrut tetap nonaktif. Dicatat di Audit (`restart_news`). Ini mengubah aturan docs/07 §3.7 ("admin tidak punya tombol untuk
+  berita"): tombolnya hanya mengembalikan kumpulan, tidak memilih, mempercepat, atau menunda berita tertentu.
 

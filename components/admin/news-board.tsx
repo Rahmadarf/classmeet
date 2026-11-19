@@ -2,10 +2,11 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { setNewsReady } from "@/app/admin/news/actions";
+import { restartNews, setNewsReady } from "@/app/admin/news/actions";
 import { NewsEventDialog } from "@/components/admin/news-event-dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { fetchNewsPage, type NewsPage } from "@/lib/admin/data";
 import { fetchAdminGame } from "@/lib/admin/state";
 import { usePolling } from "@/lib/hooks/use-polling";
@@ -51,6 +52,25 @@ export function NewsBoard({ initial }: { initial: NewsPage }) {
   };
 
   const pool = page.pool;
+  const [restartOpen, setRestartOpen] = useState(false);
+  const [restarting, setRestarting] = useState(false);
+  const [restartError, setRestartError] = useState<string | null>(null);
+
+  const restart = async () => {
+    if (restarting) return;
+    setRestarting(true);
+    setRestartError(null);
+    const res = await restartNews().catch(() => ({
+      ok: false as const,
+      message: "Koneksi bermasalah. Coba lagi.",
+    }));
+    setRestarting(false);
+    if (res.ok) {
+      setRestartOpen(false);
+      toast.success(`Berita dimulai ulang: ${res.data} berita kembali ke kumpulan.`);
+      void refresh();
+    } else setRestartError(res.message);
+  };
   const kindLabel: Record<string, string> = {
     price: "Harga saja",
     bankrupt: "Bangkrut",
@@ -108,6 +128,11 @@ export function NewsBoard({ initial }: { initial: NewsPage }) {
             Harga tidak bisa diubah siapa pun sampai game selesai. Admin tidak melihat isi maupun urutan
             berita.
           </p>
+          <div className="mt-3">
+            <Button variant="danger" onClick={() => setRestartOpen(true)}>
+              Mulai ulang berita
+            </Button>
+          </div>
         </Card>
       ) : (
         <Card aria-labelledby="persiapan" className="flex flex-col gap-3">
@@ -221,6 +246,26 @@ export function NewsBoard({ initial }: { initial: NewsPage }) {
           )}
         </Card>
       )}
+      <ConfirmDialog
+        open={restartOpen}
+        onOpenChange={(o) => {
+          setRestartOpen(o);
+          if (!o) setRestartError(null);
+        }}
+        title="Mulai ulang berita?"
+        description={
+          <>
+            Semua berita yang sudah terbit dikembalikan ke kumpulan dan bisa muncul lagi. Berita yang sedang
+            tayang dibatalkan, daftar berita di halaman tim dikosongkan, dan jeda serta masa tenang event
+            dimulai dari awal. <strong>Harga dan saldo tidak kembali ke semula.</strong>
+          </>
+        }
+        confirmLabel="Mulai ulang"
+        tone="danger"
+        loading={restarting}
+        error={restartError}
+        onConfirm={() => void restart()}
+      />
       <NewsEventDialog
         open={bankDialog.open}
         onOpenChange={(o) => setBankDialog((d) => ({ ...d, open: o }))}

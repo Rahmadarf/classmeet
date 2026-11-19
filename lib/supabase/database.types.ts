@@ -1119,6 +1119,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      admin_restart_news: {
+        Args: never
+        Returns: number
+      }
       get_news_pool_kinds: {
         Args: never
         Returns: {

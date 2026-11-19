@@ -47,7 +47,7 @@ describe("data contoh aset", () => {
 describe("data contoh berita", () => {
   it("lolos aturan efek (10–15 aset, tidak nol, ≤ 1500 bps) dan semua simbol ada", () => {
     const symbols = new Set(assets.map((a) => a.symbol));
-    expect(news.length).toBeGreaterThanOrEqual(220);
+    expect(news).toHaveLength(1000);
     expect(validateNews(news, symbols)).toEqual([]);
   });
 

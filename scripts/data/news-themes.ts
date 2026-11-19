@@ -185,7 +185,7 @@ export const THEMES: Theme[] = [
     w: { TE: 2, KE: 1, EN: 1 },
     pos: {
       t: [
-        "Ledakan layanan komputasi awan dan kecerdasan buatan",
+        "Layanan komputasi awan dan kecerdasan buatan melonjak pesat",
         "Perusahaan besar ramai berlangganan layanan AI",
       ],
       b: "Perusahaan besar beramai-ramai berlangganan layanan komputasi awan dan perangkat lunak berbasis kecerdasan buatan. Pusat data menambah kapasitas dan kebutuhan listriknya naik.",
@@ -901,5 +901,13 @@ export const DIVIDEND_CAUSES: Cause[] = [
   {
     title: "Rekor pendapatan kuartal, {n} naikkan dividen",
     body: "{n} mencatat rekor pendapatan kuartal ini dan menaikkan dividen menjadi sekitar {x} % dari harga sahamnya.",
+  },
+  {
+    title: "{n} umumkan dividen setelah restrukturisasi rampung",
+    body: "Restrukturisasi usaha {n} rampung dan arus kas pulih. Perusahaan membagikan dividen sekitar {x} % dari harga sahamnya kepada pemegang saham.",
+  },
+  {
+    title: "Pangsa pasar {n} naik, dividen dibagikan",
+    body: "Pangsa pasar {n} naik dalam beberapa kuartal terakhir dan laba ikut naik. Perusahaan membagikan dividen sekitar {x} % dari harga sahamnya.",
   },
 ];

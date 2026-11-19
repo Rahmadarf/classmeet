@@ -345,6 +345,8 @@ Admin membuka pasar tiap pagi (08.00) dan menutupnya tiap malam (19.00) dengan *
 
 > **Tambahan 19 Nov:** papan Berita juga menampilkan kartu **Jenis berita siap terbit** (harga / bangkrut / suspensi / dividen, hanya jumlah) dan, **sebelum game dibuka**, **Cakupan event per aset** (30 aset × 3 jenis; aset yang kurang ditandai merah). Berita memuat 10–15 aset dan paling banyak satu event. Lihat [15-mesin-berita-v2](15-mesin-berita-v2.md).
 
+> **Tambahan 19 Nov (2):** kartu "Kumpulan berita terkunci" punya tombol **Mulai ulang berita** (dengan konfirmasi) yang mengembalikan berita terpakai ke kumpulan; ini mengubah aturan §3.7 bahwa admin tidak punya tombol untuk berita.
+
 Berita **tidak dipilih dan tidak dijadwalkan admin**. Halaman ini punya dua wajah, tergantung `game_settings.started_at`:
 
 **Sebelum game dibuka (persiapan).** Tampilan daftar: judul, status (draf / siap), jumlah aset terkena, tabel efek lengkap dengan pratinjau "Sesudah" (dihitung di klien dengan rumus yang sama dengan database), dan peringatan batas harga. Admin boleh menulis, menyunting, menandai siap, atau mengeluarkan berita dari kumpulan. Penulisan dan penandaan massal tetap lewat `scripts/import-news.ts` ([08](08-operations.md#2-setup-awal)); database menolak berita yang melanggar aturan efek (4–7 aset, tanpa aset ganda, maksimum ±15 %). Ringkasan di atas daftar: *ditargetkan ±220 siap*, jumlah siap sekarang, dan jumlah aman diterbitkan.

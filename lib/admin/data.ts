@@ -277,7 +277,7 @@ export async function fetchNewsPage(supabase: Db, locked: boolean): Promise<News
         .from("news")
         .select("id,title,status,news_effects(count)")
         .order("created_at", { ascending: false })
-        .limit(800),
+        .limit(1000), // batas baris PostgREST (1000); kumpulan v2 = 1000 berita
       supabase.from("news_bankruptcies").select("news_id,asset_id,liquidation_bps"),
       supabase.from("assets").select("id,symbol,name,is_active").order("symbol"),
       supabase.from("news_events").select("news_id,asset_id,kind,amount"),

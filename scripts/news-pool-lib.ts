@@ -11,10 +11,13 @@ import {
   SECTOR_CONTEXT,
   SECTOR_NAMES,
   SUSPEND_CAUSES,
-  THEMES,
+  THEMES as BASE_THEMES,
   type Cause,
   type SectorKey,
 } from "./data/news-themes";
+import { THEMES_2 } from "./data/news-themes-2";
+
+const THEMES = [...BASE_THEMES, ...THEMES_2];
 
 export type PoolKind = "price" | "bankrupt" | "suspend" | "dividend";
 export type PoolEffect = { symbol: string; pct_bps: number };
@@ -40,7 +43,7 @@ export const DEFAULT_CONFIG: PoolConfig = {
   minAssets: 10,
   maxAssets: 15,
   capBps: 1500,
-  perAsset: { bankrupt: 1, suspend: 2, dividend: 5 },
+  perAsset: { bankrupt: 1, suspend: 5, dividend: 10 },
 };
 
 const SECTOR_KEY_BY_NAME = Object.fromEntries(
@@ -157,7 +160,8 @@ function eventNews(assets: PoolAsset[], cfg: PoolConfig, rng: Rng): PoolNews[] {
     const peers = assets.filter((a) => a.sector === asset.sector && a.symbol !== asset.symbol);
     for (const { kind, causes, count } of kinds) {
       for (let k = 0; k < count; k++) {
-        const cause = causes[(ai * 3 + k * 4 + (kind === "dividend" ? 1 : 0)) % causes.length];
+        // sebab berurutan dari titik awal yang bergeser per aset: sebab tidak berulang selama jumlah berita ≤ jumlah sebab
+        const cause = causes[(ai * 3 + k + (kind === "dividend" ? 1 : 0)) % causes.length];
         const amount =
           kind === "bankrupt"
             ? rng.int(8, 25) * 100
@@ -263,6 +267,8 @@ export function poolToSql(pool: PoolNews[]): string {
     "begin",
   ];
   for (const n of pool) {
+    // idempoten: berita dengan judul yang sama tidak dimuat dua kali
+    lines.push(`if not exists (select 1 from news where title = ${q(n.title)}) then`);
     lines.push(
       `insert into news (title, body, status, created_by) values (${q(n.title)}, ${q(n.body)}, 'ready', v_admin) returning id into v;`,
     );
@@ -280,6 +286,7 @@ export function poolToSql(pool: PoolNews[]): string {
           `insert into news_events (news_id, asset_id, kind, amount) select v, id, ${q(n.kind)}, ${n.event.amount} from assets where symbol = ${q(n.event.symbol)};`,
         );
     }
+    lines.push("end if;");
   }
   lines.push("end", "$pool$;");
   return lines.join("\n");

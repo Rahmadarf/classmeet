@@ -43,6 +43,7 @@ export function categoryOf(action: string): AuditCategory {
       "set_news_ready",
       "news_launch_failed",
       "set_news_settings",
+      "restart_news",
       "set_news_bankruptcy",
       "set_news_event",
     ].includes(action)
@@ -118,6 +119,8 @@ export function summarize(row: AuditRaw, lookup: Lookup): string {
       return `Stok ${lookup.assets?.[str(p.asset_id)] ?? "aset"} ${num(p.before)} → ${num(p.after)} · alasan: ${str(p.reason)}`;
     case "set_news_settings":
       return "Pengaturan berita diubah";
+    case "restart_news":
+      return `Berita dimulai ulang: ${num(p.restored)} berita kembali ke kumpulan`;
     case "set_news_bankruptcy":
       return p.asset_id ? "Berita: aset bangkrut dipasang" : "Berita: aset bangkrut dilepas";
     case "asset_bankrupt": {
