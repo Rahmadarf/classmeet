@@ -1,12 +1,11 @@
 "use client";
 
-import { ArrowDown, ArrowUp, ChevronRight, ReceiptText } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, ReceiptText } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { EmptyState } from "@/components/states";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { fetchHistory } from "@/lib/history/data";
 import { groupByDay, type HistoryItem } from "@/lib/history/view";
 import { usePolling } from "@/lib/hooks/use-polling";
@@ -24,7 +23,7 @@ const signed = (n: number) => `${n < 0 ? MINUS : "+"} ${formatRupiah(Math.abs(n)
 
 /**
  * Riwayat Transaksi (Figma `Tim — Riwayat`, 1083:459; docs/07 §2.1): semua pembelian, penjualan, dan hadiah pos
- * tim, dikelompokkan per hari (WIB). Ketuk baris untuk rincian. Nominal = pengaruh ke saldo (termasuk biaya).
+ * tim, dikelompokkan per hari (WIB). Ketuk baris untuk membuka rincian (dropdown). Nominal = pengaruh ke saldo (termasuk biaya).
  * Polling 10 dtk dan Realtime `payouts` milik tim ini sebagai pemberitahuan (data diambil ulang dari tabel).
  */
 export function HistoryBoard({ teamId, initial }: { teamId: string; initial: HistoryItem[] }) {
@@ -32,7 +31,8 @@ export function HistoryBoard({ teamId, initial }: { teamId: string; initial: His
   const [items, setItems] = useState(initial);
   const [stale, setStale] = useState(false);
   const [now, setNow] = useState<number | null>(null);
-  const [selected, setSelected] = useState<HistoryItem | null>(null);
+  // Rincian dibuka sebagai dropdown di bawah barisnya (satu per satu), bukan pop-up.
+  const [openKey, setOpenKey] = useState<string | null>(null);
   const dropped = useRef(false);
 
   const refresh = useCallback(async () => {
@@ -114,7 +114,12 @@ export function HistoryBoard({ teamId, initial }: { teamId: string; initial: His
               <ul>
                 {group.items.map((item) => (
                   <li key={item.key} className="border-line border-t first:border-t-0">
-                    <Row item={item} onOpen={() => setSelected(item)} />
+                    <Row
+                      item={item}
+                      open={openKey === item.key}
+                      onToggle={() => setOpenKey((k) => (k === item.key ? null : item.key))}
+                    />
+                    {openKey === item.key ? <DetailBody item={item} /> : null}
                   </li>
                 ))}
               </ul>
@@ -122,23 +127,22 @@ export function HistoryBoard({ teamId, initial }: { teamId: string; initial: His
           ))
         )}
       </Card>
-
-      <Detail item={selected} onClose={() => setSelected(null)} />
     </>
   );
 }
 
-function Row({ item, onOpen }: { item: HistoryItem; onOpen: () => void }) {
+function Row({ item, open, onToggle }: { item: HistoryItem; open: boolean; onToggle: () => void }) {
   const title = rowTitle(item);
   const out = item.net < 0;
   return (
     <button
       type="button"
-      onClick={onOpen}
-      aria-label={`${title}, ${signed(item.net)}. Lihat rincian`}
+      onClick={onToggle}
+      aria-expanded={open}
+      aria-label={`${title}, ${signed(item.net)}. ${open ? "Tutup" : "Lihat"} rincian`}
       className="rounded-row hover:bg-soft flex w-full items-center gap-4 py-3 text-left transition-colors"
     >
-      <Tile item={item} size="row" />
+      <Tile item={item} />
       <span className="min-w-0 flex-1">
         <span className="text-ink block truncate text-lg font-semibold">{title}</span>
         <span className="tnum text-ink-muted block text-base">
@@ -157,7 +161,10 @@ function Row({ item, onOpen }: { item: HistoryItem; onOpen: () => void }) {
         )}
         <span className="money text-xl font-bold">{signed(item.net)}</span>
       </span>
-      <ChevronRight className="text-ink-muted size-[22px] shrink-0" aria-hidden />
+      <ChevronDown
+        className={cn("text-ink-muted size-[22px] shrink-0 transition-transform", open && "rotate-180")}
+        aria-hidden
+      />
     </button>
   );
 }
@@ -168,8 +175,8 @@ function rowTitle(item: HistoryItem): string {
   return `Hadiah ${item.postName}`;
 }
 
-function Tile({ item, size }: { item: HistoryItem; size: "row" | "dialog" }) {
-  const box = size === "row" ? "size-[52px]" : "size-14";
+function Tile({ item }: { item: HistoryItem }) {
+  const box = "size-[52px]";
   if (item.kind === "trade" || item.kind === "dividend") {
     return (
       <span
@@ -197,66 +204,51 @@ function Tile({ item, size }: { item: HistoryItem; size: "row" | "dialog" }) {
   );
 }
 
-/** Rincian satu transaksi/hadiah (ketuk baris). Catatan hadiah dari penjaga SELALU teks biasa. */
-function Detail({ item, onClose }: { item: HistoryItem | null; onClose: () => void }) {
+/** Rincian satu transaksi/hadiah (dropdown di bawah baris). Catatan hadiah dari penjaga SELALU teks biasa. */
+function DetailBody({ item }: { item: HistoryItem }) {
   return (
-    <Dialog open={item !== null} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent>
-        {item ? (
+    <div className="bg-field rounded-row mb-3 px-4 py-3.5">
+      <p className="tnum text-ink-dim mb-3 text-sm">
+        {formatDateWib(item.at)} · {formatTimeSecondsWib(item.at)} WIB
+      </p>
+      <dl className="flex flex-col gap-2.5">
+        {item.kind === "trade" ? (
           <>
-            <div className="flex items-center gap-4 pr-12">
-              <Tile item={item} size="dialog" />
-              <div className="min-w-0">
-                <DialogTitle className="text-ink text-2xl leading-tight font-semibold">
-                  {rowTitle(item)}
-                </DialogTitle>
-                <DialogDescription className="tnum text-ink-dim mt-0.5 text-sm">
-                  {formatDateWib(item.at)} · {formatTimeSecondsWib(item.at)} WIB
-                </DialogDescription>
-              </div>
-            </div>
-
-            <dl className="bg-field rounded-row mt-5 flex flex-col gap-2.5 px-4 py-3.5">
-              {item.kind === "trade" ? (
-                <>
-                  <Line label="Aset" value={`${item.name} (${item.symbol})`} />
-                  <Line label="Jumlah" value={`${formatNumber(item.qty)} lot`} />
-                  <Line label="Harga per lot" value={formatRupiah(item.price)} />
-                  <Line label="Nilai" value={formatRupiah(item.gross)} />
-                  <Line label="Biaya" value={formatRupiah(item.fee)} />
-                  <Line
-                    strong
-                    label={item.side === "buy" ? "Total dibayar" : "Total diterima"}
-                    value={formatRupiah(Math.abs(item.net))}
-                  />
-                </>
-              ) : item.kind === "dividend" ? (
-                <>
-                  <Line label="Aset" value={`${item.name} (${item.symbol})`} />
-                  <Line label="Unit dipegang" value={formatNumber(item.qty)} />
-                  <Line label="Dividen per unit" value={formatRupiah(item.perUnit)} />
-                  <Line strong label="Dividen diterima" value={formatRupiah(item.net)} />
-                </>
-              ) : (
-                <>
-                  <Line label="Pos" value={item.postName} />
-                  {item.location ? <Line label="Lokasi" value={item.location} /> : null}
-                  {item.note ? <Line label="Catatan" value={item.note} wrap /> : null}
-                  <Line strong label="Hadiah diterima" value={formatRupiah(item.net)} />
-                </>
-              )}
-            </dl>
-            <p className="text-ink-muted mt-3 text-sm">
-              {item.kind === "trade"
-                ? "Nilai di sini adalah uang yang benar-benar keluar atau masuk ke saldo, termasuk biaya."
-                : item.kind === "dividend"
-                  ? "Dividen dibayar ke semua tim yang memegang aset itu saat berita berlaku, langsung ke saldo."
-                  : "Hadiah langsung masuk ke saldo saat penjaga mengirimnya."}
-            </p>
+            <Line label="Aset" value={`${item.name} (${item.symbol})`} />
+            <Line label="Jumlah" value={`${formatNumber(item.qty)} lot`} />
+            <Line label="Harga per lot" value={formatRupiah(item.price)} />
+            <Line label="Nilai" value={formatRupiah(item.gross)} />
+            <Line label="Biaya" value={formatRupiah(item.fee)} />
+            <Line
+              strong
+              label={item.side === "buy" ? "Total dibayar" : "Total diterima"}
+              value={formatRupiah(Math.abs(item.net))}
+            />
           </>
-        ) : null}
-      </DialogContent>
-    </Dialog>
+        ) : item.kind === "dividend" ? (
+          <>
+            <Line label="Aset" value={`${item.name} (${item.symbol})`} />
+            <Line label="Unit dipegang" value={formatNumber(item.qty)} />
+            <Line label="Dividen per unit" value={formatRupiah(item.perUnit)} />
+            <Line strong label="Dividen diterima" value={formatRupiah(item.net)} />
+          </>
+        ) : (
+          <>
+            <Line label="Pos" value={item.postName} />
+            {item.location ? <Line label="Lokasi" value={item.location} /> : null}
+            {item.note ? <Line label="Catatan" value={item.note} wrap /> : null}
+            <Line strong label="Hadiah diterima" value={formatRupiah(item.net)} />
+          </>
+        )}
+      </dl>
+      <p className="text-ink-muted mt-3 text-sm">
+        {item.kind === "trade"
+          ? "Nilai di sini adalah uang yang benar-benar keluar atau masuk ke saldo, termasuk biaya."
+          : item.kind === "dividend"
+            ? "Dividen dibayar ke semua tim yang memegang aset itu saat berita berlaku, langsung ke saldo."
+            : "Hadiah langsung masuk ke saldo saat penjaga mengirimnya."}
+      </p>
+    </div>
   );
 }
 

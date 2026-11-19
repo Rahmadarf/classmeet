@@ -27,18 +27,24 @@ export function AssetList({
   now: number;
 }) {
   const [query, setQuery] = useState("");
-  const sectors = useMemo(() => new Set(assets.map((a) => a.sector)).size, [assets]);
+  const [sector, setSector] = useState("");
+  const sectorList = useMemo(
+    () => [...new Set(assets.map((a) => a.sector))].sort((a, b) => a.localeCompare(b)),
+    [assets],
+  );
+  const sectors = sectorList.length;
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const bySector = sector ? assets.filter((a) => a.sector === sector) : assets;
     return q
-      ? assets.filter(
+      ? bySector.filter(
           (a) =>
             a.symbol.toLowerCase().includes(q) ||
             a.name.toLowerCase().includes(q) ||
             a.sector.toLowerCase().includes(q),
         )
-      : assets;
-  }, [assets, query]);
+      : bySector;
+  }, [assets, query, sector]);
 
   return (
     <section
@@ -60,8 +66,25 @@ export function AssetList({
           className="rounded-panel border-line bg-field text-ink placeholder:text-ink-dim min-h-11 w-full border py-2.5 pr-3.5 pl-10 text-base"
         />
       </label>
+      <label className="block">
+        <span className="sr-only">Filter sektor</span>
+        <select
+          value={sector}
+          onChange={(e) => setSector(e.target.value)}
+          className="rounded-panel border-line bg-field text-ink min-h-11 w-full border px-3.5 text-base"
+        >
+          <option value="">Semua sektor ({assets.length})</option>
+          {sectorList.map((s) => (
+            <option key={s} value={s}>
+              {s} ({assets.filter((a) => a.sector === s).length})
+            </option>
+          ))}
+        </select>
+      </label>
       <p className="text-ink-muted text-[11px] font-semibold tracking-[0.1em] uppercase">
-        {assets.length} aset · {sectors} sektor
+        {sector || query
+          ? `${shown.length} dari ${assets.length} aset`
+          : `${assets.length} aset · ${sectors} sektor`}
       </p>
 
       <ul className="-mx-1 flex min-h-0 flex-col overflow-y-auto px-1 pb-1">

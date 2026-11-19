@@ -103,9 +103,9 @@ export function AssetsBoard({ initial, locked }: { initial: AssetsInitial; locke
 
         <DataTable
           caption="Daftar aset"
-          head={["Kode", "Nama", "Sektor", "Harga acuan", "Terakhir", "Rentang harga", "Stok", "Status", ""]}
-          widths={[90, 190, 190, 130, 120, 220, 70, 110]}
-          minWidth={1100}
+          head={["Kode", "Nama", "Sektor", "Acuan", "Terakhir", "Rentang harga", "Stok", "Status", ""]}
+          widths={[60, 150, 150, 110, 100, 175, 56, 108]}
+          minWidth={1010}
           align={["left", "left", "left", "right", "right", "right", "right"]}
         >
           {shown.map((a) => (

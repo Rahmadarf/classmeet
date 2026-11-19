@@ -63,13 +63,6 @@ export function LeaderboardScreen({
             C
           </div>
           <p className="text-ink text-[36px] font-bold">CLASSMEET MARKET</p>
-          {/* Judul + keterangan di kanan (pola judul/subjudul papan peringkat di Duolingo dan Pexels). */}
-          {result && !result.hidden ? (
-            <div className="ml-auto text-right">
-              <p className="text-ink text-[40px] leading-tight font-bold">Peringkat Tim</p>
-              <p className="text-ink-muted text-[22px]">Total = saldo + nilai aset</p>
-            </div>
-          ) : null}
         </header>
 
         {result === null ? (
