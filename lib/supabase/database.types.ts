@@ -1134,6 +1134,13 @@ export type Database = {
         Args: never
         Returns: number
       }
+      get_index_history: {
+        Args: { p_max?: number }
+        Returns: {
+          at: string
+          value: number
+        }[]
+      }
       get_day_open_prices: {
         Args: never
         Returns: {

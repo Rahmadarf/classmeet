@@ -3,11 +3,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DisplayHeader } from "@/components/display/display-header";
 import { ScaledStage } from "@/components/display/scaled-stage";
-import { fetchMarketBoard, type MarketBoardData } from "@/lib/display/data";
-import { appendSample, chartGeometry, parseSamples, type IkcSample } from "@/lib/display/ikc";
+import { fetchIndexHistory, fetchMarketBoard, type MarketBoardData } from "@/lib/display/data";
+import {
+  appendSample,
+  chartGeometry,
+  mergeSeries,
+  parseSamples,
+  todaySeries,
+  type IkcSample,
+} from "@/lib/display/ikc";
 import type { Mover } from "@/lib/display/view";
 import { usePolling } from "@/lib/hooks/use-polling";
-import { formatNumber, formatPercent, formatRupiah, formatTimeSecondsWib, formatTimeWib } from "@/lib/money";
+import {
+  formatDateWib,
+  formatNumber,
+  formatPercent,
+  formatRupiah,
+  formatTimeSecondsWib,
+  formatTimeWib,
+} from "@/lib/money";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -30,6 +44,8 @@ export function MarketScreen({ initial, live = true }: { initial: MarketBoardDat
   const [data, setData] = useState<MarketBoardData | null>(initial);
   const [offline, setOffline] = useState(false);
   const [samples, setSamples] = useState<IkcSample[]>([]);
+  /** Riwayat IKC dari server (seluruh game); kosong bila belum ada / gagal dimuat. */
+  const [history, setHistory] = useState<IkcSample[]>([]);
   const [now, setNow] = useState<number | null>(null);
   const samplesRef = useRef<IkcSample[]>([]);
   const mounted = useRef(true);
@@ -63,6 +79,18 @@ export function MarketScreen({ initial, live = true }: { initial: MarketBoardDat
   }, [supabase, live, record]);
   usePolling(refresh, POLL_MS);
 
+  const loadHistory = useCallback(async () => {
+    if (!live) return;
+    const h = await fetchIndexHistory(supabase);
+    if (mounted.current && h) setHistory(h);
+  }, [supabase, live]);
+  // Riwayat server dimuat saat layar menyala lalu disegarkan tiap menit (catatan baru bertambah tiap ±30 detik).
+  useEffect(() => {
+    const id = window.setTimeout(() => void loadHistory(), 0);
+    return () => window.clearTimeout(id);
+  }, [loadHistory]);
+  usePolling(loadHistory, 60_000);
+
   useEffect(() => {
     mounted.current = true;
     // Muat cuplikan tersimpan, lalu catat nilai awal dari server; jam dihitung di browser (bukan saat render).
@@ -84,10 +112,19 @@ export function MarketScreen({ initial, live = true }: { initial: MarketBoardDat
     };
   }, [initial, record]);
 
-  const geometry = useMemo(() => chartGeometry(samples, CHART_W, CHART_H), [samples]);
+  // Grafik = hari ini (riwayat server memuat seluruh game; satu hari terlihat rata bila digabung dengan hari lain).
+  const full = useMemo(() => mergeSeries(history, samples), [history, samples]);
+  const series = useMemo(() => todaySeries(full, now ?? 0), [full, now]);
+  const geometry = useMemo(() => chartGeometry(series, CHART_W, CHART_H), [series]);
   // Rentang pendek (< 5 menit) diberi detik supaya label sumbu X tidak berulang.
-  const spanMs = samples.length > 1 ? samples[samples.length - 1][0] - samples[0][0] : 0;
-  const axisTime = spanMs < 5 * 60_000 ? formatTimeSecondsWib : formatTimeWib;
+  const spanMs = series.length > 1 ? series[series.length - 1][0] - series[0][0] : 0;
+  // Rentang lebih dari sehari (riwayat server sejak game dimulai): label memuat tanggal supaya jam yang sama tak membingungkan.
+  const axisTime =
+    spanMs > 20 * 3_600_000
+      ? (ts: number) => `${formatDateWib(ts).replace(/ \d{4}$/, "")} ${formatTimeWib(ts)}`
+      : spanMs < 5 * 60_000
+        ? formatTimeSecondsWib
+        : formatTimeWib;
   const value = data?.index.ikc ?? null;
   const pct = value === null ? null : (value - 1000) / 10;
   const diff = value === null ? null : value - 1000;
@@ -123,8 +160,8 @@ export function MarketScreen({ initial, live = true }: { initial: MarketBoardDat
                   </div>
                   <div className="flex-1" />
                   <p className="bg-field text-ink-muted rounded-row px-4 py-2 text-[15px] font-semibold">
-                    {samples.length > 1
-                      ? `Grafik sejak ${formatTimeWib(samples[0][0])}`
+                    {series.length > 1
+                      ? `Grafik ${series.length < full.length ? "hari ini " : ""}sejak ${formatTimeWib(series[0][0])}`
                       : "Grafik terbentuk setelah layar berjalan"}
                   </p>
                 </div>
@@ -198,7 +235,7 @@ export function MarketScreen({ initial, live = true }: { initial: MarketBoardDat
                   </svg>
                 </div>
                 <div className="text-ink-muted flex justify-between pl-16 text-[13px]">
-                  {geometry.xTicks.length > 0 && samples.length > 1
+                  {geometry.xTicks.length > 0 && series.length > 1
                     ? geometry.xTicks.map((t) => (
                         <span key={t.ts} className="tnum">
                           {axisTime(t.ts)}

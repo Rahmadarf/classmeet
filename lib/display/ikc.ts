@@ -1,11 +1,13 @@
 /**
  * Seri waktu IKC untuk grafik di layar Display pasar.
  *
- * Skema tidak menyimpan riwayat IKC (IKC memakai harga transaksi terakhir; `price_history` hanya mencatat
- * perubahan harga acuan oleh berita, dan `trades` tidak terbaca akun display). Maka layar itu sendiri mencuplik
- * nilai IKC dari `get_market_index()` dan menyimpannya di perangkatnya (localStorage). Grafik mulai dari saat
- * layar pertama menyala dan bertahan saat dimuat ulang. Lihat docs/13 (Tahap B) untuk usulan riwayat di server.
+ * Riwayat utama ada di SERVER (`index_history`, dicatat pg_cron tiap 30 detik bila IKC berubah; dibaca lewat
+ * `get_index_history()`), jadi grafik lengkap sejak game dimulai di perangkat mana pun. Layar tetap mencuplik nilai IKC
+ * sendiri tiap 5 detik (localStorage) untuk bagian paling baru di antara dua catatan server dan sebagai cadangan bila
+ * riwayat server belum ada (SQL belum dijalankan); `mergeSeries` menyambung keduanya.
  */
+import { dayKeyWib } from "@/lib/money";
+
 export type IkcSample = readonly [timestampMs: number, value: number];
 
 export const SAMPLE_GAP_MS = 15_000; // jarak minimum antar cuplikan tersimpan
@@ -26,6 +28,23 @@ export function appendSample(
   if (last && ts - last[0] < gapMs) return fresh;
   const next: IkcSample[] = [...fresh, [ts, value]];
   return next.length > maxPoints ? next.slice(next.length - maxPoints) : next;
+}
+
+/** Sambung riwayat server dengan cuplikan lokal yang lebih baru; tanpa riwayat server, cuplikan lokal dipakai apa adanya. */
+export function mergeSeries(server: readonly IkcSample[], local: readonly IkcSample[]): IkcSample[] {
+  if (server.length === 0) return [...local];
+  const lastT = server[server.length - 1][0];
+  return [...server, ...local.filter(([t]) => t > lastT + SAMPLE_GAP_MS)];
+}
+
+/**
+ * Bagian seri yang jatuh pada hari WIB `nowMs`. Grafik menampilkan hari ini supaya pergerakannya terlihat (riwayat dua-tiga hari
+ * membuat satu hari terlihat rata); bila baru ada kurang dari 2 titik hari ini, seluruh seri dipakai.
+ */
+export function todaySeries(series: readonly IkcSample[], nowMs: number): IkcSample[] {
+  const key = dayKeyWib(nowMs);
+  const today = series.filter(([t]) => dayKeyWib(t) === key);
+  return today.length >= 2 ? today : [...series];
 }
 
 /** Baca hasil JSON dari penyimpanan; tahan terhadap data rusak. */
@@ -59,7 +78,7 @@ export type ChartGeometry = {
   area: string;
   /** Label sumbu Y (nilai + posisi y dalam piksel viewBox). */
   yTicks: { value: number; y: number }[];
-  /** Posisi y garis dasar 1.000 bila berada dalam rentang, selain itu null. */
+  /** Posisi y garis dasar 1.000 bila berada dalam rentang data, selain itu null. */
   baselineY: number | null;
   /** Label sumbu X (waktu + posisi x). */
   xTicks: { ts: number; x: number }[];
@@ -76,8 +95,10 @@ export function chartGeometry(
   if (samples.length === 0) return { line: "", area: "", yTicks: [], baselineY: null, xTicks: [] };
 
   const values = samples.map(([, v]) => v);
-  const rawLo = Math.min(...values, base);
-  const rawHi = Math.max(...values, base);
+  // Sumbu mengikuti DATA, bukan dipaksa memuat garis dasar: perubahan beberapa poin di sekitar 1.087 tetap terlihat.
+  // Garis dasar hanya digambar bila kebetulan berada dalam rentang.
+  const rawLo = Math.min(...values);
+  const rawHi = Math.max(...values);
   const span = Math.max(rawHi - rawLo, 4);
   const step = niceStep(span * 1.2, yTickCount);
   const lo = Math.floor((rawLo - span * 0.1) / step) * step;

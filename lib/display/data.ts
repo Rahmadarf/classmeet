@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchGame, type Game } from "@/lib/market/data";
+import type { IkcSample } from "./ikc";
 import type { Database } from "@/lib/supabase/database.types";
 import { isMoney } from "@/lib/money";
 import { fetchNews, type NewsItem } from "@/lib/team/data";
@@ -27,6 +28,17 @@ export async function fetchLeaderboard(supabase: Db): Promise<LeaderboardResult 
   if (error) return error.message.includes("leaderboard_hidden") ? { hidden: true } : null;
   if (!data) return null;
   return { hidden: false, rows: topFive(data) };
+}
+
+/** Riwayat IKC dari server (`get_index_history`), terlama dulu; null bila gagal (layar memakai cuplikan lokalnya). */
+export async function fetchIndexHistory(supabase: Db): Promise<IkcSample[] | null> {
+  const { data, error } = await supabase.rpc("get_index_history");
+  if (error || !data) return null;
+  return data.flatMap((r): IkcSample[] => {
+    const t = Date.parse(r.at);
+    const v = typeof r.value === "number" ? r.value : Number(r.value);
+    return Number.isFinite(t) && Number.isFinite(v) ? [[t, v]] : [];
+  });
 }
 
 export type MarketBoardData = {
