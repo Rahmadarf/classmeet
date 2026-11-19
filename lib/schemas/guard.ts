@@ -14,4 +14,7 @@ export const awardPayoutSchema = z.object({
   amount: z.number().int().safe().positive(),
 });
 
+/** PIN penjaga: 4–8 angka. */
+export const verifyPinSchema = z.object({ pin: z.string().regex(/^\d{4,8}$/) });
+
 export const setPostOpenSchema = z.object({ open: z.boolean() });

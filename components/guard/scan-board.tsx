@@ -217,11 +217,9 @@ export function ScanBoard({
       <div className="flex items-center justify-between gap-4">
         <p className="text-ink min-w-0 text-lg font-semibold">
           {number ? `Pos ${number} · ${title}` : title}
-          {!post.open ? (
-            <span className="text-bad-text block text-sm font-medium">
-              Pos tidak tersedia: hadiah belum bisa dikirim.
-            </span>
-          ) : null}
+          <span className={cn("block text-sm font-medium", post.open ? "text-ok-text" : "text-bad-text")}>
+            {post.open ? "Tersedia" : "Tidak tersedia"}
+          </span>
         </p>
         <PostToggle
           open={post.open}

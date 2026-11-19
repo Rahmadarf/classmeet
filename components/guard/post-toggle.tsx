@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { setMyPostOpen } from "@/app/guard/actions";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 
 /**
  * Saklar ketersediaan pos (Figma `Penjaga — Siap pindai`, 1084:412; docs/07 §3.4). Tanpa teks status: hijau + bulatan di
  * kanan = pos Tersedia (masih kurang tim atau belum ada tim untuk memulai permainan), merah + bulatan di kiri =
  * Tidak tersedia (pos penuh atau permainan sedang dimulai); posisi bulatan juga membedakan tanpa warna; `aria-label`
- * "Pos tersedia"/"Pos tidak tersedia". Tiap perubahan meminta konfirmasi satu ketukan. Nonaktif setelah game selesai.
+ * "Pos tersedia"/"Pos tidak tersedia". TANPA konfirmasi (19 Nov): saklar langsung berpindah saat ditekan, lalu
+ * disimpan ke server; bila gagal, saklar kembali dan pesan galat tampil di bawahnya. Nonaktif setelah game selesai.
  */
 export function PostToggle({
   open,
@@ -20,72 +20,54 @@ export function PostToggle({
   disabled: boolean;
   onChanged: (open: boolean) => void;
 }) {
-  const [confirm, setConfirm] = useState(false);
-  const [busy, setBusy] = useState(false);
+  // Nilai yang sedang disimpan: ditampilkan seketika, dibuang begitu server menjawab.
+  const [pending, setPending] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const next = !open;
-  const submit = async () => {
-    if (busy) return;
-    setBusy(true);
+  const shown = pending ?? open;
+  const toggle = async () => {
+    if (pending !== null) return;
+    const next = !open;
+    setPending(next);
     setError(null);
     try {
       const res = await setMyPostOpen({ open: next });
-      if (res.ok) {
-        onChanged(res.data);
-        setConfirm(false);
-      } else setError(res.message);
+      if (res.ok) onChanged(res.data);
+      else setError(res.message);
     } catch {
       setError("Koneksi bermasalah. Coba lagi.");
     } finally {
-      setBusy(false);
+      setPending(null);
     }
   };
 
   return (
-    <>
+    <div className="flex flex-col items-end gap-1.5">
       <button
         type="button"
         role="switch"
-        aria-checked={open}
-        aria-label={open ? "Pos tersedia" : "Pos tidak tersedia"}
+        aria-checked={shown}
+        aria-label={shown ? "Pos tersedia" : "Pos tidak tersedia"}
         disabled={disabled}
-        onClick={() => {
-          setError(null);
-          setConfirm(true);
-        }}
+        onClick={() => void toggle()}
         className={cn(
           "relative h-11 w-[72px] shrink-0 rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-          open ? "bg-ok" : "bg-bad",
+          shown ? "bg-ok" : "bg-bad",
         )}
       >
         <span
           aria-hidden
           className={cn(
             "absolute top-1 size-9 rounded-full bg-white shadow-sm transition-[left]",
-            open ? "left-[32px]" : "left-1",
+            shown ? "left-[32px]" : "left-1",
           )}
         />
       </button>
-
-      <ConfirmDialog
-        open={confirm}
-        onOpenChange={(o) => {
-          setConfirm(o);
-          if (!o) setError(null);
-        }}
-        title={open ? "Ubah pos jadi Tidak tersedia?" : "Ubah pos jadi Tersedia?"}
-        description={
-          open
-            ? "Pakai saat pos penuh atau permainan sedang dimulai. Selama tidak tersedia, pos tidak bisa memberi hadiah baru; hadiah yang sudah terkirim tidak berubah."
-            : "Pakai saat pos masih kurang tim atau belum ada tim untuk memulai permainan."
-        }
-        confirmLabel={open ? "Jadikan tidak tersedia" : "Jadikan tersedia"}
-        tone={open ? "danger" : "primary"}
-        loading={busy}
-        error={error}
-        onConfirm={() => void submit()}
-      />
-    </>
+      {error ? (
+        <p role="alert" className="text-bad-text max-w-[200px] text-right text-sm font-medium">
+          {error}
+        </p>
+      ) : null}
+    </div>
   );
 }

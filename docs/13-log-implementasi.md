@@ -895,3 +895,23 @@ Koreksi pengguna atas dua hal.
 - Nama kolom dan kode database (`is_open`, `post_closed`, `guard_set_post_open`) tidak diubah.
 
 **Perlu keputusan pengguna**: aturan database lama masih menolak hadiah bila pos tidak `is_open` (`post_closed`), sehingga hadiah hanya bisa dikirim saat pos **Tersedia**. Dengan arti baru (Tidak tersedia = permainan sedang berlangsung), hadiah yang diberikan sesudah permainan akan ditolak. Belum saya ubah; docs/07 dan docs/04 juga belum diperbarui.
+
+### Penjaga: saklar pos tanpa konfirmasi, gerak saldo 0,5 dtk, hadiah tanpa syarat pos, PIN (19 Nov)
+
+Empat permintaan pengguna.
+
+**1. Saklar pos tanpa konfirmasi** (`components/guard/post-toggle.tsx`): dialog konfirmasi dihapus. Saklar langsung berpindah saat ditekan (nilai sementara `pending`), lalu disimpan lewat `guard_set_post_open`; bila gagal saklar kembali dan pesan galat tampil di bawahnya. Teks status kecil "Tersedia" (hijau) / "Tidak tersedia" (merah) ditampilkan di bawah nama pos menggantikan peringatan "hadiah belum bisa dikirim" yang tidak berlaku lagi (poin 3). Ini menambah teks status pada saklar yang di Figma tanpa teks.
+
+**2. Gerak saldo maks. 0,5 dtk** (`lib/guard/count-up.ts`): `COUNT_UP_MS = 500` (sebelumnya 1,6–2,6 dtk), kurva tetap. Form tetap menutup sendiri 1,4 dtk sesudahnya. Diuji: Rp 10.796.694 → 10.796.794 bertahap (27 nilai) dalam ≤ 0,5 dtk.
+
+**3. Hadiah tidak lagi ditolak saat pos Tidak tersedia.** `scripts/sql/payout-allow-unavailable-post.sql` (baru): `award_payout` sama persis dengan sebelumnya, kecuali baris `if not v_post.is_open then raise exception 'post_closed'` dihapus. Sudah dijalankan di Supabase Docker (sebagai `supabase_admin`, pemilik fungsi; hak akses tidak berubah: anon tidak, authenticated ya). **Cloud belum**: jalankan berkas itu di SQL Editor bila kembali ke cloud; restore dari dump cloud lama juga mengembalikan fungsi lama. Kode galat `post_closed` dan teksnya dibiarkan (tak terpakai lagi). Admin dan layar publik tetap memakai `is_open` hanya sebagai status tampilan.
+
+**4. PIN penjaga** (sementara 12345):
+- Form hadiah punya kolom **PIN penjaga** (tersamar, 4–8 angka) di bawah Nominal; tombol Kirim aktif bila nominal valid dan PIN ≥ 4 angka.
+- `verifyGuardPin` (`app/guard/actions.ts`): membandingkan PIN di server dengan `GUARD_PIN` (bawaan 12345 bila kosong/tidak valid; ada di `.env.example`), waktu-tetap (`lib/guard/pin.ts`). PIN tidak dikirim ke klien dan tidak dicatat. PIN salah: pesan "PIN salah." dan kolom dikosongkan; 5 salah berturut-turut mengunci akun itu 60 dtk (pembatas di memori server, `PinLimiter`). Hadiah baru masuk antrean setelah PIN benar; bila form ditutup saat PIN diperiksa, hadiah tidak dikirim.
+- Batasan: PIN satu untuk semua penjaga dan diperiksa saat menekan Kirim (perlu koneksi); hadiah yang sudah di antrean tetap dicoba ulang tanpa PIN. Pemeriksaan ada di aplikasi, bukan di `award_payout`, sehingga bukan pengaman kuat terhadap penjaga yang memanggil API langsung.
+- Tes baru: `lib/guard/pin.test.ts` (PIN bawaan, perbandingan, pembatas).
+
+**Diuji** (HTTPS, guard1): saklar berpindah seketika tanpa dialog dan tersimpan; pos Tidak tersedia + PIN salah (99999) ditolak "PIN salah."; PIN 12345 memasukkan Rp 100 (tercatat di `payouts` walau pos tidak tersedia); tombol Kirim nonaktif tanpa PIN; form muat di layar 375 × 667. tsc, eslint, vitest (110 tes) lolos.
+
+**Belum diuji**: pengunci 60 dtk lewat browser (hanya tes unit), `GUARD_PIN` kustom di `.env.local`, dan jalur offline (PIN butuh server).

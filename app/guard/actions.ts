@@ -2,7 +2,13 @@
 
 import { mapRpcError } from "@/lib/errors";
 import type { ActionResult } from "@/lib/schemas/common";
-import { awardPayoutSchema, resolveTeamSchema, setPostOpenSchema } from "@/lib/schemas/guard";
+import { expectedPin, PinLimiter, pinMatches } from "@/lib/guard/pin";
+import {
+  awardPayoutSchema,
+  resolveTeamSchema,
+  setPostOpenSchema,
+  verifyPinSchema,
+} from "@/lib/schemas/guard";
 import { createClient } from "@/lib/supabase/server";
 
 const INVALID: ActionResult<never> = {
@@ -36,9 +42,41 @@ export async function resolveTeam(input: unknown): Promise<ActionResult<Resolved
   return { ok: true, data: { teamId: row.team_id, name: row.team_name ?? "Tim", cash: row.cash } };
 }
 
+const pinLimiter = new PinLimiter();
+
+/**
+ * Periksa PIN penjaga sebelum hadiah dimasukkan ke antrean (form hadiah). PIN dibandingkan di server dengan
+ * `GUARD_PIN` (bawaan 12345) tanpa dikirim ke klien dan tanpa dicatat; 5 salah berturut-turut mengunci akun itu 60 dtk.
+ * Ini pengaman salah-kirim, bukan pengganti login: `award_payout` tetap hanya menerima peran guard.
+ */
+export async function verifyGuardPin(input: unknown): Promise<ActionResult> {
+  const parsed = verifyPinSchema.safeParse(input);
+  if (!parsed.success)
+    return { ok: false, message: "PIN terdiri dari 4–8 angka.", code: "pin_invalid", retryable: false };
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data.user)
+    return { ok: false, message: "Sesi berakhir. Masuk lagi.", code: "forbidden", retryable: false };
+  const key = data.user.id;
+  const wait = pinLimiter.lockedFor(key, Date.now());
+  if (wait > 0)
+    return {
+      ok: false,
+      message: `Terlalu banyak PIN salah. Coba lagi dalam ${wait} detik.`,
+      code: "rate_limited",
+      retryable: false,
+    };
+  if (!pinMatches(parsed.data.pin, expectedPin())) {
+    pinLimiter.fail(key, Date.now());
+    return { ok: false, message: "PIN salah.", code: "pin_invalid", retryable: false };
+  }
+  pinLimiter.succeed(key);
+  return { ok: true, data: undefined };
+}
+
 /**
  * Kirim hadiah ke satu tim (`award_payout`). Idempotent menurut `requestId`: kirim ulang dengan id yang sama tidak
- * menggandakan hadiah. Saldo tim bertambah seketika; pos harus Tersedia dan game `open`/`paused` (database memutuskan).
+ * menggandakan hadiah. Saldo tim bertambah seketika; game harus `open`/`paused` (database memutuskan); status pos TIDAK menolak hadiah (19 Nov).
  */
 export async function awardPayout(input: unknown): Promise<ActionResult> {
   const parsed = awardPayoutSchema.safeParse(input);

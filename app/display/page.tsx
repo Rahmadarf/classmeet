@@ -38,5 +38,7 @@ async function DisplayContent({ searchParams }: { searchParams: SearchParams }) 
     fetchNewsBoard(supabase),
     fetchPosts(supabase),
   ]);
-  return <DisplayRotator leaderboard={leaderboard} market={market} news={news} posts={posts ?? []} pin={pin} />;
+  return (
+    <DisplayRotator leaderboard={leaderboard} market={market} news={news} posts={posts ?? []} pin={pin} />
+  );
 }

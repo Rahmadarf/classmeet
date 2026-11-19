@@ -1,10 +1,12 @@
 "use client";
 
 import { Check, Loader2, X } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { verifyGuardPin } from "@/app/guard/actions";
 import { AnimatedRupiah } from "@/components/guard/animated-rupiah";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
+import { PIN_MAX, PIN_MIN } from "@/lib/guard/pin-shape";
 import { formatRupiah } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
@@ -13,7 +15,8 @@ export type SheetTeam = { requestId: string; teamId: string; name: string; cash:
 /**
  * Lembar form nominal (Figma `Penjaga — Siap pindai (form nominal muncul)`, 1096:483; docs/07 §3.4) di atas layar pindai:
  * nama tim, SALDO TIM saat QR terbaca (tidak diperbarui selama form terbuka dan tidak membatasi nominal), kolom nominal,
- * tombol "Kirim Rp …" dan "Batal". Tidak ada tombol nominal cepat, dialog konfirmasi, atau catatan.
+ * kolom **PIN penjaga** (diperiksa di server sebelum hadiah masuk antrean), tombol "Kirim Rp …" dan "Batal". Tidak ada tombol
+ * nominal cepat, dialog konfirmasi, atau catatan.
  * Setelah "Kirim" ditekan, form TIDAK langsung hilang: isian diganti saldo tim yang naik bertahap dari saldo awal ke saldo
  * baru (mis. 100 → 110 → 120 … → 150), lalu form menutup sendiri sebentar setelah angka selesai naik. Pengiriman tetap
  * berjalan di antrean latar belakang; angka naik itu tampilan saja (saldo awal + nominal), bukan saldo hasil bacaan
@@ -69,18 +72,46 @@ function Form({
   onCancel: () => void;
 }) {
   const [text, setText] = useState("");
+  const [pin, setPin] = useState("");
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
   const amount = text === "" ? null : Number(text);
-  const valid = amount !== null && Number.isSafeInteger(amount) && amount >= 1;
+  const valid = amount !== null && Number.isSafeInteger(amount) && amount >= 1 && pin.length >= PIN_MIN;
 
-  const submit = () => {
-    if (valid) onSend(team, amount);
+  // Form ditutup (Batal/geser) saat PIN sedang diperiksa: jangan memasukkan hadiah ke antrean sesudahnya.
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+
+  const submit = async () => {
+    if (!valid || checking) return;
+    setChecking(true);
+    setPinError(null);
+    try {
+      const res = await verifyGuardPin({ pin });
+      if (!alive.current) return;
+      if (res.ok) {
+        onSend(team, amount);
+        return;
+      }
+      setPinError(res.message);
+      if (res.code === "pin_invalid") setPin("");
+    } catch {
+      if (alive.current) setPinError("Koneksi bermasalah. Coba lagi.");
+    } finally {
+      if (alive.current) setChecking(false);
+    }
   };
 
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        submit();
+        void submit();
       }}
       className="flex flex-col gap-4"
     >
@@ -113,8 +144,46 @@ function Form({
         />
       </div>
 
+      <div className="flex flex-col gap-2">
+        <label htmlFor="pin-penjaga" className="text-ink-muted text-lg font-medium">
+          PIN penjaga
+        </label>
+        <input
+          id="pin-penjaga"
+          type="password"
+          inputMode="numeric"
+          enterKeyHint="send"
+          autoComplete="off"
+          maxLength={PIN_MAX}
+          value={pin}
+          aria-invalid={pinError ? true : undefined}
+          aria-describedby={pinError ? "pin-penjaga-galat" : undefined}
+          onChange={(e) => {
+            setPin(e.target.value.replace(/\D/g, "").slice(0, PIN_MAX));
+            if (pinError) setPinError(null);
+          }}
+          className={cn(
+            "rounded-panel bg-field text-ink tnum min-h-16 w-full border-2 px-5 text-[28px] font-bold tracking-[0.3em]",
+            pinError ? "border-bad-text" : "border-line-strong",
+          )}
+        />
+        {pinError ? (
+          <p id="pin-penjaga-galat" role="alert" className="text-bad-text text-base font-semibold">
+            {pinError}
+          </p>
+        ) : null}
+      </div>
+
       <div className="flex flex-col gap-3">
-        <Button type="submit" size="lg" block disabled={!valid} className="min-h-14 text-[17px] font-bold">
+        <Button
+          type="submit"
+          size="lg"
+          block
+          disabled={!valid}
+          loading={checking}
+          loadingText="Memeriksa PIN…"
+          className="min-h-14 text-[17px] font-bold"
+        >
           {valid ? `Kirim ${formatRupiah(amount)}` : "Kirim"}
         </Button>
         <Button type="button" variant="secondary" size="lg" block onClick={onCancel} className="min-h-14">

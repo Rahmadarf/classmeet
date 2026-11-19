@@ -2,7 +2,7 @@
 
 import { animate, motion, useMotionValue, useReducedMotion, useTransform } from "motion/react";
 import { useEffect } from "react";
-import { COUNT_UP_EASE, countUpDurationMs } from "@/lib/guard/count-up";
+import { COUNT_UP_EASE, COUNT_UP_MS } from "@/lib/guard/count-up";
 import { formatRupiah } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
@@ -35,7 +35,7 @@ export function AnimatedRupiah({
       return;
     }
     const controls = animate(value, to, {
-      duration: countUpDurationMs(to - from) / 1000,
+      duration: COUNT_UP_MS / 1000,
       ease: COUNT_UP_EASE,
       onComplete: () => {
         value.set(to);
