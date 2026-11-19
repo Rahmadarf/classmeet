@@ -55,3 +55,6 @@ next-env.d.ts
 # Supabase self-hosted (Docker): berkas unduhan resmi + .env berisi rahasia, dan dump DB berisi data sensitif
 /deploy/supabase/stack/
 /deploy/supabase/dump/
+
+# daftar kredensial lokal (kata sandi, PIN, pascode): JANGAN di-commit
+/KREDENSIAL.local.md

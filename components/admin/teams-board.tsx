@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { CorrectionDialog } from "@/components/admin/correction-dialog";
 import { TeamCreateDialog } from "@/components/admin/team-create-dialog";
+import { TeamDeleteDialog } from "@/components/admin/team-delete-dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
@@ -33,6 +34,7 @@ export function TeamsBoard({ initial }: { initial: TeamRow[] }) {
   const [correct, setCorrect] = useState<string | null>(null);
   const [qrTeam, setQrTeam] = useState<TeamRow | null>(null);
   const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState<{ id: string; name: string } | null>(null);
 
   const refresh = useCallback(async () => {
     const next = await fetchTeamsPage(supabase);
@@ -63,8 +65,8 @@ export function TeamsBoard({ initial }: { initial: TeamRow[] }) {
         <DataTable
           caption="Peringkat langsung semua tim"
           head={["#", "Tim", "Saldo", "Nilai aset (harga peringkat)", "Total", ""]}
-          widths={[72, 220, 150, 230, 160]}
-          minWidth={980}
+          widths={[72, 200, 140, 210, 150]}
+          minWidth={1080}
           align={["left", "left", "right", "right", "right"]}
         >
           {rows.map((r, i) => (
@@ -101,6 +103,14 @@ export function TeamsBoard({ initial }: { initial: TeamRow[] }) {
                   >
                     Ganti QR
                   </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() => setDeleting({ id: r.teamId, name: r.name })}
+                    aria-label={`Hapus ${r.name}`}
+                  >
+                    Hapus
+                  </Button>
                 </div>
               </td>
             </tr>
@@ -113,6 +123,18 @@ export function TeamsBoard({ initial }: { initial: TeamRow[] }) {
         </p>
       </Card>
 
+      <TeamDeleteDialog
+        team={deleting}
+        onOpenChange={(o) => !o && setDeleting(null)}
+        onDone={(name, loginDisabled) => {
+          toast.success(`${name} dihapus.`);
+          if (!loginDisabled)
+            toast.warning(
+              "Login tim belum diblokir (kunci layanan server tidak ada); kartu QR lama sudah mati.",
+            );
+          void refresh();
+        }}
+      />
       <TeamCreateDialog
         open={creating}
         onOpenChange={setCreating}

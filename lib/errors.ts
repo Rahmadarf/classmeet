@@ -18,7 +18,7 @@ const MESSAGES: Record<string, string> = {
   request_id_conflict: "Permintaan bentrok, muat ulang halaman.",
   post_closed: "Pos sedang tidak tersedia.",
   invalid_amount: "Nominal tidak valid.",
-  team_not_found: "Tim tidak ditemukan.",
+  team_not_found: "Tim tidak ditemukan atau sudah dihapus.",
   news_not_found: "Berita tidak ditemukan.",
   news_wrong_status: "Berita ini tidak bisa diubah pada statusnya sekarang.",
   game_started_locked: "Game sudah dimulai. Harga, daftar aset, dan berita tidak bisa diubah lagi.",
