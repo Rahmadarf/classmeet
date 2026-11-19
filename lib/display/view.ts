@@ -64,11 +64,11 @@ export function parseIndex(rows: { scope: string; value: number }[]): IndexSnaps
 export type Mover = { symbol: string; name: string; price: number; pct: number };
 
 /**
- * Terbaik dan terlemah: perubahan harga terakhir terhadap harga acuan (sama dengan chip di halaman Pasar tim).
+ * Terbaik dan terlemah: perubahan harga terakhir terhadap harga OPEN hari ini (sama dengan chip di halaman Pasar tim).
  * Hanya aset yang benar-benar bergerak yang ikut (naik > 0 untuk terbaik, turun < 0 untuk terlemah).
  */
 export function movers(
-  assets: { symbol: string; name: string; refPrice: number; lastPrice: number }[],
+  assets: { symbol: string; name: string; openPrice: number; lastPrice: number }[],
   count = 4,
 ): { best: Mover[]; worst: Mover[] } {
   const all = assets
@@ -76,7 +76,7 @@ export function movers(
       symbol: a.symbol,
       name: a.name,
       price: a.lastPrice,
-      pct: percentChange(a.lastPrice, a.refPrice) ?? 0,
+      pct: percentChange(a.lastPrice, a.openPrice) ?? 0,
     }))
     .sort((a, b) => b.pct - a.pct || a.symbol.localeCompare(b.symbol));
   return {

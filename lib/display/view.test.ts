@@ -55,7 +55,7 @@ describe("movers", () => {
   const a = (symbol: string, ref: number, last: number) => ({
     symbol,
     name: symbol,
-    refPrice: ref,
+    openPrice: ref,
     lastPrice: last,
   });
   it("terbaik dari yang naik, terlemah dari yang turun; yang tidak bergerak tidak ikut", () => {

@@ -41,18 +41,29 @@ export type MarketBoardData = {
 
 /** Semua yang dibutuhkan layar Display pasar. Tidak memuat saldo tim atau order book (docs/12 §9). */
 export async function fetchMarketBoard(supabase: Db): Promise<MarketBoardData | null> {
-  const [assets, index, game, news] = await Promise.all([
-    supabase.from("assets").select("symbol,name,price,last_price,last_trade_at").eq("is_active", true),
+  const [assets, index, game, news, dayOpen] = await Promise.all([
+    supabase.from("assets").select("id,symbol,name,price,last_price,last_trade_at").eq("is_active", true),
     supabase.rpc("get_market_index"),
     fetchGame(supabase),
     fetchNews(supabase, 1),
+    supabase.rpc("get_day_open_prices"),
   ]);
   if (assets.error || !assets.data || index.error || !index.data || !game) return null;
 
+  // Harga open hari ini (get_day_open_prices); gagal dimuat → harga acuan (perilaku lama), layar tetap tampil.
+  const opens = new Map((dayOpen.data ?? []).map((o) => [o.asset_id, o.open_price]));
   const rows = assets.data.flatMap((a) => {
     const lastPrice = a.last_price ?? a.price;
     return isMoney(lastPrice) && isMoney(a.price)
-      ? [{ symbol: a.symbol, name: a.name, refPrice: a.price, lastPrice, lastTradeAt: a.last_trade_at }]
+      ? [
+          {
+            symbol: a.symbol,
+            name: a.name,
+            openPrice: isMoney(opens.get(a.id)) ? (opens.get(a.id) as number) : a.price,
+            lastPrice,
+            lastTradeAt: a.last_trade_at,
+          },
+        ]
       : [];
   });
   const { best, worst } = movers(rows);
