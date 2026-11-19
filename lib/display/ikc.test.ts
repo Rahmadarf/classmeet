@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { appendSample, chartGeometry, mergeSeries, parseSamples, todaySeries, type IkcSample } from "./ikc";
+import { appendSample, mergeSeries, parseSamples, todaySeries, valueDomain, type IkcSample } from "./ikc";
 
 describe("appendSample", () => {
   it("mengabaikan cuplikan yang terlalu rapat dan menambah yang cukup jauh", () => {
@@ -78,62 +78,28 @@ describe("mergeSeries", () => {
   });
 });
 
-describe("chartGeometry", () => {
+describe("valueDomain", () => {
   it("sumbu mengikuti data: IKC di sekitar 1.087 tidak memaksa garis dasar 1.000 masuk", () => {
-    const g = chartGeometry(
-      [
-        [0, 1077],
-        [10_000, 1087],
-      ],
-      200,
-      100,
-    );
-    expect(g.baselineY).toBeNull();
-    const vals = g.yTicks.map((t) => t.value);
-    expect(Math.min(...vals)).toBeGreaterThan(1050);
-    expect(Math.max(...vals)).toBeLessThan(1120);
-    // perubahan 10 poin menempati porsi besar tinggi grafik (bukan ±7 % seperti sumbu 950–1.100)
-    const ys = [...g.line.matchAll(/ (\d+\.\d)/g)].map((m) => Number(m[1]));
-    expect(Math.abs(ys[1] - ys[0])).toBeGreaterThan(40);
+    const d = valueDomain([1077, 1087]);
+    expect(d.baselineInside).toBe(false);
+    expect(d.lo).toBeGreaterThan(1050);
+    expect(d.hi).toBeLessThan(1120);
+    expect(d.ticks[0]).toBe(d.lo);
+    expect(d.ticks[d.ticks.length - 1]).toBe(d.hi);
   });
 
-  it("kosong bila tak ada cuplikan; garis kosong bila hanya satu titik", () => {
-    expect(chartGeometry([], 100, 50).line).toBe("");
-    const one = chartGeometry([[1000, 1005]], 100, 50);
-    expect(one.line).toBe("");
-    expect(one.yTicks.length).toBeGreaterThan(1);
+  it("garis dasar ikut bila data mengelilinginya; rentang minimum 4 poin untuk data rata", () => {
+    expect(valueDomain([990, 1040]).baselineInside).toBe(true);
+    const flat = valueDomain([1087, 1087]);
+    expect(flat.hi - flat.lo).toBeGreaterThanOrEqual(4);
+    expect(flat.lo).toBeLessThan(1087);
+    expect(flat.hi).toBeGreaterThan(1087);
   });
 
-  it("memetakan nilai tinggi ke y kecil (atas) dan menyertakan garis dasar 1.000", () => {
-    const g = chartGeometry(
-      [
-        [0, 1000],
-        [10_000, 1040],
-      ],
-      200,
-      100,
-    );
-    expect(g.line.startsWith("M0.0 ")).toBe(true);
-    const ys = [...g.line.matchAll(/ (\d+\.\d)/g)].map((m) => Number(m[1]));
-    expect(ys[1]).toBeLessThan(ys[0]);
-    expect(g.baselineY).not.toBeNull();
-    expect(g.xTicks).toHaveLength(5);
-    expect(g.xTicks[0].x).toBe(0);
-    expect(g.xTicks[4].x).toBe(200);
-  });
-
-  it("tick sumbu Y turun dari nilai terbesar dan berjarak sama", () => {
-    const g = chartGeometry(
-      [
-        [0, 990],
-        [1, 1060],
-      ],
-      100,
-      100,
-    );
-    const vals = g.yTicks.map((t) => t.value);
-    expect(vals).toEqual([...vals].sort((a, b) => b - a));
-    const diffs = vals.slice(1).map((v, i) => vals[i] - v);
-    expect(new Set(diffs.map((d) => Math.round(d * 100))).size).toBe(1);
+  it("tick naik dengan jarak sama; tanpa data tetap menghasilkan rentang di sekitar dasar", () => {
+    const d = valueDomain([1000, 1100]);
+    const gaps = d.ticks.slice(1).map((t, i) => Math.round((t - d.ticks[i]) * 100) / 100);
+    expect(new Set(gaps).size).toBe(1);
+    expect(valueDomain([]).baselineInside).toBe(true);
   });
 });

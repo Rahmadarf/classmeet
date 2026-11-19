@@ -997,3 +997,5 @@ Perbaikan (disetujui pengguna: A dan B):
 8. **Filter sektor** di daftar aset Pasar tim (`asset-list.tsx`): dropdown "Semua sektor (30)" + 6 sektor dengan jumlah, bersama pencarian.
 6. **Tabel admin/assets**: lebar kolom dirapikan (tidak lagi terpotong di kolom Status/Aksi pada layar 1440), "Harga acuan" → "Acuan".
 7. **Layar Peringkat**: tulisan "Peringkat Tim / Total = saldo + nilai aset" dihapus.
+
+4. **Recharts untuk grafik display/market**: `npm install recharts` (^3.11); `components/display/ikc-chart.tsx` (AreaChart ukuran tetap, garis berundak `stepAfter`, tanpa animasi/tooltip, 5 label waktu berjarak sama, sumbu Y dari `valueDomain` yang mengikuti data, garis 1.000 hanya bila dalam rentang); SVG buatan sendiri dan `chartGeometry` dihapus dari `lib/display/ikc.ts` (tes diganti tes `valueDomain`). Diuji di 1920×1080: grafik tampil dengan sumbu 1.020–1.120, tinggi halaman 1080.

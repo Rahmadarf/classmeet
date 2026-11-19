@@ -72,59 +72,34 @@ function niceStep(range: number, ticks: number): number {
   return (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * mag;
 }
 
-export type ChartGeometry = {
-  /** Garis (path SVG) dan area di bawahnya; kosong bila titik < 2. */
-  line: string;
-  area: string;
-  /** Label sumbu Y (nilai + posisi y dalam piksel viewBox). */
-  yTicks: { value: number; y: number }[];
-  /** Posisi y garis dasar 1.000 bila berada dalam rentang data, selain itu null. */
-  baselineY: number | null;
-  /** Label sumbu X (waktu + posisi x). */
-  xTicks: { ts: number; x: number }[];
+export type ValueDomain = {
+  lo: number;
+  hi: number;
+  /** Nilai tick sumbu Y, dari kecil ke besar. */
+  ticks: number[];
+  /** True bila garis dasar (bawaan 1.000) berada dalam rentang. */
+  baselineInside: boolean;
 };
 
-/** Hitung geometri grafik dalam ruang `width × height` (piksel viewBox). */
-export function chartGeometry(
-  samples: readonly IkcSample[],
-  width: number,
-  height: number,
-  opts: { base?: number; yTickCount?: number; xTickCount?: number } = {},
-): ChartGeometry {
-  const { base = 1000, yTickCount = 4, xTickCount = 5 } = opts;
-  if (samples.length === 0) return { line: "", area: "", yTicks: [], baselineY: null, xTicks: [] };
-
-  const values = samples.map(([, v]) => v);
-  // Sumbu mengikuti DATA, bukan dipaksa memuat garis dasar: perubahan beberapa poin di sekitar 1.087 tetap terlihat.
-  // Garis dasar hanya digambar bila kebetulan berada dalam rentang.
+/**
+ * Rentang sumbu Y yang mengikuti DATA (bukan dipaksa memuat garis dasar 1.000): perubahan beberapa poin di sekitar 1.087 tetap
+ * terlihat. Rentang minimum 4 poin; ada ruang kosong 10 % di atas dan bawah; batas dan tick memakai langkah "bulat".
+ */
+export function valueDomain(
+  values: readonly number[],
+  opts: { base?: number; tickCount?: number } = {},
+): ValueDomain {
+  const { base = 1000, tickCount = 6 } = opts;
+  if (values.length === 0)
+    return { lo: base - 10, hi: base + 10, ticks: [base - 10, base, base + 10], baselineInside: true };
   const rawLo = Math.min(...values);
   const rawHi = Math.max(...values);
   const span = Math.max(rawHi - rawLo, 4);
-  const step = niceStep(span * 1.2, yTickCount);
-  const lo = Math.floor((rawLo - span * 0.1) / step) * step;
-  const hi = Math.ceil((rawHi + span * 0.1) / step) * step;
-  const y = (v: number) => height - ((v - lo) / (hi - lo)) * height;
-
-  const t0 = samples[0][0];
-  const t1 = samples[samples.length - 1][0];
-  const x = (t: number) => (t1 === t0 ? width / 2 : ((t - t0) / (t1 - t0)) * width);
-
-  const pts = samples.map(([t, v]) => [x(t), y(v)] as const);
-  const line =
-    pts.length < 2
-      ? ""
-      : pts.map(([px, py], i) => `${i === 0 ? "M" : "L"}${px.toFixed(1)} ${py.toFixed(1)}`).join(" ");
-  const area = line
-    ? `${line} L${pts[pts.length - 1][0].toFixed(1)} ${height} L${pts[0][0].toFixed(1)} ${height} Z`
-    : "";
-
-  const yTicks: { value: number; y: number }[] = [];
-  for (let v = hi; v >= lo - 1e-9; v -= step) yTicks.push({ value: Math.round(v * 100) / 100, y: y(v) });
-
-  const xTicks = Array.from({ length: xTickCount }, (_, i) => {
-    const ts = t0 + ((t1 - t0) * i) / Math.max(xTickCount - 1, 1);
-    return { ts, x: x(ts) };
-  });
-
-  return { line, area, yTicks, baselineY: base >= lo && base <= hi ? y(base) : null, xTicks };
+  const mid = (rawLo + rawHi) / 2; // data rata: dipusatkan dalam rentang minimum
+  const step = niceStep(span * 1.2, tickCount);
+  const lo = Math.floor((mid - span / 2 - span * 0.1) / step) * step;
+  const hi = Math.ceil((mid + span / 2 + span * 0.1) / step) * step;
+  const ticks: number[] = [];
+  for (let v = lo; v <= hi + 1e-9; v += step) ticks.push(Math.round(v * 100) / 100);
+  return { lo, hi, ticks, baselineInside: base >= lo && base <= hi };
 }

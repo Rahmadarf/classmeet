@@ -2,16 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DisplayHeader } from "@/components/display/display-header";
+import { IkcChart } from "@/components/display/ikc-chart";
 import { ScaledStage } from "@/components/display/scaled-stage";
 import { fetchIndexHistory, fetchMarketBoard, type MarketBoardData } from "@/lib/display/data";
-import {
-  appendSample,
-  chartGeometry,
-  mergeSeries,
-  parseSamples,
-  todaySeries,
-  type IkcSample,
-} from "@/lib/display/ikc";
+import { appendSample, mergeSeries, parseSamples, todaySeries, type IkcSample } from "@/lib/display/ikc";
 import type { Mover } from "@/lib/display/view";
 import { usePolling } from "@/lib/hooks/use-polling";
 import {
@@ -28,8 +22,8 @@ import { cn } from "@/lib/utils";
 
 const POLL_MS = 5_000;
 const STORAGE_KEY = "classmeet:display:ikc:v1";
-const CHART_W = 1120; // 1184 (lebar kartu dalam) − sumbu Y 52 − jarak 12
-const CHART_H = 360;
+const CHART_W = 1184; // lebar dalam kartu IKC
+const CHART_H = 400;
 
 const ikcFormat = new Intl.NumberFormat("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const ikc = (n: number) => ikcFormat.format(n);
@@ -116,7 +110,6 @@ export function MarketScreen({ initial, live = true }: { initial: MarketBoardDat
   // Grafik = hari ini (riwayat server memuat seluruh game; satu hari terlihat rata bila digabung dengan hari lain).
   const full = useMemo(() => mergeSeries(history, samples), [history, samples]);
   const series = useMemo(() => todaySeries(full, now ?? 0), [full, now]);
-  const geometry = useMemo(() => chartGeometry(series, CHART_W, CHART_H), [series]);
   // Rentang pendek (< 5 menit) diberi detik supaya label sumbu X tidak berulang.
   const spanMs = series.length > 1 ? series[series.length - 1][0] - series[0][0] : 0;
   // Rentang lebih dari sehari (riwayat server sejak game dimulai): label memuat tanggal supaya jam yang sama tak membingungkan.
@@ -167,83 +160,13 @@ export function MarketScreen({ initial, live = true }: { initial: MarketBoardDat
                   </p>
                 </div>
 
-                <div className="flex gap-3">
-                  <div className="text-ink-muted relative h-[360px] w-[52px] shrink-0 text-right text-[13px]">
-                    {geometry.yTicks.map((t) => (
-                      <span
-                        key={t.value}
-                        className="tnum absolute right-0 -translate-y-1/2"
-                        style={{ top: t.y }}
-                      >
-                        {formatNumber(Math.round(t.value))}
-                      </span>
-                    ))}
-                  </div>
-                  <svg
-                    role="img"
-                    aria-label={value === null ? "Grafik IKC" : `Grafik IKC, sekarang ${ikc(value)}`}
-                    viewBox={`0 0 ${CHART_W} ${CHART_H}`}
-                    className="h-[360px] w-[1120px] shrink-0"
-                  >
-                    <defs>
-                      <linearGradient id="ikc-fill" x1="0" x2="0" y1="0" y2="1">
-                        <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.16" />
-                        <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
-                      </linearGradient>
-                    </defs>
-                    {geometry.yTicks.map((t) => (
-                      <line
-                        key={t.value}
-                        x1="0"
-                        x2={CHART_W}
-                        y1={t.y}
-                        y2={t.y}
-                        stroke="var(--border)"
-                        strokeDasharray="4 6"
-                      />
-                    ))}
-                    {geometry.baselineY !== null ? (
-                      <line
-                        x1="0"
-                        x2={CHART_W}
-                        y1={geometry.baselineY}
-                        y2={geometry.baselineY}
-                        stroke="var(--border-strong)"
-                        strokeWidth="1.5"
-                      />
-                    ) : null}
-                    {geometry.area ? <path d={geometry.area} fill="url(#ikc-fill)" /> : null}
-                    {geometry.line ? (
-                      <path
-                        d={geometry.line}
-                        fill="none"
-                        stroke="var(--primary)"
-                        strokeWidth="3"
-                        strokeLinejoin="round"
-                        strokeLinecap="round"
-                      />
-                    ) : (
-                      <text
-                        x={CHART_W / 2}
-                        y={CHART_H / 2}
-                        textAnchor="middle"
-                        fill="var(--text-muted)"
-                        fontSize="22"
-                      >
-                        Grafik terbentuk beberapa saat setelah layar menyala
-                      </text>
-                    )}
-                  </svg>
-                </div>
-                <div className="text-ink-muted flex justify-between pl-16 text-[13px]">
-                  {geometry.xTicks.length > 0 && series.length > 1
-                    ? geometry.xTicks.map((t) => (
-                        <span key={t.ts} className="tnum">
-                          {axisTime(t.ts)}
-                        </span>
-                      ))
-                    : null}
-                </div>
+                <IkcChart
+                  series={series}
+                  width={CHART_W}
+                  height={CHART_H}
+                  axisTime={axisTime}
+                  label={value === null ? "Grafik IKC" : `Grafik IKC, sekarang ${ikc(value)}`}
+                />
 
                 <div className="flex gap-3">
                   {data.index.sectors.map((s) => (
