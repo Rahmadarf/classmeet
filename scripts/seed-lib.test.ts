@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import assetsFile from "./data/assets.example.json";
-import newsFile from "./data/news.example.json";
+import poolFile from "./data/news-pool.json";
 import {
   buildAssetRow,
   generateShortCode,
@@ -12,7 +12,7 @@ import {
 } from "./seed-lib";
 
 const assets = assetsFile.assets as AssetSeed[];
-const news = newsFile.news as NewsSeed[];
+const news = poolFile.news as unknown as NewsSeed[];
 
 describe("data contoh aset", () => {
   it("berisi 30 aset = 6 sektor × 5", () => {
@@ -45,9 +45,9 @@ describe("data contoh aset", () => {
 });
 
 describe("data contoh berita", () => {
-  it("lolos aturan efek (4–7 aset, tidak nol, ≤ 1500 bps) dan semua simbol ada", () => {
+  it("lolos aturan efek (10–15 aset, tidak nol, ≤ 1500 bps) dan semua simbol ada", () => {
     const symbols = new Set(assets.map((a) => a.symbol));
-    expect(news.length).toBeGreaterThanOrEqual(10);
+    expect(news.length).toBeGreaterThanOrEqual(220);
     expect(validateNews(news, symbols)).toEqual([]);
   });
 

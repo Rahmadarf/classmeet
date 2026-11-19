@@ -51,6 +51,13 @@ export function NewsBoard({ initial }: { initial: NewsPage }) {
   };
 
   const pool = page.pool;
+  const kindLabel: Record<string, string> = {
+    price: "Harga saja",
+    bankrupt: "Bangkrut",
+    suspend: "Suspensi",
+    dividend: "Dividen",
+  };
+  const missing = (page.coverage ?? []).filter((c) => c.bankrupt < 1 || c.suspend < 1 || c.dividend < 1);
 
   return (
     <div className="flex flex-col gap-6">
@@ -67,6 +74,21 @@ export function NewsBoard({ initial }: { initial: NewsPage }) {
           <p className="text-ink-muted text-lg">Belum ada berita yang tayang.</p>
         )}
       </Card>
+
+      {page.kinds ? (
+        <Card aria-labelledby="jenis" className="flex flex-col gap-1.5">
+          <h2 id="jenis" className="text-brand-text text-[13px] font-semibold tracking-[0.12em] uppercase">
+            Jenis berita siap terbit
+          </h2>
+          <p className="tnum text-ink mt-1 text-lg font-bold">
+            {page.kinds.map((k) => `${kindLabel[k.kind]} ${k.ready}`).join(" · ")}
+          </p>
+          <p className="text-ink-muted text-base">
+            Event (bangkrut, suspensi, dividen) tidak ditentukan urutannya: sistem menghitung peluang tiap
+            aset dari kondisi pasar, lalu baru memilih berita yang cocok saat berita diterbitkan.
+          </p>
+        </Card>
+      ) : null}
 
       {page.locked ? (
         <Card aria-labelledby="terkunci" className="flex flex-col gap-1.5">
@@ -100,10 +122,58 @@ export function NewsBoard({ initial }: { initial: NewsPage }) {
               Draf {pool.draft} · siap {pool.ready} · boleh terbit {pool.eligible}
             </p>
           ) : null}
+          {page.coverage ? (
+            <details className="border-line rounded-panel border px-4 py-3" open={missing.length > 0}>
+              <summary className="text-ink cursor-pointer text-base font-semibold">
+                Cakupan event per aset:{" "}
+                {missing.length === 0 ? (
+                  <span className="text-ok-text">semua aset punya bangkrut, suspensi, dan dividen</span>
+                ) : (
+                  <span className="text-bad-text">{missing.length} aset belum lengkap</span>
+                )}
+              </summary>
+              <table className="mt-3 w-full text-left text-sm">
+                <caption className="sr-only">Jumlah berita siap per aset dan jenis event</caption>
+                <thead>
+                  <tr className="text-ink-muted">
+                    <th scope="col" className="py-1 font-semibold">
+                      Aset
+                    </th>
+                    <th scope="col" className="py-1 text-right font-semibold">
+                      Bangkrut
+                    </th>
+                    <th scope="col" className="py-1 text-right font-semibold">
+                      Suspensi
+                    </th>
+                    <th scope="col" className="py-1 text-right font-semibold">
+                      Dividen
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {page.coverage.map((c) => (
+                    <tr key={c.symbol} className="border-line border-t">
+                      <th scope="row" className="text-ink py-1 font-semibold">
+                        {c.symbol}
+                      </th>
+                      {([c.bankrupt, c.suspend, c.dividend] as const).map((n, i) => (
+                        <td
+                          key={i}
+                          className={`tnum py-1 text-right font-semibold ${n < 1 ? "text-bad-text" : "text-ink"}`}
+                        >
+                          {n < 1 ? "0 (kurang)" : n}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </details>
+          ) : null}
           {page.drafts.length === 0 ? (
             <p className="text-ink-muted text-base">
-              Belum ada berita. Penulisan dan impor massal memakai <code>scripts/import-news.ts</code> (belum
-              dibuat).
+              Belum ada berita. Bangkitkan kumpulan dengan <code>npm run generate-news</code>, lalu masukkan
+              dengan <code>npm run seed</code>.
             </p>
           ) : (
             <ul>

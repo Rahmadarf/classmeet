@@ -6,11 +6,19 @@ import { randomInt } from "node:crypto";
 
 export type AssetSeed = { sector: string; symbol: string; name: string; price: number };
 export type NewsEffectSeed = { symbol: string; pct_bps: number };
-export type NewsSeed = { title: string; body: string; effects: NewsEffectSeed[] };
+export type NewsSeed = {
+  title: string;
+  body: string;
+  effects: NewsEffectSeed[];
+  /** Jenis berita (kumpulan v2): harga saja atau membawa SATU event. Kosong = berita harga. */
+  kind?: "price" | "bankrupt" | "suspend" | "dividend";
+  /** Event: bangkrut = bps likuidasi, suspensi = menit, dividen = bps. */
+  event?: { symbol: string; amount: number } | null;
+};
 
 export const SYMBOL_RE = /^[A-Z0-9]{2,8}$/;
-export const MIN_NEWS_ASSETS = 4;
-export const MAX_NEWS_ASSETS = 7;
+export const MIN_NEWS_ASSETS = 10;
+export const MAX_NEWS_ASSETS = 15;
 export const MAX_EFFECT_BPS = 1500;
 
 /** Tingkatan stok doc 05 §5: makin murah makin banyak stoknya. */

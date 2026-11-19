@@ -124,6 +124,14 @@ export type Database = {
           leaderboard_visible: boolean
           max_effect_bps: number
           max_news_assets: number
+          market_opened_at: string | null
+          bankrupt_max_per_day: number
+          bankrupt_max_total: number
+          event_asset_gap_minutes: number
+          event_gap_minutes: number
+          event_intensity_pct: number
+          event_warmup_minutes: number
+          pick_temperature_milli: number
           min_news_assets: number
           news_delay_max_minutes: number
           news_delay_min_minutes: number
@@ -151,6 +159,14 @@ export type Database = {
           leaderboard_visible?: boolean
           max_effect_bps?: number
           max_news_assets?: number
+          market_opened_at?: string | null
+          bankrupt_max_per_day?: number
+          bankrupt_max_total?: number
+          event_asset_gap_minutes?: number
+          event_gap_minutes?: number
+          event_intensity_pct?: number
+          event_warmup_minutes?: number
+          pick_temperature_milli?: number
           min_news_assets?: number
           news_delay_max_minutes?: number
           news_delay_min_minutes?: number
@@ -178,6 +194,14 @@ export type Database = {
           leaderboard_visible?: boolean
           max_effect_bps?: number
           max_news_assets?: number
+          market_opened_at?: string | null
+          bankrupt_max_per_day?: number
+          bankrupt_max_total?: number
+          event_asset_gap_minutes?: number
+          event_gap_minutes?: number
+          event_intensity_pct?: number
+          event_warmup_minutes?: number
+          pick_temperature_milli?: number
           min_news_assets?: number
           news_delay_max_minutes?: number
           news_delay_min_minutes?: number
@@ -1094,6 +1118,23 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      get_news_pool_kinds: {
+        Args: never
+        Returns: {
+          kind: string
+          ready_count: number
+        }[]
+      }
+      news_pool_coverage: {
+        Args: never
+        Returns: {
+          asset_id: string
+          bankrupt: number
+          dividend: number
+          suspend: number
+          symbol: string
+        }[]
       }
       get_news_pool_status: {
         Args: never

@@ -20,7 +20,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Database } from "../lib/supabase/database.types";
 import assetsFile from "./data/assets.example.json";
-import newsFile from "./data/news.example.json";
+import poolFile from "./data/news-pool.json";
 import {
   buildAssetRow,
   generateShortCode,
@@ -134,7 +134,7 @@ async function main() {
 
   // Validasi data lebih dulu; jangan sentuh DB bila data contoh rusak.
   const assetSeeds = assetsFile.assets as AssetSeed[];
-  const newsSeeds = newsFile.news as NewsSeed[];
+  const newsSeeds = poolFile.news as unknown as NewsSeed[];
   const dataProblems = [
     ...validateAssets(assetSeeds),
     ...validateNews(newsSeeds, new Set(assetSeeds.map((a) => a.symbol))),
@@ -264,6 +264,23 @@ async function main() {
           p_effects: effects,
         });
         if (saved.error) die(`admin_save_news "${n.title}": ${saved.error.message}`);
+        if (n.event) {
+          const target = idBySymbol.get(n.event.symbol)!;
+          const ev =
+            n.kind === "bankrupt"
+              ? await adminClient.rpc("admin_set_news_bankruptcy", {
+                  p_news_id: saved.data,
+                  p_asset_id: target,
+                  p_liquidation_bps: n.event.amount,
+                })
+              : await adminClient.rpc("admin_set_news_event", {
+                  p_news_id: saved.data,
+                  p_asset_id: target,
+                  p_kind: n.kind!,
+                  p_amount: n.event.amount,
+                });
+          if (ev.error) die(`event "${n.title}": ${ev.error.message}`);
+        }
         const ready = await adminClient.rpc("admin_set_news_ready", { p_news_id: saved.data, p_ready: true });
         if (ready.error) die(`admin_set_news_ready "${n.title}": ${ready.error.message}`);
       }

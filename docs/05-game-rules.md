@@ -16,6 +16,8 @@ Setiap tim **mulai dari Rp 0**. Satu-satunya sumber uang adalah **hadiah pos** (
 
 ## 2. Parameter default
 
+> **Diganti 19 Nov:** pemilihan berita, jumlah aset per berita (kini **10–15**, bukan 4–7), dan event berbasis peluang (bangkrut, suspensi, dividen) diatur di [15-mesin-berita-v2](15-mesin-berita-v2.md). Baris dan bagian lama tentang 4–7 aset dan pemilihan acak berbatas di bawah sudah tidak berlaku.
+
 | Parameter | Default | Tempat mengubah |
 |-----------|---------|-----------------|
 | Modal awal per tim | **Rp 0** (tetap, bukan pengaturan) | — |

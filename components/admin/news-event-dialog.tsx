@@ -72,8 +72,8 @@ function itemsOf(news: NewsDraft | null): Item[] {
 
 /**
  * Event aset pada satu berita draf: bangkrut, dividen, atau suspensi. Berlaku saat efek berita itu berlaku (sistem yang
- * menjalankan). Hanya SEBELUM game dibuka; database yang memutuskan. Satu berita boleh membawa beberapa event; satu aset
- * tidak boleh bangkrut sekaligus menerima event lain di berita yang sama.
+ * menjalankan). Hanya SEBELUM game dibuka; database yang memutuskan. Satu berita membawa paling banyak SATU event
+ * (`check_news_effects`, 19 Nov); satu aset tidak boleh bangkrut sekaligus menerima event lain di berita yang sama.
  */
 export function NewsEventDialog({
   open,
@@ -170,8 +170,8 @@ export function NewsEventDialog({
           {news?.title ?? "Berita"}
         </DialogTitle>
         <DialogDescription className="text-ink-muted mt-2 text-base">
-          Event berjalan saat berita ini berlaku. Berita tetap perlu 4–7 aset berefek harga; aset yang
-          bangkrut tidak boleh ada di antaranya.
+          Event berjalan saat berita ini berlaku. Berita tetap perlu 10–15 aset berefek harga; aset yang
+          bangkrut tidak boleh ada di antaranya. Satu berita membawa paling banyak SATU event.
         </DialogDescription>
 
         {items.length > 0 ? (

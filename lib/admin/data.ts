@@ -234,10 +234,16 @@ export type NewsDraft = {
 };
 /** Aset aktif yang boleh dipilih sebagai aset bangkrut. */
 export type NewsAssetOption = { id: string; symbol: string; name: string };
+/** Jumlah berita siap per jenis event (`get_news_pool_kinds`): hanya angka, boleh dilihat kapan saja. */
+export type PoolKindCount = { kind: "price" | "bankrupt" | "suspend" | "dividend"; ready: number };
+/** Cakupan event per aset (`news_pool_coverage`): HANYA sebelum game dibuka (sesudahnya database menolak). */
+export type PoolCoverageRow = { symbol: string; bankrupt: number; suspend: number; dividend: number };
 export type NewsPage = {
   locked: boolean;
   current: NewsItem | null;
   pool: NewsPool | null;
+  kinds: PoolKindCount[] | null;
+  coverage: PoolCoverageRow[] | null;
   drafts: NewsDraft[];
   assets: NewsAssetOption[];
 };
@@ -247,23 +253,39 @@ export type NewsPage = {
  * dan berita yang sudah tayang (`news_feed`) yang dimuat. Sebelum dibuka: daftar berita dengan jumlah aset terkena.
  */
 export async function fetchNewsPage(supabase: Db, locked: boolean): Promise<NewsPage | null> {
-  const [news, pool] = await Promise.all([fetchNews(supabase, 1), fetchNewsPool(supabase)]);
+  const [news, pool, kindRes] = await Promise.all([
+    fetchNews(supabase, 1),
+    fetchNewsPool(supabase),
+    supabase.rpc("get_news_pool_kinds"),
+  ]);
   if (!news) return null;
+  const kinds: PoolKindCount[] | null =
+    kindRes.error || !kindRes.data
+      ? null
+      : kindRes.data.flatMap((k): PoolKindCount[] =>
+          k.kind === "price" || k.kind === "bankrupt" || k.kind === "suspend" || k.kind === "dividend"
+            ? [{ kind: k.kind, ready: k.ready_count }]
+            : [],
+        );
+  let coverage: PoolCoverageRow[] | null = null;
   let drafts: NewsDraft[] = [];
   let assets: NewsAssetOption[] = [];
   if (!locked) {
-    const [list, effects, bank, assetRows, evRows] = await Promise.all([
-      supabase.from("news").select("id,title,status").order("created_at", { ascending: false }).limit(300),
-      supabase.from("news_effects").select("news_id"),
+    const [list, bank, assetRows, evRows, covRes] = await Promise.all([
+      // jumlah efek per berita lewat agregat tertanam (tidak terkena batas 1000 baris PostgREST)
+      supabase
+        .from("news")
+        .select("id,title,status,news_effects(count)")
+        .order("created_at", { ascending: false })
+        .limit(800),
       supabase.from("news_bankruptcies").select("news_id,asset_id,liquidation_bps"),
       supabase.from("assets").select("id,symbol,name,is_active").order("symbol"),
       supabase.from("news_events").select("news_id,asset_id,kind,amount"),
+      supabase.rpc("news_pool_coverage"),
     ]);
     if (
       list.error ||
       !list.data ||
-      effects.error ||
-      !effects.data ||
       bank.error ||
       !bank.data ||
       assetRows.error ||
@@ -291,13 +313,18 @@ export async function fetchNewsPage(supabase: Db, locked: boolean): Promise<News
     assets = assetRows.data
       .filter((a) => a.is_active)
       .map((a) => ({ id: a.id, symbol: a.symbol, name: a.name }));
-    const counts = new Map<string, number>();
-    for (const e of effects.data) counts.set(e.news_id, (counts.get(e.news_id) ?? 0) + 1);
+    if (!covRes.error && covRes.data)
+      coverage = covRes.data.map((c) => ({
+        symbol: c.symbol,
+        bankrupt: c.bankrupt,
+        suspend: c.suspend,
+        dividend: c.dividend,
+      }));
     drafts = list.data.map((n) => ({
       id: n.id,
       title: n.title,
       status: n.status,
-      assets: counts.get(n.id) ?? 0,
+      assets: n.news_effects[0]?.count ?? 0,
       events: eventsOf.get(n.id) ?? [],
       bankruptcy: (() => {
         const b = banks.get(n.id);
@@ -308,5 +335,5 @@ export async function fetchNewsPage(supabase: Db, locked: boolean): Promise<News
       })(),
     }));
   }
-  return { locked, current: news[0] ?? null, pool, drafts, assets };
+  return { locked, current: news[0] ?? null, pool, kinds, coverage, drafts, assets };
 }

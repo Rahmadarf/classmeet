@@ -5,3 +5,5 @@ package-lock.json
 lib/supabase/database.types.ts
 deploy/supabase/stack
 deploy/supabase/dump
+scripts/data/news-pool.json
+docs/14-kumpulan-berita.md

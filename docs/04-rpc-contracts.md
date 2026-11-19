@@ -897,6 +897,8 @@ end $$;
 - **`holdings_value` dan `net_worth` memakai harga beli** (`cost_basis`, lihat [03 §4](03-database.md#4-kalkulasi-net-worth)). Layar publik mengambil seluruh hasil lalu menampilkan **5 baris pertama** di klien; admin melihat semuanya.
 - `get_my_summary()` hanya saldo, nilai aset, dan net worth **milik sendiri**. Tidak ada peringkat.
 
+> **Diganti 19 Nov:** `process_news_cycle()` kini memilih lewat `pick_next_news()` menurut kondisi pasar dan peluang event; lihat [15-mesin-berita-v2](15-mesin-berita-v2.md). Isi di bawah adalah versi lama.
+
 ### 3.4 Siklus berita: kumpulan, pemilihan acak berbatas, efek tertunda, dan jeda
 
 Tidak ada pergerakan harga acak oleh peserta atau panitia. **Satu-satunya** hal yang mengubah harga adalah efek berita yang dipilih **sistem** dari kumpulan berita `ready`. Sejak game dibuka, **panitia tidak punya jalur apa pun** untuk mengubah harga, memilih berita, menyusun urutan, menambah/mengubah berita, atau membatalkannya (keputusan 17 Nov). Siklusnya:
