@@ -861,3 +861,18 @@ Permintaan pengguna: tambah halaman display **berita**. Tidak ada spesifikasinya
 **Diuji** (HTTPS, 1920 × 1080, data nyata + respons `news_feed` tiruan): data nyata terbaca benar; judul 180 huruf + isi 1.600 huruf + judul tanpa spasi tidak keluar kotak (isi dan keterangan "Tayang" tidak bertumpuk setelah perbaikan jumlah baris); kosong dan satu berita rapi; tinggi dokumen 1080 px; rotasi memuat 4 layar dan `?screen=news` menahan layar berita. tsc, eslint, vitest (104 tes) lolos.
 
 **Belum diuji**: berita baru yang masuk saat layar tampil (hanya lewat polling, tanpa animasi pergantian) dan tampilan di proyektor 1280 × 720.
+
+### Penjaga: form hadiah menampilkan saldo tim naik bertahap (19 Nov)
+
+Permintaan pengguna: setelah QR tim dipindai dan "Kirim" ditekan, form **tidak langsung hilang**; ia menunjukkan saldo tim yang naik perlahan dari saldo awal ke saldo baru (contoh 100 + 50: 110 → 120 …), bukan langsung angka terbaru. Ini mengubah aturan lama di docs/07 §3.4 ("Kirim menutup form seketika"); docs/07 belum saya ubah.
+
+**Perubahan**
+- `components/guard/payout-sheet.tsx`: setelah "Kirim", isian dan tombol diganti tampilan **Hadiah dikirim ke {tim}**: kartu saldo besar (40 px) yang naik dari saldo saat QR terbaca ke saldo + nominal, chip "+ Rp nominal", keterangan status (**Mengirim…** / **Terkirim** / **Gagal terkirim**), dan tombol "Tutup" (jadi "Lanjut pindai" setelah angka selesai). Kartu menghijau saat angka selesai. Form menutup sendiri 1,4 dtk setelah angka selesai (atau 1,4 dtk setelah gagal); tombol dan geser-tutup tetap bisa dipakai lebih cepat. `prefers-reduced-motion`: langsung angka akhir. Pembaca layar hanya mendengar hasil akhir ("Saldo … sekarang …"), bukan tiap angka.
+- `lib/guard/count-up.ts` (+ `count-up.test.ts`, 4 tes): `countUpValue` menghitung 24 langkah (90 ms, ≈ 2,2 dtk) dengan ease-out kuadrat; mulai tepat di saldo awal, berakhir tepat di saldo + nominal, tidak pernah turun.
+- `components/guard/scan-board.tsx`: `send` tidak lagi menutup form, hanya memasukkan hadiah ke antrean dan menyimpan nominal; status form diturunkan dari antrean (`jobs` gagal → gagal, ada pemberitahuan sukses → terkirim, selain itu mengirim).
+
+**Keputusan**: angka yang naik adalah **tampilan optimistis** (saldo saat dipindai + nominal), bukan saldo hasil bacaan ulang dari server; saldo tim tidak dibaca ulang karena penjaga tidak punya akses selain `resolve_team_qr`. Pengiriman tetap lewat antrean latar belakang dengan `request_id` yang sama, jadi tahan koneksi putus. Bila pengiriman gagal, angka dikembalikan ke saldo awal, keterangan menjadi "Gagal terkirim", dan kartu merah "Kirim ulang" di bawah kamera tetap ada. Kamera tetap terkunci selama form terbuka, jadi pindai berikutnya baru bisa setelah form menutup.
+
+**Diuji** (HTTPS, akun guard1, data Docker): sukses Rp 50 ke Tim Elang: saldo 9.160.244 → 9.160.294 bertahap, keterangan menjadi Terkirim, form menutup ±3,4 dtk setelah Kirim, kartu hijau "terkirim" muncul; pos ditutup lewat SQL lalu kirim Rp 70: saldo tetap 9.160.294, "Gagal terkirim", form menutup sendiri, kartu merah "Gagal: pos ditutup…" dengan "Kirim ulang"/"Tutup" tampil. Pos dibuka kembali sesudah uji. tsc, eslint, vitest (108 tes) lolos. Efek samping uji: saldo Tim Elang di Docker bertambah Rp 50 (data uji).
+
+**Belum diuji**: kamera sungguhan di ponsel, ponsel dengan gerak dikurangi, dan nominal sangat besar (12 digit) di layar sempit.

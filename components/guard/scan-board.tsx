@@ -6,7 +6,7 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { resolveTeam } from "@/app/guard/actions";
 import { PayoutNotices } from "@/components/guard/payout-notices";
-import { PayoutSheet, type SheetTeam } from "@/components/guard/payout-sheet";
+import { PayoutSheet, type PayoutPhase, type SheetTeam } from "@/components/guard/payout-sheet";
 import { PostToggle } from "@/components/guard/post-toggle";
 import { fetchMyPost, splitPostName, type MyPost } from "@/lib/guard/data";
 import { usePayoutQueue } from "@/lib/guard/use-payout-queue";
@@ -70,6 +70,8 @@ export function ScanBoard({
   const [post, setPost] = useState(initialPost);
   const [state, setState] = useState(initialState);
   const [team, setTeam] = useState<SheetTeam | null>(null);
+  // Nominal yang baru dikirim dari form terbuka: form beralih ke tampilan saldo naik, lalu menutup sendiri.
+  const [submittedAmount, setSubmittedAmount] = useState<number | null>(null);
   const [resolving, setResolving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [cameraError, setCameraError] = useState<IScannerError | null>(null);
@@ -167,16 +169,27 @@ export function ScanBoard({
 
   const closeSheet = useCallback(() => {
     setTeam(null);
+    setSubmittedAmount(null);
     release();
   }, [release]);
 
   const send = useCallback(
     (t: SheetTeam, amount: number) => {
       queue.enqueue({ requestId: t.requestId, teamId: t.teamId, teamName: t.name, amount });
-      closeSheet(); // form hilang seketika; kamera siap memindai tim berikutnya
+      // Form tetap terbuka dan menunjukkan saldo tim naik bertahap; ia menutup sendiri (atau lewat "Lanjut pindai").
+      setSubmittedAmount(amount);
     },
-    [queue, closeSheet],
+    [queue],
   );
+
+  // Keadaan pengiriman hadiah untuk form yang terbuka: masih di antrean, sudah terkirim (ada pemberitahuan sukses), atau gagal.
+  const phase: PayoutPhase = !team
+    ? "sending"
+    : queue.jobs.some((j) => j.requestId === team.requestId && j.status === "failed")
+      ? "failed"
+      : queue.notices.some((n) => n.id === team.requestId)
+        ? "sent"
+        : "sending";
 
   const { number, title } = splitPostName(post.name);
   const banner = BANNER[state];
@@ -283,7 +296,13 @@ export function ScanBoard({
 
       {DevQrDrop ? <DevQrDrop onRaw={submitRaw} onUnreadable={onUnreadable} disabled={false} /> : null}
 
-      <PayoutSheet team={team} onSend={send} onCancel={closeSheet} />
+      <PayoutSheet
+        team={team}
+        submittedAmount={submittedAmount}
+        phase={phase}
+        onSend={send}
+        onCancel={closeSheet}
+      />
     </div>
   );
 }
