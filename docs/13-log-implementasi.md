@@ -845,3 +845,19 @@ Permintaan pengguna: hapus batang komposisi dan cari referensi leaderboard yang 
 - Tinggi kartu 152 → 144 px dan jarak 14 → 12 px agar kepala kolom, header, dan kaki tetap muat di 1080 px. Badge peringkat dan animasi (DOM stabil + `translateY`) tidak berubah; judul "Peringkat Tim" di header dipertahankan.
 
 Diuji (HTTPS, 1920 × 1080): semua baris dan kaki muat (tinggi dokumen 1080 px); tidak ada teks yang terpotong, juga dengan data tiruan ekstrem (`999.999.999`, `600.000.000`, nama "Tim Cendrawasih"); dengan respons `get_leaderboard` yang ditiru urutan kartu berpindah (posisi Y 0/156/312/468/624 mengikuti peringkat baru). tsc, eslint, vitest (104 tes) lolos. Belum diuji: layar tunggu (leaderboard disembunyikan) dan nama tim yang lebih panjang dari ±12 huruf (dipotong dengan elipsis).
+
+### Layar baru: Display berita `/display/news` (19 Nov)
+
+Permintaan pengguna: tambah halaman display **berita**. Tidak ada spesifikasinya di docs/07 maupun Figma (hanya tiga layar bergilir), jadi dirancang sendiri; pengguna memilih rute sendiri **dan** ikut rotasi `/display`.
+
+**Referensi Refero** (pencarian "news feed featured headline with list of latest stories" dan "breaking news ticker timeline latest updates live blog"): Bloomberg Markets (satu berita utama besar di samping daftar berita), Perplexity Discover (kartu unggulan + kartu lain), Aboard "What's New" (lini masa kronologis dengan penanda waktu di kiri). Disintesis menjadi: berita terbaru besar di kiri, lini masa berita sebelumnya di kanan. Warna dan komponen sama dengan layar publik lain (tanpa warna baru).
+
+**Perubahan**
+- `components/display/news-screen.tsx` (baru): kiri kartu **Berita terbaru** (ikon, eyebrow, lencana "Baru" bila tayang ≤ 30 menit, waktu WIB, judul 64 px maks 3 baris, isi 32 px maks 8 baris, keterangan "Tayang N menit lalu"); kanan **Sebelumnya** (5 berita: jam besar + tanggal/"Hari ini", judul 2 baris, isi 2 baris). Keadaan kosong ("Belum ada berita") dan hanya satu berita ditangani. Polling 5 dtk; peringatan "Terputus…" bila gagal. Isi berita teks biasa (tanpa HTML).
+- `lib/display/data.ts`: `fetchNewsBoard` (status game + `news_feed` terbaru; tanpa efek harga).
+- `app/display/news/page.tsx` (baru); `app/display/page.tsx` dan `components/display/display-rotator.tsx`: layar ke-4, urutan Peringkat → Pasar → **Berita** → Pos (20 dtk); `?screen=news` menahan layar ini.
+- `components/display/display-header.tsx` (baru): bilah atas (merek, status pasar, jam) diambil dari `market-screen.tsx` agar dipakai bersama; tampilan Display pasar tidak berubah.
+
+**Diuji** (HTTPS, 1920 × 1080, data nyata + respons `news_feed` tiruan): data nyata terbaca benar; judul 180 huruf + isi 1.600 huruf + judul tanpa spasi tidak keluar kotak (isi dan keterangan "Tayang" tidak bertumpuk setelah perbaikan jumlah baris); kosong dan satu berita rapi; tinggi dokumen 1080 px; rotasi memuat 4 layar dan `?screen=news` menahan layar berita. tsc, eslint, vitest (104 tes) lolos.
+
+**Belum diuji**: berita baru yang masuk saat layar tampil (hanya lewat polling, tanpa animasi pergantian) dan tampilan di proyektor 1280 × 720.

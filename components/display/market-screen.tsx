@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { DisplayHeader } from "@/components/display/display-header";
 import { ScaledStage } from "@/components/display/scaled-stage";
 import { fetchMarketBoard, type MarketBoardData } from "@/lib/display/data";
 import { appendSample, chartGeometry, parseSamples, type IkcSample } from "@/lib/display/ikc";
@@ -17,13 +18,6 @@ const CHART_H = 360;
 
 const ikcFormat = new Intl.NumberFormat("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const ikc = (n: number) => ikcFormat.format(n);
-
-const STATE_PILL: Record<MarketBoardData["game"]["state"], { text: string; tone: "ok" | "warn" }> = {
-  open: { text: "PASAR BUKA", tone: "ok" },
-  paused: { text: "PASAR DIJEDA", tone: "warn" },
-  setup: { text: "PASAR BELUM DIBUKA", tone: "warn" },
-  finished: { text: "PERMAINAN SELESAI", tone: "warn" },
-};
 
 /**
  * Layar publik "Display pasar" (Figma `Layar publik — Display pasar`, 1123:612; docs/12 §9, docs/07 §2.4):
@@ -97,41 +91,11 @@ export function MarketScreen({ initial, live = true }: { initial: MarketBoardDat
   const value = data?.index.ikc ?? null;
   const pct = value === null ? null : (value - 1000) / 10;
   const diff = value === null ? null : value - 1000;
-  const pill = data ? STATE_PILL[data.game.state] : null;
 
   return (
     <ScaledStage>
       <div className="flex h-full flex-col gap-5 p-10">
-        {/* Bilah atas */}
-        <header className="flex shrink-0 items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="bg-accent text-ink-on-accent grid size-10 place-items-center rounded-full text-[20px] font-bold">
-              C
-            </div>
-            <p className="text-ink text-[24px] font-bold">CLASSMEET MARKET</p>
-          </div>
-          <div className="flex-1" />
-          {offline ? (
-            <span role="status" className="text-bad-text text-[18px] font-semibold">
-              Terputus, mencoba menyambung kembali…
-            </span>
-          ) : null}
-          {pill ? (
-            <span
-              className={cn(
-                "border-line bg-card inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[15px] font-bold tracking-[0.06em]",
-                pill.tone === "ok" ? "text-ok-text" : "text-accent-text",
-              )}
-            >
-              <span
-                aria-hidden
-                className={cn("size-3 rounded-full", pill.tone === "ok" ? "bg-ok-text" : "bg-accent")}
-              />
-              {pill.text}
-            </span>
-          ) : null}
-          <p className="tnum text-ink text-[28px] font-bold">{now ? formatTimeWib(now) : ""}</p>
-        </header>
+        <DisplayHeader state={data?.game.state ?? null} now={now} offline={offline} />
 
         {data === null ? (
           <p className="text-ink-muted mt-32 text-center text-[40px] font-medium">Memuat data pasar…</p>

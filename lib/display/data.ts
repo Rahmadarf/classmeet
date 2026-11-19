@@ -66,3 +66,16 @@ export async function fetchMarketBoard(supabase: Db): Promise<MarketBoardData | 
     news: news?.[0] ?? null,
   };
 }
+
+export type NewsBoardData = {
+  game: Game;
+  /** Terbaru dulu. Hanya judul, isi, dan waktu tayang (`news_feed`): tanpa efek harga. */
+  news: NewsItem[];
+};
+
+/** Berita yang sudah tayang untuk layar Display berita. Hanya yang terbaru (layar tidak digulir). */
+export async function fetchNewsBoard(supabase: Db, limit = 6): Promise<NewsBoardData | null> {
+  const [game, news] = await Promise.all([fetchGame(supabase), fetchNews(supabase, limit)]);
+  if (!game || !news) return null;
+  return { game, news };
+}

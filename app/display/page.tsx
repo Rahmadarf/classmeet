@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { DisplayRotator } from "@/components/display/display-rotator";
-import { fetchLeaderboard, fetchMarketBoard } from "@/lib/display/data";
+import { fetchLeaderboard, fetchMarketBoard, fetchNewsBoard } from "@/lib/display/data";
 import { fetchPosts } from "@/lib/posts/data";
 import { createClient } from "@/lib/supabase/server";
 
@@ -19,10 +19,10 @@ export default function DisplayHome({ searchParams }: { searchParams: SearchPara
   );
 }
 
-const SCREENS = ["leaderboard", "market", "posts"] as const;
+const SCREENS = ["leaderboard", "market", "news", "posts"] as const;
 
 /**
- * Layar ruang publik bergilir: 5 tim teratas, Display pasar, Daftar Pos. `?screen=leaderboard|market|posts`
+ * Layar ruang publik bergilir: 5 tim teratas, Display pasar, Display berita, Daftar Pos. `?screen=leaderboard|market|news|posts`
  * menahan satu layar (untuk uji dan pemasangan). Tiap layar memuat ulang datanya sendiri di browser.
  */
 async function DisplayContent({ searchParams }: { searchParams: SearchParams }) {
@@ -32,10 +32,11 @@ async function DisplayContent({ searchParams }: { searchParams: SearchParams }) 
   const raw = Array.isArray(params.screen) ? params.screen[0] : params.screen;
   const pin = SCREENS.find((s) => s === raw);
 
-  const [leaderboard, market, posts] = await Promise.all([
+  const [leaderboard, market, news, posts] = await Promise.all([
     fetchLeaderboard(supabase),
     fetchMarketBoard(supabase),
+    fetchNewsBoard(supabase),
     fetchPosts(supabase),
   ]);
-  return <DisplayRotator leaderboard={leaderboard} market={market} posts={posts ?? []} pin={pin} />;
+  return <DisplayRotator leaderboard={leaderboard} market={market} news={news} posts={posts ?? []} pin={pin} />;
 }
