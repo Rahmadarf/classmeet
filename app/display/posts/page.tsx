@@ -30,7 +30,11 @@ async function PostsContent() {
       </main>
     );
   }
-  return <PostsScreen initial={posts} />;
+  return (
+    <div className="fixed inset-0">
+      <PostsScreen initial={posts} />
+    </div>
+  );
 }
 
 function ScreenSkeleton() {

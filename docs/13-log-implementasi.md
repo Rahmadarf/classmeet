@@ -943,3 +943,19 @@ Permintaan pengguna: total berita jadi 1000; kumpulan sudah ditinjau dan lolos, 
 - **Tombol Mulai ulang berita**: `admin_restart_news()` (`scripts/sql/news-restart.sql`, sudah dijalankan di Docker, cloud belum), server action `restartNews`, tombol + dialog konfirmasi di kartu "Kumpulan berita terkunci", audit `restart_news`. Mengembalikan berita `applied`/`live` ke `ready` (yang efeknya di luar 10–15 aset → `draft`; 12 berita lama 4–7 aset menjadi `draft`), mengosongkan `news_feed` dan `market_event_log`, menghapus jeda, memulai masa tenang event lagi. Harga, saldo, order tidak diubah. Mengubah aturan docs/07 §3.7.
 - **Diuji**: di browser (admin): kartu jenis berita menampilkan 519/30/150/300 saat itu, dialog konfirmasi tampil, restart dua kali: database `ready` 1000, `draft` 12, `news_feed` kosong lalu berita baru terbit, audit 2 baris. tsc, eslint, vitest (122 tes) lolos.
 - **Catatan**: panel Browser di aplikasi ini tidak mempercayai sertifikat port 443, jadi angka di layar admin tidak menyegarkan dirinya di panel itu (permintaan klien gagal); muat ulang halaman atau pakai browser yang mempercayai CA. Bukan galat aplikasi.
+
+### Layar Daftar Pos `/display/posts`: dua zona Tersedia | Tidak tersedia (19 Nov)
+
+Permintaan pengguna: cari referensi desain untuk layar Pos, lalu pilih arah **B (dua zona)**.
+
+**Referensi Refero** (halaman status dan papan kerja): Revolut System Status (judul besar + kartu dua kolom), OpenSea Status, Zendesk Status (legenda, "Updated"), Workflow Kanban (kolom berjudul, kartu berpindah), Luma Events (penanda LIVE), Zendesk Live calls (kartu hitungan). Arah dipilih: dua zona dengan angka hitungan besar + kartu yang meluncur antar zona.
+
+**Perubahan** (`components/display/posts-screen.tsx` ditulis ulang; data, Realtime, polling 15 dtk, dan peringatan "Terputus…" tetap):
+- Panggung 1920×1080 (`ScaledStage`, seperti layar publik lain), tanpa gulir. Kiri **Tersedia** ("Masih kurang tim atau belum ada tim untuk memulai permainan", panel hijau tipis), kanan **Tidak tersedia** ("Pos penuh atau permainan sedang dimulai", panel putih); tiap zona punya angka hitungan 132 px, titik + nama zona (status selalu teks), dan keadaan kosong ("Tidak ada pos tersedia" / "Semua pos sedang tersedia").
+- Satu kartu per pos (nomor, nama, lokasi). DOM stabil menurut id dan posisi lewat `transform`, jadi saat penjaga mengubah status, kartu **meluncur ke zona lain** (0,8 dtk; tanpa animasi bila gerak dikurangi); sisa kartu menata ulang. Pos yang baru berganti status diberi cincin oranye + lencana "Baru" selama 90 detik.
+- `lib/display/posts-layout.ts` (+ tes, 5): kolom menurut jumlah pos per zona (≤5 satu kolom, ≤16 dua, ≤30 tiga, selebihnya empat), tinggi kartu dan huruf turunan; semua kartu muat untuk 0–60 pos.
+- Pembaca layar: daftar tersembunyi per zona (nomor, nama, lokasi, status); kartu visual `aria-hidden`.
+- `app/display/posts/page.tsx` dan pratinjau `/dev/display-posts` dibungkus `fixed inset-0`; pratinjau punya opsi `&open=none|all`.
+- Warna dan komponen tidak diubah (token yang sama).
+
+**Diuji** (1920×1080): data nyata (6 pos) tampil; mengubah dua pos jadi Tidak tersedia lewat SQL membuat kartunya berpindah lewat Realtime (posisi x 501 → 1000, lencana Baru muncul); 16 pos satu zona (dua kolom, nama terbaca), 2 pos semua tersedia, zona kosong; rotasi `/display?screen=posts` tetap jalan. tsc, eslint, vitest lulus. Catatan: animasi meluncur dihitung di panggung berskala; pada layar bukan 1920×1080 jaraknya mengikuti skala (tetap benar, hanya kurva halus). **Belum diuji**: layar 1280×720 sungguhan dan >30 pos.

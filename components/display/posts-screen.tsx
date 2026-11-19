@@ -2,7 +2,9 @@
 
 import { MapPin, WifiOff } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ScaledStage } from "@/components/display/scaled-stage";
 import { Brand } from "@/components/shell/brand";
+import { AREA_H, cardOffset, zoneLayout } from "@/lib/display/posts-layout";
 import { usePolling } from "@/lib/hooks/use-polling";
 import { formatTimeSecondsWib } from "@/lib/money";
 import { fetchPosts } from "@/lib/posts/data";
@@ -12,59 +14,41 @@ import { cn } from "@/lib/utils";
 
 /** Cadangan bila Realtime terlewat (docs/07 §2.1: muat ulang tiap 15 detik). */
 const POLL_MS = 15_000;
+/** Pos yang baru berganti status diberi penanda "Baru" selama ini. */
+const FRESH_MS = 90_000;
 
-/**
- * Layar publik tidak boleh digulir (tanpa interaksi), jadi semua ukuran memakai satuan `vh` (tinggi layar) dan
- * kepadatannya mengikuti jumlah pos: ≤ 6 besar, 7–12 sedang (acuan docs/07: 12 pos), 13–16 rapat, > 16 sangat rapat. Dengan begitu
- * seluruh pos muat di layar 768, 900, maupun 1080 px tanpa digulir.
- */
-type Density = "large" | "medium" | "small" | "tiny";
-const densityFor = (n: number): Density =>
-  n <= 6 ? "large" : n <= 12 ? "medium" : n <= 16 ? "small" : "tiny";
+// Geometri panggung 1920×1080 (px). Zona: kiri Tersedia, kanan Tidak tersedia.
+const PAD = 40;
+const ZONE_TOP = 160;
+const ZONE_W = 908;
+const ZONE_H = 880;
+const ZONE_GAP = 24;
+const AREA_PAD = 28;
+const AREA_TOP = 190; // tinggi kepala zona sebelum area kartu
 
-const SIZES: Record<
-  Density,
-  { row: string; tile: string; name: string; place: string; pill: string; title: string }
-> = {
-  large: {
-    row: "gap-[2.6vh] px-[2.6vh] py-[2vh]",
-    tile: "size-[10vh] text-[4.4vh]",
-    name: "text-[4.2vh]",
-    place: "text-[3vh]",
-    pill: "px-[2.4vh] py-[1vh] text-[3vh]",
-    title: "text-[8vh]",
+type ZoneKey = "open" | "closed";
+const ZONES: Record<ZoneKey, { label: string; hint: string; empty: string; left: number }> = {
+  open: {
+    label: "Tersedia",
+    hint: "Masih kurang tim atau belum ada tim untuk memulai permainan",
+    empty: "Tidak ada pos tersedia",
+    left: PAD,
   },
-  medium: {
-    row: "gap-[2vh] px-[2vh] py-[0.9vh]",
-    tile: "size-[6vh] text-[2.9vh]",
-    name: "text-[2.9vh]",
-    place: "text-[2.2vh]",
-    pill: "px-[1.8vh] py-[0.6vh] text-[2.2vh]",
-    title: "text-[5.6vh]",
-  },
-  small: {
-    row: "gap-[1.6vh] px-[1.6vh] py-[0.6vh]",
-    tile: "size-[4.8vh] text-[2.3vh]",
-    name: "text-[2.3vh]",
-    place: "text-[1.8vh]",
-    pill: "px-[1.4vh] py-[0.4vh] text-[1.8vh]",
-    title: "text-[4.4vh]",
-  },
-  tiny: {
-    row: "gap-[1.4vh] px-[1.4vh] py-[0.4vh]",
-    tile: "size-[3.8vh] text-[1.9vh]",
-    name: "text-[2vh]",
-    place: "text-[1.6vh]",
-    pill: "px-[1.2vh] py-[0.3vh] text-[1.6vh]",
-    title: "text-[3.8vh]",
+  closed: {
+    label: "Tidak tersedia",
+    hint: "Pos penuh atau permainan sedang dimulai",
+    empty: "Semua pos sedang tersedia",
+    left: PAD + ZONE_W + ZONE_GAP,
   },
 };
 
 /**
- * Layar publik "Daftar Pos" (akun `display`; dipindah dari halaman tim). Tanpa interaksi, tanpa sidebar,
- * terbaca dari jauh: ubin nomor besar, nama + lokasi, dan pil status (titik + teks, bukan hanya warna).
- * Berubah lewat Realtime `posts` (RLS terbuka, tabel kecil); polling 15 dtk hanya cadangan.
- * Tidak memuat rentang hadiah (docs/07 §2.1).
+ * Layar publik "Daftar Pos" dua zona (akun `display`): kiri **Tersedia** (masih kurang tim / belum ada tim untuk memulai),
+ * kanan **Tidak tersedia** (penuh / permainan sedang dimulai), masing-masing dengan angka hitungan besar. Tanpa interaksi
+ * dan tanpa gulir (panggung 1920×1080 yang diskalakan). Tiap pos satu kartu yang DOM-nya stabil menurut id dan posisinya
+ * lewat `transform`, jadi saat penjaga mengubah status, kartunya meluncur ke zona lain; pos yang baru berganti status
+ * diberi penanda "Baru" selama 90 detik. Status selalu teks (nama zona) dan bukan hanya warna. Berubah lewat Realtime
+ * `posts` (RLS terbuka, tabel kecil); polling 15 dtk hanya cadangan. Tidak memuat rentang hadiah (docs/07 §2.1).
  */
 export function PostsScreen({
   initial,
@@ -76,13 +60,23 @@ export function PostsScreen({
   const supabase = useMemo(() => createClient(), []);
   const [posts, setPosts] = useState(initial);
   const [updatedAt, setUpdatedAt] = useState<number | null>(null);
+  const [now, setNow] = useState<number | null>(null);
+  const [fresh, setFresh] = useState<Record<string, number>>({});
   const [offline, setOffline] = useState(false);
   const dropped = useRef(false);
+  const prev = useRef(new Map(initial.map((p) => [p.id, p.isOpen])));
 
   const refresh = useCallback(async () => {
     if (!live) return;
     const next = await fetchPosts(supabase);
     if (next) {
+      const changed: Record<string, number> = {};
+      for (const p of next) {
+        const before = prev.current.get(p.id);
+        if (before !== undefined && before !== p.isOpen) changed[p.id] = Date.now();
+      }
+      prev.current = new Map(next.map((p) => [p.id, p.isOpen]));
+      if (Object.keys(changed).length > 0) setFresh((f) => ({ ...f, ...changed }));
       setPosts(next);
       setUpdatedAt(Date.now());
     }
@@ -91,9 +85,16 @@ export function PostsScreen({
   usePolling(refresh, POLL_MS);
 
   useEffect(() => {
-    // Jam "diperbarui" dihitung di browser, bukan saat render (server dan klien harus sama).
-    const id = window.setTimeout(() => setUpdatedAt(Date.now()), 0);
-    return () => window.clearTimeout(id);
+    // Jam dihitung di browser, bukan saat render (server dan klien harus sama).
+    const id = window.setTimeout(() => {
+      setUpdatedAt(Date.now());
+      setNow(Date.now());
+    }, 0);
+    const tick = window.setInterval(() => setNow(Date.now()), 5_000);
+    return () => {
+      window.clearTimeout(id);
+      window.clearInterval(tick);
+    };
   }, []);
 
   useEffect(() => {
@@ -117,104 +118,187 @@ export function PostsScreen({
   }, [supabase, refresh, live]);
 
   const { open, closed } = countPosts(posts);
-  const z = SIZES[densityFor(posts.length)];
+  const byZone: Record<ZoneKey, PostRow[]> = {
+    open: posts.filter((p) => p.isOpen),
+    closed: posts.filter((p) => !p.isOpen),
+  };
+  const layout = { open: zoneLayout(byZone.open.length), closed: zoneLayout(byZone.closed.length) };
+  // DOM stabil menurut id; posisi menurut urutan nomor di zona masing-masing.
+  const cards = [...posts].sort((a, b) => a.id.localeCompare(b.id));
+
+  const place = (p: PostRow) => {
+    const zone: ZoneKey = p.isOpen ? "open" : "closed";
+    const list = byZone[zone];
+    const l = layout[zone];
+    const { x, y } = cardOffset(l, list.indexOf(p));
+    return {
+      zone,
+      l,
+      left: ZONES[zone].left + AREA_PAD + x,
+      top: ZONE_TOP + AREA_TOP + y,
+    };
+  };
 
   return (
-    <main className="bg-page flex h-dvh flex-col gap-[3vh] overflow-hidden px-[4vw] py-[3.5vh]">
-      <header className="flex flex-wrap items-end justify-between gap-6">
-        <div className="flex flex-col gap-3">
-          <Brand />
-          <div>
-            <p className="text-brand-text text-[2.2vh] font-semibold tracking-[0.14em] uppercase">
-              Stasiun aktivitas
-            </p>
-            <h1 className={cn("text-ink leading-[1.05] font-bold tracking-tight", z.title)}>Daftar Pos</h1>
+    <ScaledStage>
+      <div className="relative h-full w-full">
+        <header
+          className="absolute flex items-end justify-between"
+          style={{ left: PAD, right: PAD, top: PAD, height: 96 }}
+        >
+          <div className="flex items-center gap-8">
+            <Brand />
+            <div className="bg-line h-14 w-px" aria-hidden />
+            <div>
+              <p className="text-brand-text text-[18px] font-semibold tracking-[0.14em] uppercase">
+                Stasiun aktivitas
+              </p>
+              <h1 className="text-ink text-[52px] leading-[1.05] font-bold tracking-tight">Daftar Pos</h1>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-4" role="status" aria-label="Ringkasan ketersediaan pos">
-          <Count tone="ok" value={open} label="Tersedia" />
-          <Count tone="bad" value={closed} label="Tidak tersedia" />
-        </div>
-      </header>
+          <div className="text-ink-muted flex items-center gap-4 pb-1 text-[22px]">
+            {offline ? (
+              <span role="status" className="text-bad-text flex items-center gap-2 font-semibold">
+                <WifiOff className="size-[1.2em]" aria-hidden />
+                Terputus, mencoba menyambung kembali…
+              </span>
+            ) : null}
+            {updatedAt ? (
+              <span className="tnum">Diperbarui {formatTimeSecondsWib(updatedAt)} WIB</span>
+            ) : null}
+          </div>
+        </header>
 
-      <section aria-label="Ketersediaan pos saat ini" className="min-h-0 flex-1">
         {posts.length === 0 ? (
-          <p className="text-ink-muted mt-16 text-center text-3xl font-medium">Belum ada pos terdaftar.</p>
+          <p className="text-ink-muted absolute inset-x-0 top-[420px] text-center text-[40px] font-medium">
+            Belum ada pos terdaftar.
+          </p>
         ) : (
-          <ul className="grid grid-cols-1 gap-[1.2vh] xl:grid-cols-2 xl:gap-x-[1.6vw]">
-            {posts.map((p) => (
-              <li
-                key={p.id}
-                className={cn(
-                  "rounded-row shadow-card flex items-center border",
-                  z.row,
-                  p.isOpen ? "border-ok-text/45 bg-ok/[.09]" : "border-line bg-card",
-                )}
+          <>
+            {(["open", "closed"] as const).map((key) => {
+              const z = ZONES[key];
+              const count = key === "open" ? open : closed;
+              const isOpen = key === "open";
+              return (
+                <section
+                  key={key}
+                  aria-label={`Pos ${z.label.toLowerCase()}: ${count}`}
+                  className={cn(
+                    "rounded-panel shadow-card absolute border",
+                    isOpen ? "border-ok-text/45 bg-ok/[.07]" : "border-line bg-card",
+                  )}
+                  style={{ left: z.left, top: ZONE_TOP, width: ZONE_W, height: ZONE_H }}
+                >
+                  <div className="flex items-center gap-8 px-8 pt-8" style={{ height: AREA_TOP }}>
+                    <span
+                      className={cn(
+                        "tnum text-[132px] leading-none font-bold",
+                        isOpen ? "text-ok-text" : "text-bad-text",
+                      )}
+                    >
+                      {count}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-ink flex items-center gap-4 text-[50px] leading-tight font-bold">
+                        <span
+                          aria-hidden
+                          className={cn("size-[22px] rounded-full", isOpen ? "bg-ok-text" : "bg-bad-text")}
+                        />
+                        {z.label}
+                      </p>
+                      <p className="text-ink-muted mt-1 text-[24px] leading-snug">{z.hint}</p>
+                    </div>
+                  </div>
+                  {count === 0 ? (
+                    <div
+                      className="text-ink-muted border-line absolute grid place-items-center rounded-[16px] border-2 border-dashed text-[30px] font-medium"
+                      style={{ left: AREA_PAD, right: AREA_PAD, top: AREA_TOP, height: AREA_H }}
+                    >
+                      {z.empty}
+                    </div>
+                  ) : null}
+                </section>
+              );
+            })}
+
+            {/* Kartu: satu elemen per pos, berpindah antar zona lewat transform. Disembunyikan dari teknologi bantu; daftar bacaan ada di bawah. */}
+            <ul aria-hidden>
+              {cards.map((p) => {
+                const { zone, l, left, top } = place(p);
+                const isFresh = now !== null && fresh[p.id] !== undefined && now - fresh[p.id] < FRESH_MS;
+                return (
+                  <li
+                    key={p.id}
+                    className={cn(
+                      "rounded-row shadow-card bg-card absolute flex items-center border px-[16px]",
+                      "transition-[transform,width,height,box-shadow] duration-[800ms] ease-[cubic-bezier(.22,1,.36,1)] motion-reduce:transition-none",
+                      zone === "open" ? "border-ok-text/45" : "border-line",
+                      isFresh && "ring-accent ring-4",
+                    )}
+                    style={{
+                      width: l.cardW,
+                      height: l.cardH,
+                      gap: Math.round(l.cardH * 0.18),
+                      transform: `translate(${left}px, ${top}px)`,
+                    }}
+                  >
+                    <span
+                      className="rounded-control bg-tint text-ink grid shrink-0 place-items-center font-bold"
+                      style={{ width: l.tile, height: l.tile, fontSize: Math.round(l.tile * 0.46) }}
+                    >
+                      {p.number ?? "Pos"}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p
+                        className="text-ink truncate leading-tight font-semibold"
+                        style={{ fontSize: l.name }}
+                      >
+                        {p.title}
+                      </p>
+                      {l.showPlace ? (
+                        <p
+                          className="text-ink-muted mt-0.5 flex items-center gap-2"
+                          style={{ fontSize: l.place }}
+                        >
+                          <MapPin className="size-[1em] shrink-0" />
+                          <span className="truncate">{p.location}</span>
+                        </p>
+                      ) : null}
+                    </div>
+                    {isFresh ? (
+                      <span
+                        className="bg-cyan text-ink-on-accent shrink-0 rounded-full font-bold"
+                        style={{
+                          fontSize: Math.max(14, Math.round(l.cardH * 0.2)),
+                          padding: "0.2em 0.7em",
+                        }}
+                      >
+                        Baru
+                      </span>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+
+            {(["open", "closed"] as const).map((key) => (
+              <section
+                key={key}
+                className="sr-only"
+                aria-label={`Daftar pos ${ZONES[key].label.toLowerCase()}`}
               >
-                <span
-                  aria-hidden
-                  className={cn(
-                    "rounded-control bg-tint text-ink grid shrink-0 place-items-center font-bold",
-                    z.tile,
-                  )}
-                >
-                  {p.number ?? "Pos"}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className={cn("text-ink truncate leading-tight font-semibold", z.name)}>{p.title}</p>
-                  <p className={cn("text-ink-muted mt-0.5 flex items-center gap-2", z.place)}>
-                    <MapPin className="size-[1em] shrink-0" aria-hidden />
-                    <span className="truncate">{p.location}</span>
-                  </p>
-                </div>
-                <span
-                  className={cn(
-                    "inline-flex shrink-0 items-center gap-[0.5em] rounded-full border-2 font-bold whitespace-nowrap",
-                    z.pill,
-                    p.isOpen
-                      ? "border-ok-text bg-card text-ok-text"
-                      : "border-bad-text/60 bg-card text-bad-text",
-                  )}
-                >
-                  <span
-                    aria-hidden
-                    className={cn("size-[0.5em] rounded-full", p.isOpen ? "bg-ok-text" : "bg-bad-text")}
-                  />
-                  {p.isOpen ? "Tersedia" : "Tidak tersedia"}
-                </span>
-              </li>
+                <ol>
+                  {byZone[key].map((p) => (
+                    <li
+                      key={p.id}
+                    >{`${p.number ? `Pos ${p.number}: ` : ""}${p.title}, ${p.location}, ${ZONES[key].label}`}</li>
+                  ))}
+                </ol>
+              </section>
             ))}
-          </ul>
+          </>
         )}
-      </section>
-
-      <footer className="text-ink-muted flex items-center justify-end gap-3 text-[2.2vh]">
-        {offline ? (
-          <span role="status" className="text-bad-text flex items-center gap-2 font-semibold">
-            <WifiOff className="size-[1.2em]" aria-hidden />
-            Terputus, mencoba menyambung kembali…
-          </span>
-        ) : null}
-        {updatedAt ? <span className="tnum">Diperbarui {formatTimeSecondsWib(updatedAt)} WIB</span> : null}
-      </footer>
-    </main>
-  );
-}
-
-function Count({ tone, value, label }: { tone: "ok" | "bad"; value: number; label: string }) {
-  return (
-    <div
-      className={cn(
-        "bg-card flex items-center gap-[1.6vh] rounded-full border-2 py-[1.2vh] pr-[3vh] pl-[2.4vh]",
-        tone === "ok" ? "border-ok-text text-ok-text" : "border-bad-text/60 text-bad-text",
-      )}
-    >
-      <span
-        aria-hidden
-        className={cn("size-[1.6vh] rounded-full", tone === "ok" ? "bg-ok-text" : "bg-bad-text")}
-      />
-      <span className="tnum text-[5.2vh] leading-none font-bold">{value}</span>
-      <span className="text-[3vh] font-semibold">{label}</span>
-    </div>
+      </div>
+    </ScaledStage>
   );
 }
