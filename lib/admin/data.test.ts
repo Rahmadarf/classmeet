@@ -26,6 +26,39 @@ const kinds = ok([
   { kind: "aneh", ready_count: 1 },
 ]);
 
+describe("fetchNewsPage: efek berita terkini", () => {
+  const rpcs = {
+    get_news_pool_status: pool,
+    get_news_pool_kinds: kinds,
+    admin_current_news_effects: ok([
+      { news_id: "n", status: "live", kind: "effect", symbol: "MA", name: "Mayora", value: 530 },
+      { news_id: "n", status: "live", kind: "effect", symbol: "AI", name: "Airbus", value: -110 },
+      { news_id: "n", status: "live", kind: "dividend", symbol: "DA", name: "Danone", value: 150 },
+      { news_id: "n", status: "live", kind: "aneh", symbol: "XX", name: "X", value: 1 },
+    ]),
+  };
+
+  it("memetakan persen (bps / 100), event, dan status berlaku", async () => {
+    const page = await fetchNewsPage(fakeClient({ news_feed: ok([]) }, rpcs), true);
+    expect(page?.currentEffects).toEqual({
+      status: "live",
+      effects: [
+        { symbol: "MA", name: "Mayora", pct: 5.3 },
+        { symbol: "AI", name: "Airbus", pct: -1.1 },
+      ],
+      events: [{ kind: "dividend", symbol: "DA", name: "Danone", value: 150 }],
+    });
+  });
+
+  it("tanpa berita tayang → null", async () => {
+    const page = await fetchNewsPage(
+      fakeClient({ news_feed: ok([]) }, { ...rpcs, admin_current_news_effects: ok([]) }),
+      true,
+    );
+    expect(page?.currentEffects).toBeNull();
+  });
+});
+
 describe("fetchNewsPage (kumpulan v2)", () => {
   it("memuat jumlah per jenis (jenis tak dikenal dibuang) dan tidak memuat cakupan saat game terkunci", async () => {
     const page = await fetchNewsPage(

@@ -959,3 +959,12 @@ Permintaan pengguna: cari referensi desain untuk layar Pos, lalu pilih arah **B 
 - Warna dan komponen tidak diubah (token yang sama).
 
 **Diuji** (1920×1080): data nyata (6 pos) tampil; mengubah dua pos jadi Tidak tersedia lewat SQL membuat kartunya berpindah lewat Realtime (posisi x 501 → 1000, lencana Baru muncul); 16 pos satu zona (dua kolom, nama terbaca), 2 pos semua tersedia, zona kosong; rotasi `/display?screen=posts` tetap jalan. tsc, eslint, vitest lulus. Catatan: animasi meluncur dihitung di panggung berskala; pada layar bukan 1920×1080 jaraknya mengikuti skala (tetap benar, hanya kurva halus). **Belum diuji**: layar 1280×720 sungguhan dan >30 pos.
+
+### Admin → Berita: aset yang berubah dan persennya (19 Nov)
+
+Permintaan pengguna: tambahkan aset apa saja yang perlu berubah dan seberapa persen perubahannya di halaman berita admin.
+
+- **Sumber data**: sesudah game dibuka `news_effects` disembunyikan dari admin (RLS), jadi `scripts/sql/news-effects-admin.sql` menambah `admin_current_news_effects()` (hanya admin; sudah dijalankan di Docker, cloud belum): efek (bps), event (bangkrut/dividen/suspensi) berita terbaru yang `live` atau `applied`. Tidak mengembalikan `effect_at`, jadi admin tetap tidak tahu KAPAN harga berubah.
+- **UI** (`components/admin/news-effects.tsx`, `news-board.tsx`, `lib/admin/data.ts`): kartu "Berita saat ini" memuat "Aset yang berubah (N)" dengan lencana **Belum berlaku** (live) atau **Sudah berlaku** (applied), kolom **Naik** dan **Turun** (urut dari terbesar; simbol, nama, chip ▲/▼ + persen) dan chip event. Sebelum game dibuka, tiap berita draf punya ringkasan "Lihat aset dan persen perubahannya" yang memuat efeknya saat dibuka (tidak memuat ratusan berita sekaligus). Teks kartu terkunci diperbarui.
+- **Menyimpang dari aturan**: docs/07 §3.7 menyebut admin tidak boleh tahu apa yang akan berubah; untuk berita `live` admin kini melihat efeknya sebelum berlaku (catatan di docs/07). Bila ingin dibatasi hanya yang sudah berlaku, cukup ubah fungsi SQL itu.
+- **Diuji**: di browser (admin): berita live menampilkan 13 aset (12 naik +0,6…+5,3 %, 1 turun −1,1 %) berstatus Belum berlaku. Tes: pemetaan data (bps/100, event, status, tanpa berita), `eventText`. tsc, eslint, vitest (129 tes) lolos. **Belum diuji di browser**: ringkasan efek berita draf (game di Docker sudah terkunci; hanya ada di tes dan kode).

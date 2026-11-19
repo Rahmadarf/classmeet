@@ -1119,6 +1119,17 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      admin_current_news_effects: {
+        Args: never
+        Returns: {
+          kind: string
+          name: string
+          news_id: string
+          status: string
+          symbol: string
+          value: number
+        }[]
+      }
       admin_restart_news: {
         Args: never
         Returns: number

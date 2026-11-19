@@ -3,9 +3,11 @@
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { restartNews, setNewsReady } from "@/app/admin/news/actions";
+import { DraftEffectsToggle, NewsEffects } from "@/components/admin/news-effects";
 import { NewsEventDialog } from "@/components/admin/news-event-dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Chip } from "@/components/ui/chip";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { fetchNewsPage, type NewsPage } from "@/lib/admin/data";
 import { fetchAdminGame } from "@/lib/admin/state";
@@ -89,6 +91,22 @@ export function NewsBoard({ initial }: { initial: NewsPage }) {
           <>
             <p className="text-ink text-2xl font-bold">{page.current.title}</p>
             <p className="text-ink-muted text-lg leading-[1.6] whitespace-pre-line">{page.current.body}</p>
+            {page.currentEffects ? (
+              <div className="border-line mt-2 flex flex-col gap-3 border-t pt-4">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h3 className="text-ink text-lg font-bold">
+                    Aset yang berubah ({page.currentEffects.effects.length})
+                  </h3>
+                  <Chip
+                    tone={page.currentEffects.status === "live" ? "neutral" : "up"}
+                    className="text-sm font-semibold"
+                  >
+                    {page.currentEffects.status === "live" ? "Belum berlaku" : "Sudah berlaku"}
+                  </Chip>
+                </div>
+                <NewsEffects effects={page.currentEffects.effects} events={page.currentEffects.events} />
+              </div>
+            ) : null}
           </>
         ) : (
           <p className="text-ink-muted text-lg">Belum ada berita yang tayang.</p>
@@ -125,8 +143,9 @@ export function NewsBoard({ initial }: { initial: NewsPage }) {
             </p>
           )}
           <p className="text-ink-muted text-base">
-            Harga tidak bisa diubah siapa pun sampai game selesai. Admin tidak melihat isi maupun urutan
-            berita.
+            Harga tidak bisa diubah siapa pun sampai game selesai. Admin hanya melihat berita yang sedang
+            tayang beserta aset dan persen perubahannya, bukan berita berikutnya, urutan, atau waktu
+            berlakunya.
           </p>
           <div className="mt-3">
             <Button variant="danger" onClick={() => setRestartOpen(true)}>
@@ -215,6 +234,7 @@ export function NewsBoard({ initial }: { initial: NewsPage }) {
                         {n.bankruptcy.pct} % harga acuan
                       </p>
                     ) : null}
+                    <DraftEffectsToggle newsId={n.id} />
                     {n.events.map((e) => (
                       <p key={`${e.kind}-${e.assetId}`} className="text-ink text-sm font-semibold">
                         {e.kind === "dividend"
