@@ -13,6 +13,8 @@ export type MarketAsset = {
   sector: string;
   /** Harga acuan (hanya digeser berita). Dasar batas ARA/ARB dan pembanding perubahan di layar. */
   refPrice: number;
+  /** Harga open hari ini (harga acuan saat hari WIB itu dimulai); pembanding persen perubahan di layar. Cadangan: harga acuan. */
+  dayOpen: number;
   lastPrice: number;
   /** Suspensi sementara (event berita) sampai waktu ini; null bila tidak disuspensi. Bandingkan dengan jam sekarang. */
   suspendedUntil: string | null;
@@ -31,12 +33,18 @@ type AssetRow = Pick<
   "id" | "symbol" | "name" | "sector" | "price" | "last_price"
 > & { suspended_until?: string | null };
 type SummaryRow = Database["public"]["Functions"]["get_market_summary"]["Returns"][number];
+type DayOpenRow = Database["public"]["Functions"]["get_day_open_prices"]["Returns"][number];
 
 const orNull = (v: number | null | undefined) => (isMoney(v) ? v : null);
 
 /** Gabungkan daftar aset (nama, sektor) dengan `get_market_summary()` (harga dan statistik). */
-export function mergeMarket(assets: AssetRow[], summary: SummaryRow[]): MarketAsset[] {
+export function mergeMarket(
+  assets: AssetRow[],
+  summary: SummaryRow[],
+  dayOpen: DayOpenRow[] = [],
+): MarketAsset[] {
   const stats = new Map(summary.map((s) => [s.asset_id, s]));
+  const opens = new Map(dayOpen.map((o) => [o.asset_id, o.open_price]));
   return assets
     .map((a): MarketAsset | null => {
       const s = stats.get(a.id);
@@ -49,6 +57,7 @@ export function mergeMarket(assets: AssetRow[], summary: SummaryRow[]): MarketAs
         name: a.name,
         sector: a.sector,
         refPrice,
+        dayOpen: orNull(opens.get(a.id)) ?? refPrice,
         lastPrice,
         suspendedUntil: a.suspended_until ?? null,
         open: orNull(s?.open_price),
@@ -65,15 +74,17 @@ export function mergeMarket(assets: AssetRow[], summary: SummaryRow[]): MarketAs
 }
 
 export async function fetchMarket(supabase: Db): Promise<MarketAsset[] | null> {
-  const [assets, summary] = await Promise.all([
+  const [assets, summary, dayOpen] = await Promise.all([
     supabase
       .from("assets")
       .select("id,symbol,name,sector,price,last_price,suspended_until")
       .eq("is_active", true),
     supabase.rpc("get_market_summary"),
+    supabase.rpc("get_day_open_prices"),
   ]);
   if (assets.error || !assets.data || summary.error || !summary.data) return null;
-  return mergeMarket(assets.data, summary.data);
+  // Harga open gagal dimuat: persen memakai harga acuan (seperti sebelumnya), bukan mengosongkan daftar.
+  return mergeMarket(assets.data, summary.data, dayOpen.data ?? []);
 }
 
 /** Order book 5 level per sisi, level 1 = terbaik di kedua sisi (bid tertinggi / offer terendah). */

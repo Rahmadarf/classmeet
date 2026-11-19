@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
  * dokumen (±850 px ruang kosong di bawah halaman Pasar, sehingga halaman bisa digulir jauh melewati isinya).
  *
  * Kolom kiri Pasar: pencarian + daftar aset (Figma `Daftar aset`, 1121:709).
- * Harga = harga transaksi terakhir; chip = selisih terhadap harga acuan (▲/▼ + teks, bukan hanya warna).
+ * Harga = harga transaksi terakhir; chip = perubahan terhadap harga OPEN hari ini (▲/▼ + teks, bukan hanya warna).
  */
 export function AssetList({
   assets,
@@ -97,7 +97,7 @@ export function AssetList({
                     </span>
                   ) : (
                     <PriceChangeChip
-                      pct={percentChange(asset.lastPrice, asset.refPrice)}
+                      pct={percentChange(asset.lastPrice, asset.dayOpen)}
                       className="px-2 py-1 text-xs"
                     />
                   )}

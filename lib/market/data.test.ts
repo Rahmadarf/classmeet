@@ -27,6 +27,12 @@ describe("mergeMarket", () => {
     expect(out[0]).toMatchObject({ refPrice: 780_000, lastPrice: 802_500, high: 805_000, lot: 48, freq: 17 });
   });
 
+  it("harga open hari ini dari get_day_open_prices; tanpa data memakai harga acuan", () => {
+    const out = mergeMarket(assets, [], [{ asset_id: "a", open_price: 760_000 }]);
+    expect(out.find((x) => x.symbol === "AA")).toMatchObject({ dayOpen: 760_000, refPrice: 800_000 });
+    expect(out.find((x) => x.symbol === "BB")).toMatchObject({ dayOpen: 300_000, refPrice: 300_000 });
+  });
+
   it("aset tanpa transaksi: harga acuan jadi harga terakhir, statistik harga null, volume 0", () => {
     const [, bata] = mergeMarket(assets, []);
     expect(bata).toMatchObject({

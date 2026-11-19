@@ -10,11 +10,12 @@ import { cn } from "@/lib/utils";
 /**
  * Detail aset terpilih (Figma `Detail aset`, 1121:778). Harga besar = harga TRANSAKSI TERAKHIR.
  * "Acuan" menggantikan "Prev" di Figma: skema tidak punya penutupan hari sebelumnya; harga acuan
- * (digeser berita) adalah dasar ARA/ARB dan pembanding persen di layar (log 13-log-implementasi).
+ * (digeser berita) adalah dasar ARA/ARB. Chip perubahan dan "Open" memakai harga open HARI INI (harga acuan saat hari WIB itu
+ * dimulai; `get_day_open_prices`), bukan lagi harga acuan sekarang, supaya perubahan tidak selalu 0,0 %.
  */
 export function AssetDetail({ asset, band }: { asset: MarketAsset; band: Band | null }) {
   const flash = useChangeFlash(asset.lastPrice);
-  const diff = asset.lastPrice - asset.refPrice;
+  const diff = asset.lastPrice - asset.dayOpen;
   const stat = (v: number | null) => (v === null ? "–" : formatNumber(v));
 
   return (
@@ -47,7 +48,7 @@ export function AssetDetail({ asset, band }: { asset: MarketAsset; band: Band | 
             {formatRupiah(asset.lastPrice)}
           </p>
           <PriceChangeChip
-            pct={percentChange(asset.lastPrice, asset.refPrice)}
+            pct={percentChange(asset.lastPrice, asset.dayOpen)}
             suffix={diff === 0 ? undefined : formatSignedRupiah(diff).replace(/^([+−-])Rp /, "$1")}
             className="px-2 py-1 text-xs"
           />
@@ -55,7 +56,7 @@ export function AssetDetail({ asset, band }: { asset: MarketAsset; band: Band | 
       </div>
 
       <dl className="grid grid-cols-5 gap-2">
-        <Stat label="Open" value={stat(asset.open)} />
+        <Stat label="Open" value={formatNumber(asset.dayOpen)} />
         <Stat label="High" value={stat(asset.high)} />
         <Stat label="Low" value={stat(asset.low)} />
         <Stat label="Acuan" value={formatNumber(asset.refPrice)} />

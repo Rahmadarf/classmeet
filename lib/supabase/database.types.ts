@@ -1134,6 +1134,13 @@ export type Database = {
         Args: never
         Returns: number
       }
+      get_day_open_prices: {
+        Args: never
+        Returns: {
+          asset_id: string
+          open_price: number
+        }[]
+      }
       get_news_pool_kinds: {
         Args: never
         Returns: {
