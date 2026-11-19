@@ -915,3 +915,7 @@ Empat permintaan pengguna.
 **Diuji** (HTTPS, guard1): saklar berpindah seketika tanpa dialog dan tersimpan; pos Tidak tersedia + PIN salah (99999) ditolak "PIN salah."; PIN 12345 memasukkan Rp 100 (tercatat di `payouts` walau pos tidak tersedia); tombol Kirim nonaktif tanpa PIN; form muat di layar 375 × 667. tsc, eslint, vitest (110 tes) lolos.
 
 **Belum diuji**: pengunci 60 dtk lewat browser (hanya tes unit), `GUARD_PIN` kustom di `.env.local`, dan jalur offline (PIN butuh server).
+
+### Penjaga: PIN jadi pop-up (19 Nov)
+
+Permintaan pengguna: PIN tidak lagi kolom tambahan di bawah Nominal, melainkan pop-up. `components/guard/payout-sheet.tsx`: form hanya Nominal + Kirim; "Kirim" membuka pop-up **Masukkan PIN** ("Kirim Rp X ke {tim}", kolom PIN tersamar dengan fokus otomatis, Konfirmasi, Batal, X). PIN benar → hadiah masuk antrean dan tampilan saldo naik seperti sebelumnya; PIN salah → galat "PIN salah." di dalam pop-up dan kolom dikosongkan; Enter mengirim. Isi pop-up dibongkar saat ditutup, jadi PIN dan galat lama tidak tersisa. Pemeriksaan tetap `verifyGuardPin` di server (lihat bagian sebelumnya). Diuji (HTTPS, guard1): tidak ada kolom PIN di form, pop-up muncul dengan fokus di kolom PIN, PIN 00000 ditolak, PIN 12345 mengirim Rp 250 dan form menutup sendiri; tsc, eslint, vitest (110 tes) lolos.

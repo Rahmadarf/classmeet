@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { verifyGuardPin } from "@/app/guard/actions";
 import { AnimatedRupiah } from "@/components/guard/animated-rupiah";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { PIN_MAX, PIN_MIN } from "@/lib/guard/pin-shape";
 import { formatRupiah } from "@/lib/money";
@@ -15,7 +16,7 @@ export type SheetTeam = { requestId: string; teamId: string; name: string; cash:
 /**
  * Lembar form nominal (Figma `Penjaga — Siap pindai (form nominal muncul)`, 1096:483; docs/07 §3.4) di atas layar pindai:
  * nama tim, SALDO TIM saat QR terbaca (tidak diperbarui selama form terbuka dan tidak membatasi nominal), kolom nominal,
- * kolom **PIN penjaga** (diperiksa di server sebelum hadiah masuk antrean), tombol "Kirim Rp …" dan "Batal". Tidak ada tombol
+ * tombol "Kirim Rp …" dan "Batal". "Kirim" membuka pop-up **PIN penjaga** (diperiksa di server sebelum hadiah masuk antrean). Tidak ada tombol
  * nominal cepat, dialog konfirmasi, atau catatan.
  * Setelah "Kirim" ditekan, form TIDAK langsung hilang: isian diganti saldo tim yang naik bertahap dari saldo awal ke saldo
  * baru (mis. 100 → 110 → 120 … → 150), lalu form menutup sendiri sebentar setelah angka selesai naik. Pengiriman tetap
@@ -72,11 +73,9 @@ function Form({
   onCancel: () => void;
 }) {
   const [text, setText] = useState("");
-  const [pin, setPin] = useState("");
-  const [pinError, setPinError] = useState<string | null>(null);
-  const [checking, setChecking] = useState(false);
+  const [pinOpen, setPinOpen] = useState(false);
   const amount = text === "" ? null : Number(text);
-  const valid = amount !== null && Number.isSafeInteger(amount) && amount >= 1 && pin.length >= PIN_MIN;
+  const valid = amount !== null && Number.isSafeInteger(amount) && amount >= 1;
 
   // Form ditutup (Batal/geser) saat PIN sedang diperiksa: jangan memasukkan hadiah ke antrean sesudahnya.
   const alive = useRef(true);
@@ -87,23 +86,137 @@ function Form({
     };
   }, []);
 
-  const submit = async () => {
-    if (!valid || checking) return;
-    setChecking(true);
-    setPinError(null);
+  /** Periksa PIN di server; benar → hadiah masuk antrean. Mengembalikan pesan galat, atau null bila berhasil. */
+  const verify = async (pin: string): Promise<{ error: string | null; clear: boolean }> => {
+    if (amount === null) return { error: null, clear: false };
     try {
       const res = await verifyGuardPin({ pin });
-      if (!alive.current) return;
+      if (!alive.current) return { error: null, clear: false };
       if (res.ok) {
         onSend(team, amount);
-        return;
+        return { error: null, clear: false };
       }
-      setPinError(res.message);
-      if (res.code === "pin_invalid") setPin("");
+      return { error: res.message, clear: res.code === "pin_invalid" };
     } catch {
-      if (alive.current) setPinError("Koneksi bermasalah. Coba lagi.");
-    } finally {
-      if (alive.current) setChecking(false);
+      return { error: "Koneksi bermasalah. Coba lagi.", clear: false };
+    }
+  };
+
+  return (
+    <>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (valid) setPinOpen(true);
+        }}
+        className="flex flex-col gap-4"
+      >
+        <div>
+          <p className="text-brand-text text-[13px] font-semibold tracking-[0.12em] uppercase">Tim terbaca</p>
+          <SheetTitle className="text-ink mt-1 text-[28px] leading-tight font-bold">{team.name}</SheetTitle>
+          <SheetDescription className="sr-only">
+            Isi nominal hadiah untuk {team.name}, lalu kirim.
+          </SheetDescription>
+        </div>
+
+        <div className="rounded-panel bg-nav-active px-4 py-3">
+          <p className="text-ink-muted text-[13px] font-medium">Saldo tim saat ini</p>
+          <p className="money text-ink text-[28px] leading-tight font-bold">{formatRupiah(team.cash)}</p>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label htmlFor="nominal-hadiah" className="text-ink-muted text-lg font-medium">
+            Nominal
+          </label>
+          <input
+            id="nominal-hadiah"
+            autoFocus
+            inputMode="numeric"
+            enterKeyHint="send"
+            autoComplete="off"
+            value={text}
+            onChange={(e) => setText(e.target.value.replace(/\D/g, "").replace(/^0+/, "").slice(0, 12))}
+            className="rounded-panel border-cyan-text bg-field text-ink tnum min-h-16 w-full border-2 px-5 text-[28px] font-bold"
+          />
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <Button type="submit" size="lg" block disabled={!valid} className="min-h-14 text-[17px] font-bold">
+            {valid ? `Kirim ${formatRupiah(amount)}` : "Kirim"}
+          </Button>
+          <Button type="button" variant="secondary" size="lg" block onClick={onCancel} className="min-h-14">
+            Batal
+          </Button>
+        </div>
+      </form>
+      <PinDialog
+        open={pinOpen}
+        onOpenChange={setPinOpen}
+        amount={amount ?? 0}
+        teamName={team.name}
+        onVerify={verify}
+      />
+    </>
+  );
+}
+
+/**
+ * Pop-up PIN penjaga: muncul saat "Kirim" ditekan (bukan kolom di form nominal). Hadiah baru masuk antrean setelah PIN
+ * benar; PIN salah mengosongkan kolom dan menampilkan galat di dalam pop-up. Isi pop-up dibuat ulang tiap dibuka
+ * (Radix membongkarnya saat tutup), jadi PIN dan galat lama tidak tersisa.
+ */
+function PinDialog({
+  open,
+  onOpenChange,
+  amount,
+  teamName,
+  onVerify,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  amount: number;
+  teamName: string;
+  onVerify: (pin: string) => Promise<{ error: string | null; clear: boolean }>;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-[min(420px,92vw)]">
+        <PinBody
+          amount={amount}
+          teamName={teamName}
+          onVerify={onVerify}
+          onCancel={() => onOpenChange(false)}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function PinBody({
+  amount,
+  teamName,
+  onVerify,
+  onCancel,
+}: {
+  amount: number;
+  teamName: string;
+  onVerify: (pin: string) => Promise<{ error: string | null; clear: boolean }>;
+  onCancel: () => void;
+}) {
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+  const ready = pin.length >= PIN_MIN;
+
+  const submit = async () => {
+    if (!ready || checking) return;
+    setChecking(true);
+    setError(null);
+    const res = await onVerify(pin);
+    setChecking(false);
+    if (res.error) {
+      setError(res.error);
+      if (res.clear) setPin("");
     }
   };
 
@@ -115,78 +228,55 @@ function Form({
       }}
       className="flex flex-col gap-4"
     >
-      <div>
-        <p className="text-brand-text text-[13px] font-semibold tracking-[0.12em] uppercase">Tim terbaca</p>
-        <SheetTitle className="text-ink mt-1 text-[28px] leading-tight font-bold">{team.name}</SheetTitle>
-        <SheetDescription className="sr-only">
-          Isi nominal hadiah untuk {team.name}, lalu kirim.
-        </SheetDescription>
+      <div className="pr-12">
+        <DialogTitle className="text-ink text-2xl leading-tight font-semibold">Masukkan PIN</DialogTitle>
+        <DialogDescription className="text-ink-muted mt-2 text-base leading-[1.5]">
+          Kirim {formatRupiah(amount)} ke {teamName}.
+        </DialogDescription>
       </div>
-
-      <div className="rounded-panel bg-nav-active px-4 py-3">
-        <p className="text-ink-muted text-[13px] font-medium">Saldo tim saat ini</p>
-        <p className="money text-ink text-[28px] leading-tight font-bold">{formatRupiah(team.cash)}</p>
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <label htmlFor="nominal-hadiah" className="text-ink-muted text-lg font-medium">
-          Nominal
-        </label>
-        <input
-          id="nominal-hadiah"
-          autoFocus
-          inputMode="numeric"
-          enterKeyHint="send"
-          autoComplete="off"
-          value={text}
-          onChange={(e) => setText(e.target.value.replace(/\D/g, "").replace(/^0+/, "").slice(0, 12))}
-          className="rounded-panel border-cyan-text bg-field text-ink tnum min-h-16 w-full border-2 px-5 text-[28px] font-bold"
-        />
-      </div>
-
       <div className="flex flex-col gap-2">
         <label htmlFor="pin-penjaga" className="text-ink-muted text-lg font-medium">
           PIN penjaga
         </label>
         <input
           id="pin-penjaga"
+          autoFocus
           type="password"
           inputMode="numeric"
           enterKeyHint="send"
           autoComplete="off"
           maxLength={PIN_MAX}
           value={pin}
-          aria-invalid={pinError ? true : undefined}
-          aria-describedby={pinError ? "pin-penjaga-galat" : undefined}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? "pin-penjaga-galat" : undefined}
           onChange={(e) => {
             setPin(e.target.value.replace(/\D/g, "").slice(0, PIN_MAX));
-            if (pinError) setPinError(null);
+            if (error) setError(null);
           }}
           className={cn(
             "rounded-panel bg-field text-ink tnum min-h-16 w-full border-2 px-5 text-[28px] font-bold tracking-[0.3em]",
-            pinError ? "border-bad-text" : "border-line-strong",
+            error ? "border-bad-text" : "border-cyan-text",
           )}
         />
-        {pinError ? (
+        {error ? (
           <p id="pin-penjaga-galat" role="alert" className="text-bad-text text-base font-semibold">
-            {pinError}
+            {error}
           </p>
         ) : null}
       </div>
-
       <div className="flex flex-col gap-3">
         <Button
           type="submit"
           size="lg"
           block
-          disabled={!valid}
+          disabled={!ready}
           loading={checking}
           loadingText="Memeriksa PIN…"
           className="min-h-14 text-[17px] font-bold"
         >
-          {valid ? `Kirim ${formatRupiah(amount)}` : "Kirim"}
+          Konfirmasi
         </Button>
-        <Button type="button" variant="secondary" size="lg" block onClick={onCancel} className="min-h-14">
+        <Button type="button" variant="secondary" size="lg" block onClick={onCancel} disabled={checking}>
           Batal
         </Button>
       </div>
