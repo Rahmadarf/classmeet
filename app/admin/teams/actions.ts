@@ -1,9 +1,15 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
+import { makeShortCode, nextNumber } from "@/lib/admin/accounts";
+import { requireAdmin } from "@/lib/admin/require-admin";
+import { qrDataUrl } from "@/lib/admin/qr-png";
 import { mapRpcError } from "@/lib/errors";
+import { authEmail, formatTeamQr } from "@/lib/qr";
 import type { ActionResult } from "@/lib/schemas/common";
-import { adjustCashSchema } from "@/lib/schemas/admin";
+import { adjustCashSchema, createTeamSchema } from "@/lib/schemas/admin";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient, ServiceKeyMissing } from "@/lib/supabase/service";
 
 /**
  * Koreksi saldo (`admin_adjust_cash`, docs/04 §3.5): selisih bilangan bulat bukan nol + alasan wajib. Hanya admin
@@ -40,4 +46,82 @@ export async function adjustCash(input: unknown): Promise<ActionResult<{ after: 
     };
   }
   return { ok: true, data: { after: Number(data) } };
+}
+
+export type NewTeam = { teamId: string; name: string; username: string; qr: string | null };
+
+/**
+ * Tambah tim baru (akun tim = Supabase Auth user dengan kata sandi = `qr_token`, sama seperti skrip seed). Dibuat dengan service
+ * role setelah peran admin diperiksa. Username (`timN`), `qr_token`, dan kode cadangan dibuat otomatis. Mengembalikan QR sebagai
+ * GAMBAR (data URI); token tidak dikembalikan sebagai teks dan tidak dicatat. Tim mulai dengan saldo 0. Tercatat di audit.
+ */
+export async function createTeam(input: unknown): Promise<ActionResult<NewTeam>> {
+  const parsed = createTeamSchema.safeParse(input);
+  if (!parsed.success)
+    return { ok: false, message: "Nama tim 2–40 huruf.", code: "invalid_input", retryable: false };
+  const supabase = await createClient();
+  const adminId = await requireAdmin(supabase);
+  if (!adminId) return { ok: false, message: "Hanya admin.", code: "forbidden", retryable: false };
+
+  let svc: ReturnType<typeof createServiceClient>;
+  try {
+    svc = createServiceClient();
+  } catch (e) {
+    if (e instanceof ServiceKeyMissing)
+      return {
+        ok: false,
+        message:
+          "Kunci layanan server belum diatur (SUPABASE_SERVICE_ROLE_KEY di .env.local), lalu mulai ulang server.",
+        code: "service_key_missing",
+        retryable: false,
+      };
+    throw e;
+  }
+
+  const name = parsed.data.name;
+  const [{ data: teamRows }, { data: profileRows }] = await Promise.all([
+    svc.from("teams").select("name,short_code"),
+    svc.from("profiles").select("username").like("username", "tim%"),
+  ]);
+  if ((teamRows ?? []).some((t) => t.name.toLowerCase() === name.toLowerCase()))
+    return { ok: false, message: "Nama tim sudah dipakai.", code: "team_name_taken", retryable: false };
+  const username = `tim${nextNumber(
+    "tim",
+    (profileRows ?? []).map((p) => p.username),
+  )}`;
+  const shortCode = makeShortCode(new Set((teamRows ?? []).map((t) => t.short_code)));
+  const token = randomUUID();
+
+  const created = await svc.auth.admin.createUser({
+    email: authEmail(username),
+    password: token,
+    email_confirm: true,
+  });
+  if (created.error || !created.data.user) {
+    console.error("[createTeam] createUser gagal:", created.error?.message);
+    return { ok: false, message: "Akun tim gagal dibuat.", code: null, retryable: true };
+  }
+  const id = created.data.user.id;
+  const rollback = async () => {
+    await svc.from("teams").delete().eq("id", id);
+    await svc.from("profiles").delete().eq("id", id);
+    await svc.auth.admin.deleteUser(id);
+  };
+  const profile = await svc.from("profiles").insert({ id, username, role: "team", display_name: name });
+  if (profile.error) {
+    await rollback();
+    return { ok: false, message: "Profil tim gagal dibuat.", code: null, retryable: true };
+  }
+  const team = await svc.from("teams").insert({ id, name, qr_token: token, short_code: shortCode });
+  if (team.error) {
+    await rollback();
+    return { ok: false, message: "Tim gagal dibuat.", code: null, retryable: true };
+  }
+  await svc.from("audit_log").insert({
+    actor_id: adminId,
+    action: "create_team",
+    payload: { team_id: id, name, username },
+  });
+  const qr = await qrDataUrl(formatTeamQr({ username, token }));
+  return { ok: true, data: { teamId: id, name, username, qr } };
 }

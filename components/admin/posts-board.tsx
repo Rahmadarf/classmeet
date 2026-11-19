@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { setPostOpen } from "@/app/admin/posts/actions";
+import { PostCreateDialog } from "@/components/admin/post-create-dialog";
 import { PageHeader } from "@/components/shell/page-header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -24,6 +25,7 @@ export function PostsBoard({ initial, finished }: { initial: AdminPost[]; finish
   const supabase = useMemo(() => createClient(), []);
   const [posts, setPosts] = useState(initial);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   const dropped = useRef(false);
 
   const refresh = useCallback(async () => {
@@ -79,6 +81,7 @@ export function PostsBoard({ initial, finished }: { initial: AdminPost[]; finish
           <>
             <StatusPill tone="ok">{open} Tersedia</StatusPill>
             <StatusPill tone="bad">{posts.length - open} Tidak tersedia</StatusPill>
+            <Button onClick={() => setCreating(true)}>Tambah pos</Button>
           </>
         }
       />
@@ -134,6 +137,14 @@ export function PostsBoard({ initial, finished }: { initial: AdminPost[]; finish
           Hadiah.
         </p>
       </Card>
+      <PostCreateDialog
+        open={creating}
+        onOpenChange={setCreating}
+        onDone={() => {
+          toast.success("Pos baru ditambahkan.");
+          void refresh();
+        }}
+      />
     </>
   );
 }

@@ -32,11 +32,10 @@ export const FILTERS: { key: "semua" | AuditCategory; label: string }[] = [
 /** Kategori menurut nama aksi (aksi yang benar-benar ditulis fungsi database; docs/04). */
 export function categoryOf(action: string): AuditCategory {
   if (action === "payout_awarded") return "hadiah";
-  if (action === "adjust_cash" || action === "rotate_qr") return "koreksi";
+  if (action === "adjust_cash" || action === "rotate_qr" || action === "create_team") return "koreksi";
   if (["set_state", "leaderboard_visible", "freeze_leaderboard", "unfreeze_leaderboard"].includes(action))
     return "status";
-  if (action === "guard_set_post_open" || action === "set_post_open" || action === "upsert_post")
-    return "pos";
+  if (["guard_set_post_open", "set_post_open", "upsert_post", "create_guard"].includes(action)) return "pos";
   if (
     [
       "save_news",
@@ -89,6 +88,10 @@ export function summarize(row: AuditRaw, lookup: Lookup): string {
       return `${team} ${signed(num(p.amount))} dari ${post}`;
     case "adjust_cash":
       return `${team} ${signed(num(p.delta))} · alasan: ${str(p.reason)}`;
+    case "create_team":
+      return `Tim baru: ${str(p.name)} (${str(p.username)})`;
+    case "create_guard":
+      return `Penjaga baru: ${str(p.username)} + ${post}`;
     case "rotate_qr":
       return `${team}: kartu QR diganti`;
     case "set_state":

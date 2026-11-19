@@ -69,3 +69,13 @@ export const setNewsEventSchema = z
       (v.kind === "dividend" ? v.amount >= 1 && v.amount <= 10 : v.amount >= 1 && v.amount <= 30),
     { message: "Nilai di luar rentang." },
   );
+
+/** Tim baru (akun tim dibuat di server): hanya nama; username, QR, dan kode cadangan dibuat otomatis. */
+export const createTeamSchema = z.object({ name: z.string().trim().min(2).max(40) });
+
+/** Pos baru + akun penjaganya: nama game, lokasi, dan kata sandi awal penjaga (username dibuat otomatis, mis. guard7). */
+export const createPostSchema = z.object({
+  gameName: z.string().trim().min(2).max(60),
+  location: z.string().trim().min(2).max(80),
+  password: z.string().min(8).max(72),
+});

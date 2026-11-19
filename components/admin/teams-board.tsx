@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { CorrectionDialog } from "@/components/admin/correction-dialog";
+import { TeamCreateDialog } from "@/components/admin/team-create-dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
@@ -31,6 +32,7 @@ export function TeamsBoard({ initial }: { initial: TeamRow[] }) {
   const [stale, setStale] = useState(false);
   const [correct, setCorrect] = useState<string | null>(null);
   const [qrTeam, setQrTeam] = useState<TeamRow | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const refresh = useCallback(async () => {
     const next = await fetchTeamsPage(supabase);
@@ -52,9 +54,12 @@ export function TeamsBoard({ initial }: { initial: TeamRow[] }) {
         <p className="text-brand-text text-[13px] font-semibold tracking-[0.12em] uppercase">
           Peringkat langsung
         </p>
-        <h2 id="tim-judul" className="text-ink mb-1 text-2xl font-bold">
-          {rows.length} tim
-        </h2>
+        <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
+          <h2 id="tim-judul" className="text-ink text-2xl font-bold">
+            {rows.length} tim
+          </h2>
+          <Button onClick={() => setCreating(true)}>Tambah tim</Button>
+        </div>
         <DataTable
           caption="Peringkat langsung semua tim"
           head={["#", "Tim", "Saldo", "Nilai aset (harga peringkat)", "Total", ""]}
@@ -108,6 +113,14 @@ export function TeamsBoard({ initial }: { initial: TeamRow[] }) {
         </p>
       </Card>
 
+      <TeamCreateDialog
+        open={creating}
+        onOpenChange={setCreating}
+        onDone={() => {
+          toast.success("Tim baru ditambahkan.");
+          void refresh();
+        }}
+      />
       <CorrectionDialog
         open={correct !== null}
         onOpenChange={(o) => !o && setCorrect(null)}
