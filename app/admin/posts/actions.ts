@@ -5,7 +5,7 @@ import type { ActionResult } from "@/lib/schemas/common";
 import { setPostOpenSchema } from "@/lib/schemas/admin";
 import { createClient } from "@/lib/supabase/server";
 
-/** Buka/tutup pos oleh admin (`admin_set_post_open`; ditolak saat game selesai; tercatat di audit). */
+/** Ubah ketersediaan pos (Tersedia / Tidak tersedia) oleh admin (`admin_set_post_open`; ditolak saat game selesai; tercatat di audit). */
 export async function setPostOpen(input: unknown): Promise<ActionResult> {
   const parsed = setPostOpenSchema.safeParse(input);
   if (!parsed.success)

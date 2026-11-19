@@ -26,7 +26,7 @@ export function backoffMs(attempt: number): number {
 }
 
 const REASONS: Record<string, string> = {
-  post_closed: "pos ditutup",
+  post_closed: "pos tidak tersedia",
   game_not_active: "permainan belum dimulai atau sudah selesai",
   invalid_amount: "nominal tidak valid",
   team_not_found: "tim tidak ditemukan",

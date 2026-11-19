@@ -101,7 +101,7 @@ export function summarize(row: AuditRaw, lookup: Lookup): string {
     case "unfreeze_leaderboard":
       return "Pembekuan leaderboard dilepas";
     case "guard_set_post_open":
-      return `${post} ${p.is_open === true ? "dibuka" : "ditutup"}`;
+      return `${post} ${p.is_open === true ? "jadi Tersedia" : "jadi Tidak tersedia"}`;
     case "save_news":
       return "Berita disimpan";
     case "set_news_ready":
@@ -109,7 +109,7 @@ export function summarize(row: AuditRaw, lookup: Lookup): string {
     case "news_launch_failed":
       return "Peluncuran berita gagal (dicatat sistem)";
     case "set_post_open":
-      return `${post} ${p.is_open === true ? "dibuka" : "ditutup"} oleh admin`;
+      return `${post} ${p.is_open === true ? "jadi Tersedia" : "jadi Tidak tersedia"} oleh admin`;
     case "upsert_post":
       return `${p.created === true ? "Pos baru" : "Pos diubah"}: ${str(p.name)}`;
     case "upsert_asset":

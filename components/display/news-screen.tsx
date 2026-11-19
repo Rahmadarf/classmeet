@@ -96,7 +96,9 @@ function Featured({ item, now }: { item: NewsItem; now: number | null }) {
           Berita terbaru
         </p>
         {fresh ? (
-          <span className="bg-cyan text-ink-on-accent rounded-full px-4 py-1 text-[18px] font-bold">Baru</span>
+          <span className="bg-cyan text-ink-on-accent rounded-full px-4 py-1 text-[18px] font-bold">
+            Baru
+          </span>
         ) : null}
         <div className="flex-1" />
         <time dateTime={item.publishedAt} className="tnum text-ink-muted text-[22px] font-semibold">
@@ -112,9 +114,7 @@ function Featured({ item, now }: { item: NewsItem; now: number | null }) {
         <span className="line-clamp-8">{item.body}</span>
       </p>
       <div className="flex-1" />
-      {age !== null ? (
-        <p className="text-ink-dim shrink-0 text-[22px] font-medium">{agoLabel(age)}</p>
-      ) : null}
+      {age !== null ? <p className="text-ink-dim shrink-0 text-[22px] font-medium">{agoLabel(age)}</p> : null}
     </section>
   );
 }

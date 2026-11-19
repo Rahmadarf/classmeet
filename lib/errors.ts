@@ -16,7 +16,7 @@ const MESSAGES: Record<string, string> = {
   insufficient_cash: "Saldo tidak cukup.",
   insufficient_holdings: "Jumlah aset yang kamu miliki tidak cukup.",
   request_id_conflict: "Permintaan bentrok, muat ulang halaman.",
-  post_closed: "Pos sedang ditutup.",
+  post_closed: "Pos sedang tidak tersedia.",
   invalid_amount: "Nominal tidak valid.",
   team_not_found: "Tim tidak ditemukan.",
   news_not_found: "Berita tidak ditemukan.",

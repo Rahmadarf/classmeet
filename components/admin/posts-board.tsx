@@ -17,7 +17,7 @@ const POLL_MS = 15_000;
 
 /**
  * Pos (Figma `Admin — Pos`, 1105:379): nomor, game, lokasi, penjaga, total hadiah, status. Chip ringkasan "N Tersedia /
- * N Tidak tersedia". Admin bisa Buka/Tutup pos lewat `admin_set_post_open` (docs/04 §3.9), dinonaktifkan saat game
+ * N Tidak tersedia". Admin bisa mengubah ketersediaan pos (Tersedia / Tidak tersedia) lewat `admin_set_post_open` (docs/04 §3.9), dinonaktifkan saat game
  * selesai. Berubah lewat Realtime `posts`.
  */
 export function PostsBoard({ initial, finished }: { initial: AdminPost[]; finished: boolean }) {
@@ -57,7 +57,7 @@ export function PostsBoard({ initial, finished }: { initial: AdminPost[]; finish
     setBusyId(p.id);
     try {
       const res = await setPostOpen({ postId: p.id, open: !p.open });
-      if (res.ok) toast.success(`${p.title} ${p.open ? "ditutup" : "dibuka"}.`);
+      if (res.ok) toast.success(`${p.title} sekarang ${p.open ? "tidak tersedia" : "tersedia"}.`);
       else toast.error(res.message);
       void refresh();
     } catch {
@@ -92,8 +92,8 @@ export function PostsBoard({ initial, finished }: { initial: AdminPost[]; finish
         <DataTable
           caption="Daftar pos"
           head={["No", "Game", "Lokasi", "Penjaga", "Total hadiah", "Status", ""]}
-          widths={[80, 230, 220, 170, 180, 130]}
-          minWidth={940}
+          widths={[64, 170, 170, 150, 150, 160, 210]}
+          minWidth={1080}
         >
           {posts.map((p) => (
             <tr key={p.id}>
@@ -112,22 +112,24 @@ export function PostsBoard({ initial, finished }: { initial: AdminPost[]; finish
               <td className="text-right">
                 <Button
                   variant={p.open ? "danger" : "secondary"}
+                  className="whitespace-nowrap"
                   size="sm"
                   disabled={finished || busyId !== null}
                   loading={busyId === p.id}
                   loadingText="…"
-                  aria-label={`${p.open ? "Tutup" : "Buka"} ${p.title}`}
+                  aria-label={`${p.open ? "Jadikan tidak tersedia" : "Jadikan tersedia"}: ${p.title}`}
                   onClick={() => void toggle(p)}
                 >
-                  {p.open ? "Tutup" : "Buka"}
+                  {p.open ? "Jadikan tidak tersedia" : "Jadikan tersedia"}
                 </Button>
               </td>
             </tr>
           ))}
         </DataTable>
         <p className="text-ink-muted text-sm">
-          Pos baru selalu mulai Tidak tersedia; penjaga membukanya saat siap, admin juga bisa membuka atau
-          menutupnya.
+          Pos baru selalu mulai Tidak tersedia. Tersedia = pos masih kurang tim atau belum ada tim untuk
+          memulai permainan; Tidak tersedia = pos penuh atau permainan sedang dimulai. Penjaga dan admin bisa
+          mengubahnya.
           {finished ? " Game selesai: status pos tidak bisa diubah." : ""} Total hadiah mengikuti halaman
           Hadiah.
         </p>

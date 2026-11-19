@@ -52,7 +52,7 @@ describe("buildAuditRows", () => {
     );
     expect(rows.map((r) => r.summary)).toEqual([
       "Game: paused → open",
-      "Pos 3 · Merakit ditutup",
+      "Pos 3 · Merakit jadi Tidak tersedia",
       "guard1 · Alya masuk · laptop-3",
     ]);
   });
@@ -81,7 +81,7 @@ describe("aksi dari fungsi admin baru (scripts/sql/admin-functions-missing.sql)"
     );
     expect(rows.map((r) => r.summary)).toEqual([
       "Stok AP 10 → 7 · alasan: koreksi",
-      "Pos 3 · Merakit dibuka oleh admin",
+      "Pos 3 · Merakit jadi Tersedia oleh admin",
       "Aset baru: AP",
     ]);
   });

@@ -38,7 +38,7 @@ export async function resolveTeam(input: unknown): Promise<ActionResult<Resolved
 
 /**
  * Kirim hadiah ke satu tim (`award_payout`). Idempotent menurut `requestId`: kirim ulang dengan id yang sama tidak
- * menggandakan hadiah. Saldo tim bertambah seketika; pos harus terbuka dan game `open`/`paused` (database memutuskan).
+ * menggandakan hadiah. Saldo tim bertambah seketika; pos harus Tersedia dan game `open`/`paused` (database memutuskan).
  */
 export async function awardPayout(input: unknown): Promise<ActionResult> {
   const parsed = awardPayoutSchema.safeParse(input);
@@ -58,7 +58,7 @@ export async function awardPayout(input: unknown): Promise<ActionResult> {
   return { ok: true, data: undefined };
 }
 
-/** Buka/tutup pos milik penjaga (`guard_set_post_open`). Ditolak database setelah game selesai. */
+/** Ubah ketersediaan pos milik penjaga (Tersedia / Tidak tersedia) (`guard_set_post_open`). Ditolak database setelah game selesai. */
 export async function setMyPostOpen(input: unknown): Promise<ActionResult<boolean>> {
   const parsed = setPostOpenSchema.safeParse(input);
   if (!parsed.success) return INVALID;

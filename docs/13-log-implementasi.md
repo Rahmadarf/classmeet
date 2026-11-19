@@ -876,3 +876,22 @@ Permintaan pengguna: setelah QR tim dipindai dan "Kirim" ditekan, form **tidak l
 **Diuji** (HTTPS, akun guard1, data Docker): sukses Rp 50 ke Tim Elang: saldo 9.160.244 → 9.160.294 bertahap, keterangan menjadi Terkirim, form menutup ±3,4 dtk setelah Kirim, kartu hijau "terkirim" muncul; pos ditutup lewat SQL lalu kirim Rp 70: saldo tetap 9.160.294, "Gagal terkirim", form menutup sendiri, kartu merah "Gagal: pos ditutup…" dengan "Kirim ulang"/"Tutup" tampil. Pos dibuka kembali sesudah uji. tsc, eslint, vitest (108 tes) lolos. Efek samping uji: saldo Tim Elang di Docker bertambah Rp 50 (data uji).
 
 **Belum diuji**: kamera sungguhan di ponsel, ponsel dengan gerak dikurangi, dan nominal sangat besar (12 digit) di layar sempit.
+
+### Penjaga: animasi saldo pakai `motion`; istilah pos jadi Tersedia / Tidak tersedia (19 Nov)
+
+Koreksi pengguna atas dua hal.
+
+**1. Animasi saldo tidak mulus → library `motion`.** Versi sebelumnya memakai 24 langkah `setInterval` (re-render React tiap langkah) sehingga terlihat patah. Kini:
+- Dependensi baru `motion` (^14.14, `package.json`).
+- `components/guard/animated-rupiah.tsx` (baru): `animate(MotionValue, to, { duration, ease })` + `useTransform` ke teks Rupiah, ditulis langsung ke DOM tiap frame (tanpa render ulang React). Nilai dibulatkan hanya di teks; akhir selalu tepat. `useReducedMotion` → langsung angka akhir. `onDone` dipanggil sekali saat selesai, yang memicu kartu hijau dan penutupan form 1,4 dtk kemudian.
+- `lib/guard/count-up.ts` kini hanya `countUpDurationMs` (1,6 dtk, +0,15 dtk per digit tambahan nominal, maks 2,6 dtk) dan kurva `COUNT_UP_EASE` (cubic-bezier 0,45 / 0 / 0,2 / 1). `countUpValue` dan konstanta langkah dihapus; tes diganti.
+- `payout-sheet.tsx` memakai `AnimatedRupiah`; bila pengiriman gagal, komponen diganti saldo awal statis.
+- Diuji (nominal Rp 50.000, rAF per frame di browser): 133 nilai berbeda dalam ±2,2 dtk, selang antar frame maks 19 ms, selalu naik, kecepatan naik lalu turun mengikuti kurva, berakhir tepat di saldo + nominal, form menutup ±3,7 dtk setelah Kirim. Catatan uji: mengambil tangkapan layar saat animasi menahan frame (artefak alat uji, bukan aplikasi).
+
+**2. Istilah pos.** Arti yang dipakai: **Tersedia** = pos masih kurang tim atau belum ada tim untuk memulai permainan; **Tidak tersedia** = pos penuh atau permainan sedang dimulai. Kata "buka/tutup pos" dihapus dari semua teks pengguna:
+- Penjaga (`post-toggle.tsx`): label saklar "Pos tersedia" / "Pos tidak tersedia"; dialog "Ubah pos jadi Tidak tersedia?" / "Ubah pos jadi Tersedia?" dengan penjelasan arti di atas; tombol "Jadikan tidak tersedia" / "Jadikan tersedia". `scan-board.tsx`: "Pos tidak tersedia: hadiah belum bisa dikirim."
+- Admin (`posts-board.tsx`): tombol "Jadikan tidak tersedia / tersedia", toast "{pos} sekarang tersedia/tidak tersedia", keterangan di bawah tabel memuat arti kedua status; lebar kolom disesuaikan (tombol lebih panjang, tidak terpotong).
+- Pesan galat `post_closed`: "Pos sedang tidak tersedia."; alasan antrean "pos tidak tersedia"; ringkasan Audit "Pos 3 · … jadi Tersedia / jadi Tidak tersedia" (+ tes). Layar publik dan chip admin sudah memakai Tersedia / Tidak tersedia.
+- Nama kolom dan kode database (`is_open`, `post_closed`, `guard_set_post_open`) tidak diubah.
+
+**Perlu keputusan pengguna**: aturan database lama masih menolak hadiah bila pos tidak `is_open` (`post_closed`), sehingga hadiah hanya bisa dikirim saat pos **Tersedia**. Dengan arti baru (Tidak tersedia = permainan sedang berlangsung), hadiah yang diberikan sesudah permainan akan ditolak. Belum saya ubah; docs/07 dan docs/04 juga belum diperbarui.

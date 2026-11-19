@@ -21,7 +21,7 @@ const SUCCESS_MS = 8_000;
 /**
  * Antrean hadiah lokal dengan percobaan ulang (docs/07 §3.4). `enqueue` mengembalikan kendali seketika; pengiriman
  * berjalan di latar belakang dengan `request_id` yang SAMA tiap percobaan. Jaringan putus: ulang otomatis dengan jeda
- * naik (maks. 5 kali); galat tetap (pos ditutup, game selesai, dst.): langsung gagal dan menunggu "Kirim ulang".
+ * naik (maks. 5 kali); galat tetap (pos tidak tersedia, game selesai, dst.): langsung gagal dan menunggu "Kirim ulang".
  * Yang belum terkirim disimpan di peramban dan dilanjutkan saat halaman dibuka lagi.
  */
 export function usePayoutQueue() {

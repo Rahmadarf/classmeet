@@ -1,10 +1,10 @@
 "use client";
 
 import { Check, Loader2, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { AnimatedRupiah } from "@/components/guard/animated-rupiah";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
-import { COUNT_UP_STEP_MS, COUNT_UP_STEPS, countUpValue } from "@/lib/guard/count-up";
 import { formatRupiah } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
@@ -126,7 +126,7 @@ function Form({
 }
 
 /**
- * Saldo tim naik bertahap dari saldo awal ke saldo awal + nominal (`countUpValue`), lalu form menutup sendiri
+ * Saldo tim naik bertahap dari saldo awal ke saldo awal + nominal (`AnimatedRupiah`, library `motion`), lalu form menutup sendiri
  * (`onDone`). Pengguna yang meminta gerak dikurangi (`prefers-reduced-motion`) langsung melihat angka akhir.
  * Pembaca layar hanya mendengar hasil akhir, bukan tiap angka yang berubah.
  */
@@ -141,23 +141,9 @@ function Counting({
   phase: PayoutPhase;
   onDone: () => void;
 }) {
-  const [step, setStep] = useState(0);
-  const finished = step >= COUNT_UP_STEPS;
+  const [finished, setFinished] = useState(false);
   const failed = phase === "failed";
-
-  useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      const id = window.setTimeout(() => setStep(COUNT_UP_STEPS), 0);
-      return () => window.clearTimeout(id);
-    }
-    const id = window.setInterval(() => {
-      setStep((s) => {
-        if (s + 1 >= COUNT_UP_STEPS) window.clearInterval(id);
-        return Math.min(s + 1, COUNT_UP_STEPS);
-      });
-    }, COUNT_UP_STEP_MS);
-    return () => window.clearInterval(id);
-  }, []);
+  const done = useCallback(() => setFinished(true), []);
 
   // Tutup sendiri: sebentar setelah angka selesai naik, atau lebih cepat bila pengiriman gagal (kartu merah tetap tampil di bawah kamera).
   useEffect(() => {
@@ -166,7 +152,6 @@ function Counting({
     return () => window.clearTimeout(id);
   }, [finished, failed, onDone]);
 
-  const shown = failed ? team.cash : countUpValue(team.cash, amount, step);
   const caption =
     phase === "failed"
       ? {
@@ -212,9 +197,18 @@ function Counting({
         )}
       >
         <p className="text-ink-muted text-[13px] font-medium">Saldo tim</p>
-        <p aria-hidden className="money text-ink text-[40px] leading-tight font-bold">
-          {formatRupiah(shown)}
-        </p>
+        {failed ? (
+          <p aria-hidden className="money text-ink text-[40px] leading-tight font-bold">
+            {formatRupiah(team.cash)}
+          </p>
+        ) : (
+          <AnimatedRupiah
+            from={team.cash}
+            to={team.cash + amount}
+            onDone={done}
+            className="text-ink text-[40px] leading-tight font-bold"
+          />
+        )}
         {!failed ? (
           <p aria-hidden className="money text-ok-text mt-1 text-[20px] font-bold">
             + {formatRupiah(amount)}

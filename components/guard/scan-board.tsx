@@ -219,7 +219,7 @@ export function ScanBoard({
           {number ? `Pos ${number} · ${title}` : title}
           {!post.open ? (
             <span className="text-bad-text block text-sm font-medium">
-              Pos tutup: hadiah belum bisa dikirim.
+              Pos tidak tersedia: hadiah belum bisa dikirim.
             </span>
           ) : null}
         </p>

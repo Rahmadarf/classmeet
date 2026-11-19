@@ -6,9 +6,10 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 
 /**
- * Saklar buka/tutup pos (Figma `Penjaga — Siap pindai`, 1084:412; docs/07 §3.4). Tanpa teks status: hijau + bulatan di
- * kanan = pos tersedia, merah + bulatan di kiri = tutup (posisi bulatan juga membedakan tanpa warna; `aria-label`
- * "Pos tersedia"/"Pos tutup"). Tiap perubahan meminta konfirmasi satu ketukan. Nonaktif setelah game selesai.
+ * Saklar ketersediaan pos (Figma `Penjaga — Siap pindai`, 1084:412; docs/07 §3.4). Tanpa teks status: hijau + bulatan di
+ * kanan = pos Tersedia (masih kurang tim atau belum ada tim untuk memulai permainan), merah + bulatan di kiri =
+ * Tidak tersedia (pos penuh atau permainan sedang dimulai); posisi bulatan juga membedakan tanpa warna; `aria-label`
+ * "Pos tersedia"/"Pos tidak tersedia". Tiap perubahan meminta konfirmasi satu ketukan. Nonaktif setelah game selesai.
  */
 export function PostToggle({
   open,
@@ -47,7 +48,7 @@ export function PostToggle({
         type="button"
         role="switch"
         aria-checked={open}
-        aria-label={open ? "Pos tersedia" : "Pos tutup"}
+        aria-label={open ? "Pos tersedia" : "Pos tidak tersedia"}
         disabled={disabled}
         onClick={() => {
           setError(null);
@@ -73,13 +74,13 @@ export function PostToggle({
           setConfirm(o);
           if (!o) setError(null);
         }}
-        title={open ? "Tutup pos sementara?" : "Buka pos?"}
+        title={open ? "Ubah pos jadi Tidak tersedia?" : "Ubah pos jadi Tersedia?"}
         description={
           open
-            ? "Selama ditutup, pos tidak bisa memberi hadiah baru. Hadiah yang sudah terkirim tidak berubah."
-            : "Pos akan tersedia dan bisa memberi hadiah."
+            ? "Pakai saat pos penuh atau permainan sedang dimulai. Selama tidak tersedia, pos tidak bisa memberi hadiah baru; hadiah yang sudah terkirim tidak berubah."
+            : "Pakai saat pos masih kurang tim atau belum ada tim untuk memulai permainan."
         }
-        confirmLabel={open ? "Tutup pos" : "Buka pos"}
+        confirmLabel={open ? "Jadikan tidak tersedia" : "Jadikan tersedia"}
         tone={open ? "danger" : "primary"}
         loading={busy}
         error={error}

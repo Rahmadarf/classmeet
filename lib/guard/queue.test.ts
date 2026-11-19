@@ -23,13 +23,13 @@ const job: PayoutJob = {
 describe("teks hasil", () => {
   it("sukses dan gagal mengikuti Figma", () => {
     expect(successText(job)).toBe("Rp 300.000 terkirim ke Tim Cakra");
-    expect(failureText({ ...job, teamName: "Tim Elang", reason: "pos ditutup" })).toBe(
-      "Gagal: pos ditutup. Hadiah Rp 300.000 untuk Tim Elang belum terkirim.",
+    expect(failureText({ ...job, teamName: "Tim Elang", reason: "pos tidak tersedia" })).toBe(
+      "Gagal: pos tidak tersedia. Hadiah Rp 300.000 untuk Tim Elang belum terkirim.",
     );
   });
 
   it("alasan dari kode dikenal, selain itu dari pesan", () => {
-    expect(failureReason("post_closed", "Pos sedang ditutup.")).toBe("pos ditutup");
+    expect(failureReason("post_closed", "Pos sedang tidak tersedia.")).toBe("pos tidak tersedia");
     expect(failureReason(null, "Koneksi bermasalah. Coba lagi.")).toBe("koneksi bermasalah");
     expect(failureReason("lain", "")).toBe("terjadi kesalahan");
   });
@@ -49,8 +49,11 @@ describe("antrean tersimpan", () => {
   });
 
   it("gagal tetap gagal dengan alasannya", () => {
-    const failed: PayoutJob = { ...job, status: "failed", reason: "pos ditutup" };
-    expect(parseJobs(serializeJobs([failed]))[0]).toMatchObject({ status: "failed", reason: "pos ditutup" });
+    const failed: PayoutJob = { ...job, status: "failed", reason: "pos tidak tersedia" };
+    expect(parseJobs(serializeJobs([failed]))[0]).toMatchObject({
+      status: "failed",
+      reason: "pos tidak tersedia",
+    });
   });
 
   it("membuang entri rusak, ganda, atau berisi nominal tidak sah", () => {
