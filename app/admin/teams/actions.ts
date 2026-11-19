@@ -2,13 +2,12 @@
 
 import { randomUUID } from "node:crypto";
 import { makeShortCode, nextNumber } from "@/lib/admin/accounts";
-import { deleteLimiter, passcodeMatches } from "@/lib/admin/passcode";
 import { requireAdmin } from "@/lib/admin/require-admin";
 import { qrDataUrl } from "@/lib/admin/qr-png";
 import { mapRpcError } from "@/lib/errors";
 import { authEmail, formatTeamQr } from "@/lib/qr";
 import type { ActionResult } from "@/lib/schemas/common";
-import { adjustCashSchema, createTeamSchema, deleteTeamSchema } from "@/lib/schemas/admin";
+import { adjustCashSchema, createTeamSchema } from "@/lib/schemas/admin";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient, ServiceKeyMissing } from "@/lib/supabase/service";
 
@@ -125,50 +124,4 @@ export async function createTeam(input: unknown): Promise<ActionResult<NewTeam>>
   });
   const qr = await qrDataUrl(formatTeamQr({ username, token }));
   return { ok: true, data: { teamId: id, name, username, qr } };
-}
-
-/**
- * Hapus tim (soft delete, `admin_delete_team`): butuh PASCODE 6 digit (bawaan 223332; `ADMIN_DELETE_PASSCODE` di server),
- * dibandingkan di server dengan perbandingan waktu-tetap; 5 salah berturut-turut mengunci admin itu 60 dtk. Order antre tim
- * dibatalkan, tim hilang dari peringkat dan tidak bisa dipindai, kartu QR lama mati, riwayat transaksi tetap tersimpan.
- * Akun loginnya dinonaktifkan dengan service role bila kuncinya ada.
- */
-export async function deleteTeam(input: unknown): Promise<ActionResult<{ loginDisabled: boolean }>> {
-  const parsed = deleteTeamSchema.safeParse(input);
-  if (!parsed.success)
-    return { ok: false, message: "Pascode terdiri dari 6 angka.", code: "pin_invalid", retryable: false };
-  const supabase = await createClient();
-  const adminId = await requireAdmin(supabase);
-  if (!adminId) return { ok: false, message: "Hanya admin.", code: "forbidden", retryable: false };
-
-  const wait = deleteLimiter.lockedFor(adminId, Date.now());
-  if (wait > 0)
-    return {
-      ok: false,
-      message: `Terlalu banyak pascode salah. Coba lagi dalam ${wait} detik.`,
-      code: "rate_limited",
-      retryable: false,
-    };
-  if (!passcodeMatches(parsed.data.passcode)) {
-    deleteLimiter.fail(adminId, Date.now());
-    return { ok: false, message: "Pascode salah.", code: "pin_invalid", retryable: false };
-  }
-  deleteLimiter.succeed(adminId);
-
-  const { error } = await supabase.rpc("admin_delete_team", { p_team_id: parsed.data.teamId });
-  if (error) {
-    const mapped = mapRpcError(error);
-    if (!mapped.code && !mapped.retryable)
-      console.error("[admin_delete_team] galat tak terduga:", error.message);
-    return { ok: false, ...mapped };
-  }
-  let loginDisabled = false;
-  try {
-    const svc = createServiceClient();
-    const res = await svc.auth.admin.updateUserById(parsed.data.teamId, { ban_duration: "876000h" });
-    loginDisabled = !res.error;
-  } catch {
-    // kunci service role tidak ada: tim tetap terhapus (QR mati, tidak bisa order), hanya login lama belum diblokir
-  }
-  return { ok: true, data: { loginDisabled } };
 }

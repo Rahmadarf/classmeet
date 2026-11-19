@@ -785,7 +785,6 @@ export type Database = {
       }
       teams: {
         Row: {
-          deleted_at: string | null
           cash: number
           created_at: string
           id: string
@@ -795,7 +794,6 @@ export type Database = {
           short_code: string
         }
         Insert: {
-          deleted_at?: string | null
           cash?: number
           created_at?: string
           id: string
@@ -805,7 +803,6 @@ export type Database = {
           short_code: string
         }
         Update: {
-          deleted_at?: string | null
           cash?: number
           created_at?: string
           id?: string
@@ -1121,10 +1118,6 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
-      }
-      admin_delete_team: {
-        Args: { p_team_id: string }
-        Returns: undefined
       }
       admin_applied_news: {
         Args: { p_limit?: number }

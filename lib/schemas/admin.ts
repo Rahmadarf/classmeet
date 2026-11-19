@@ -73,9 +73,6 @@ export const setNewsEventSchema = z
 /** Tim baru (akun tim dibuat di server): hanya nama; username, QR, dan kode cadangan dibuat otomatis. */
 export const createTeamSchema = z.object({ name: z.string().trim().min(2).max(40) });
 
-/** Hapus tim: id tim + pascode 6 digit. */
-export const deleteTeamSchema = z.object({ teamId: uuidSchema, passcode: z.string().regex(/^\d{6}$/) });
-
 /** Pos baru + akun penjaganya: nama game, lokasi, dan kata sandi awal penjaga (username dibuat otomatis, mis. guard7). */
 export const createPostSchema = z.object({
   gameName: z.string().trim().min(2).max(60),
