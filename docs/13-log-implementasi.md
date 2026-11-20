@@ -1025,3 +1025,7 @@ Hasil: vitest 144 lolos (tes baru: nama tidak bocor, petunjuk cocok efek, pengec
 ## Mulai ulang berita dan petunjuk aset bangkrut (20 Nov)
 
 Mulai ulang berita di Docker laptop (memanggil `admin_restart_news` sebagai admin): 1000 berita `ready`, feed dan catatan event dikosongkan, berita pertama terbit dari kumpulan baru. Temuan: petunjuk menyebut ciri Xiaomi, padahal Xiaomi bangkrut sehingga efeknya dibuang saat terbit. Perbaikan: `news_pool()` di `scripts/sql/news-engine-v2.sql` mengecualikan berita yang aset berpetunjuknya nonaktif (lihat docs/15 §3a). Diterapkan ke Docker laptop (bukan cloud). Uji: 721 dari 999 berita `ready` layak pakai, 0 yang petunjuknya menyebut aset nonaktif (diperiksa terhadap aturan pembuat berita); satu berita yang efeknya sudah terpangkas karena pernah terbit diganti lewat `load-news -- --replace`.
+
+## Trading model toko, tahap 2: SQL (20 Nov)
+
+Cabang `feat/trading-toko`. Spesifikasi di docs/17. `scripts/sql/trading-shop.sql` (migrasi sekali, diterapkan ke Docker laptop setelah cadangan penuh) dan `scripts/sql/test-trading-shop.sql` (53 pemeriksaan, rollback). Isi dan keputusan teknis di docs/17 §8. Total kas sebelum dan sesudah sama (Rp 310.316.320); order lama dibuang; simulasi berita 3 hari sehat. UI tim, display, dan admin masih memakai order book lama sehingga sementara tidak berfungsi sampai tahap 4–5.

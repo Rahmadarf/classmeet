@@ -1,6 +1,6 @@
 # 17 — Trading model toko (menggantikan order book `docs/12`)
 
-Status: **rancangan disetujui 20 Nov 2026, belum diterapkan.** Setelah diterapkan dokumen ini menggantikan [12](12-order-book.md), `05` §4, dan `07` bagian order. Dikerjakan di cabang `feat/trading-toko`.
+Status: **rancangan disetujui 20 Nov 2026. Tahap 2 (SQL) diterapkan ke database Docker laptop 20 Nov** (`scripts/sql/trading-shop.sql`, tes `scripts/sql/test-trading-shop.sql`); UI, display, dan admin belum diubah (tahap 4–5). Setelah diterapkan dokumen ini menggantikan [12](12-order-book.md), `05` §4, dan `07` bagian order. Dikerjakan di cabang `feat/trading-toko`.
 
 Alasan: order book mirip bursa nyata, sehingga sulit dibaca admin dan pemain. Acuan: halaman Market IT Fest 2026, yaitu toko dengan satu harga per aset, sisa stok, dan tombol Beli (pengamatan 20 Nov: kartu aset, "N in stock" dengan titik merah saat menipis, pencarian, urut harga; tanpa grafik, order book, atau order limit). Pembeda yang dipilih: selisih jual, tekanan stok, batas pegang.
 
@@ -91,3 +91,13 @@ Migrasi database laptop: cadangan `pg_dump` sebelum SQL dijalankan; saldo dan ke
 - Tim tidak lagi bisa berdagang satu sama lain. Interaksi tim ke tim hilang; bila dirindukan, "pasar tim" bisa menyusul sebagai fitur terpisah.
 - Keunggulan pembaca berita tetap ada: beli saat jeda 3–15 menit antara terbit dan efek. Selisih jual 2 %, tekanan stok, dan batas pegang membatasinya.
 - Pembeda tambahan yang belum dipilih dan bisa menyusul tanpa mengubah dasar ini: Flash Drop (stok kilat berdiskon), bonus diversifikasi sektor, kartu "Analis" dari pos.
+
+## 8. Catatan tahap 2 (SQL, 20 Nov)
+
+- **Harga tayang disimpan di `assets.last_price`** (dan `rank_price`) oleh trigger `assets_tayang` setiap `price` atau `price_factor_bps` berubah. Akibatnya kode lama yang membaca `last_price`/`rank_price` (peringkat, IKC, `process_news_cycle`) tetap benar tanpa diubah. `price` tetap harga acuan dari berita.
+- **RPC**: `buy_asset(request_id, asset_id, qty)`, `sell_asset(request_id, asset_id, qty)` (mengembalikan baris `transactions`), `get_market_summary()` (kolom baru: `sell_price`, `stock`, `init_stock`, `price_factor_bps`; open/high/low/lot/val/avg/freq dari `transactions`), `admin_set_trade_settings(...)` (dikunci setelah game dimulai). Kode galat: `forbidden`, `invalid_input`, `team_not_found`, `request_id_conflict`, `market_closed`, `asset_not_found` (juga untuk aset bangkrut), `asset_suspended`, `hold_cap_exceeded`, `insufficient_stock`, `insufficient_cash`, `insufficient_holdings`.
+- **Pemulihan tekanan** di `process_market_cycle` (tiap 10 dtk): faktor turun `ceil(cap x detik / (menit x 60))` bps per siklus menuju 0; jam pemulihan di tabel `shop_clock` (bukan `game_settings`, supaya Realtime tidak berbunyi tiap 10 dtk); saat jeda jam tetap berjalan sehingga tidak ada lompatan sesudahnya.
+- **Migrasi**: `locked_cash` dikembalikan ke saldo (total kas sebelum dan sesudah sama: Rp 310.316.320), `locked_qty` direset, tabel `orders` (183.906 baris) dan `trades` dibuang (cadangan penuh sebelum migrasi di `~/classmeet-recovery/db-pre-shop-*.dump`). Dua aset sudah punya invarian stok yang tidak utuh sebelum migrasi (aset bangkrut yang dilikuidasi); tidak berubah.
+- **Kolom lama dibiarkan** sementara (`fee_bps`, `band_bps`, `house_*`, `rank_*`, `sell_fee_bps`, `locked_cash`, `locked_qty`) dan dibuang pada tahap pembersihan sesudah UI baru, karena UI lama masih memilihnya.
+- **Dibuang**: `place_order`, `cancel_order`, `ob_*`, `get_order_book`, `order_band`, `process_house_quotes`, `trg_orders_suspended`, `tick_for`, `round_tick`, `ceil_tick`, `floor_tick`. Disesuaikan: `admin_set_game_state`, `process_suspensions`, `process_news_cycle`, `market_state` (`trades_10m` dari `transactions`), `bankrupt_asset`, `suspend_asset`, `process_market_cycle`.
+- Hasil uji: 53 pemeriksaan SQL lolos (beli, jual, harga satuan, saldo, kepemilikan, `cost_basis`, stok, tekanan dan batasnya, pemulihan, idempoten, konflik, batas pegang, stok habis, saldo kurang, suspensi, pasar jeda, peran, aset bangkrut, likuidasi, ringkasan pasar, `market_state`, kunci pengaturan, klien tidak bisa menulis `transactions`); simulasi berita 3 hari sehat (event paling awal 50 dan 31 menit, tidak ada aset di batas harga).
