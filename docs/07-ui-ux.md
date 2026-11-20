@@ -107,10 +107,9 @@ Satu akun hanya melihat bagian peran miliknya. Mengakses halaman peran lain meng
 | Halaman | Isi | Aksi utama |
 |---------|-----|------------|
 | **Masuk laptop** `/kiosk` | Layar tunggu dengan **kamera aktif**: "Scan QR untuk trading". Setelah QR terbaca dan login berhasil, langsung ke `/team/market`. Selalu mulai dari keadaan keluar. Tidak ada kolom nama/kata sandi | Pindai kartu |
-| **Beranda** `/team` | Eyebrow `RINGKASAN`, judul sapaan ("Halo, Tim Elang"; tanpa tanggal atau jam). **Kartu hero** dengan **tiga angka saja:** (1) **Total** = saldo + nilai aset (besar), (2) **Saldo saat ini**, (3) **Nilai aset yang dipegang** menurut **harga peringkat** (VWAP 10 menit; bisa sedikit berbeda dari harga terakhir di halaman Pasar, beri label tooltip), sama dengan yang dipakai peringkat; saldo yang tertahan di order antre ikut dihitung di Total dan ditampilkan terpisah di halaman Order. Ikon info di samping label Nilai aset membuka tooltip yang menjelaskan harga peringkat (Figma `Tim — Beranda (tooltip harga peringkat)`; spesifikasi di DESIGN.md). Tombol mata menyembunyikan semua angka (berguna saat ada antrean di belakang). **Tidak ada tombol Ke Pasar**; pindah halaman lewat sidebar. **Kartu Berita** (§3.0) ada **di bawah kartu hero**, selebar penuh | Sembunyikan angka, baca berita, Selesai (di sidebar) |
-| **Pasar** `/team/market` | **Halaman order book** (bukan halaman terpisah; menggantikan kisi kartu aset dan dialog Beli, Figma `Tim — Pasar (order book)`). Eyebrow `LANTAI PERDAGANGAN`, judul **Pasar Langsung**, satu baris **Berita terbaru** (tanpa hitung mundur). Di bawahnya tiga kolom, 272 / 500 / 312 px: **(1) Daftar aset** dengan pencarian, 8 baris (ubin, nama, harga terakhir, chip perubahan), baris terpilih disorot; **(2) Aset terpilih**: kartu detail (nama, harga terakhir besar, chip perubahan nominal + persen, dan sepuluh statistik Open, High, Low, Prev, Avg, ARA, ARB, Lot, Val, Freq) dan kartu **Order book** (5 level bid kiri, 5 level offer kanan, kolom Freq/Lot/Harga, intensitas warna sel mengikuti jumlah lot, garis biru pada order milik tim, ringkasan total bid dan offer lot); **(3) Form order**: tab **Beli / Jual**, jenis **Limit / Market**, *Trading Balance*, **Harga** dengan tombol −/+ (langkah satu fraksi), **Jumlah lot** dengan −/+, ringkasan Jumlah, Biaya 0,25 % dan Total dikunci, tombol *Pasang order beli/jual*, lalu kartu kecil **Order terbuka** dengan tombol Batalkan. Tombol utama royal blue. Klik baris di daftar atau harga di order book mengisi kolom Harga. Saldo yang tampil di form adalah saldo **tersedia** (di luar yang terkunci) | Pasang order, Batalkan |
-| **Order** `/team/orders` | Halaman baru (menu sidebar *Order* dengan lencana jumlah order antre). Tiga angka: order antre, saldo terkunci, aset terkunci. Tabel **Order antre** (aset, sisi, jenis, harga, lot, terisi, dikunci, waktu, tombol Batalkan) dan tabel **Riwayat order hari ini** (status terisi / sebagian / dibatalkan oleh tim) | Batalkan |
-| **Portofolio** `/team/portfolio` | Eyebrow `KEUANGANKU`, judul Portofolio. Kartu berisi **Total nilai portofolio**, lalu baris per aset (ubin inisial, nama, "3 × Rp 800.000", nilai sekarang, untung/rugi), ketuk untuk membuka Pasar pada aset itu (menjual lewat form order). Kosong: ilustrasi + "Kamu belum punya aset" | Jual |
+| **Beranda** `/team` | Eyebrow `RINGKASAN`, judul sapaan ("Halo, Tim Elang"; tanpa tanggal atau jam). **Kartu hero** dengan **tiga angka saja:** (1) **Total** = saldo + nilai aset (besar), (2) **Saldo saat ini**, (3) **Nilai aset yang dipegang** menurut **harga tayang** saat ini (harga beli di Pasar), sama dengan yang dipakai peringkat. Tombol mata menyembunyikan semua angka (berguna saat ada antrean di belakang). **Tidak ada tombol Ke Pasar**; pindah halaman lewat sidebar. **Kartu Berita** (§3.0) ada **di bawah kartu hero**, selebar penuh | Sembunyikan angka, baca berita, Selesai (di sidebar) |
+| **Pasar** `/team/market` | **Model toko** (docs/17). Eyebrow `LANTAI PERDAGANGAN`, judul **Pasar Langsung**, satu baris **Berita terbaru**, banner status pasar/suspensi/bangkrut. Tiga kolom (xl): **(1) Daftar aset** (pencarian, filter sektor, baris: ubin simbol, nama, harga beli, chip perubahan ▲/▼ persen terhadap harga open hari ini atau chip Suspensi; baris terpilih disorot; di layar kecil tingginya dibatasi 30 rem dan memilih aset menggulir ke detail); **(2) Detail aset**: nama, harga beli besar + chip perubahan, label stok (Stok aman / menipis / **Langka** / habis) + sisa dari stok awal, kotak Harga beli, Harga jual (−2 %), Open hari ini, Acuan berita, Tekanan stok, Batas pegang, dan baris Dimiliki (jumlah, rata-rata beli, perkiraan untung/rugi bila dijual); **(3) Panel Beli/Jual**: tab Beli/Jual, Saldo (atau Dimiliki), stepper Jumlah unit, ringkasan (harga satuan, jumlah, total, saldo sesudah), tombol berisi jumlah dan total. Penolakan muncul di dalam panel (saldo kurang + maksimal, stok, batas pegang, aset tidak cukup). Tautan dari Portofolio (`?asset=SIMBOL&side=sell`) membuka tab Jual | Beli, Jual |
+| **Portofolio** `/team/portfolio` | Eyebrow `KEUANGANKU`, judul Portofolio. Kartu berisi **Total nilai portofolio**, lalu baris per aset (ubin inisial, nama, "3 × Rp 800.000", nilai sekarang, untung/rugi), ketuk untuk membuka Pasar pada aset itu (menjual lewat panel Jual di Pasar). Kosong: ilustrasi + "Kamu belum punya aset" | Jual |
 | **Riwayat** `/team/history` | Eyebrow `AKTIVITAS`, judul Riwayat Transaksi. Satu kartu "Aktivitas terbaru", baris **dikelompokkan per tanggal**: ubin inisial + lencana panah, nama aset, "2 × Rp 800.000 · 14:07", nominal di kanan (`+` masuk, `−` keluar), ketuk untuk rincian. Hadiah pos tampil sebagai baris dengan ubin pos | — |
 | **Daftar pos** `/team/posts` | Eyebrow `STASIUN AKTIVITAS`, judul Daftar Pos, subjudul "Lihat lokasi tiap pos dan apakah sedang tersedia". Di kanan kepala: chip **"3 Tersedia"** (hijau) dan **"9 Tidak tersedia"** (merah) + tombol filter. Satu kartu "Ketersediaan saat ini" dengan lencana jumlah pos (12); baris: **ubin nomor (01–12)**, nama game, ikon pin + lokasi, **pil status** di kanan. Data dari `get_post_list()`; tidak menampilkan rentang hadiah. Berubah lewat Realtime `posts` (cadangan: muat ulang tiap 15 detik) | Filter |
 
@@ -200,18 +199,16 @@ Daftar berita memuat semua berita yang sudah tayang (terbaru di atas); efek tida
 
 Kisi dua kolom di layar sempit, empat kolom di laptop lebar.
 
-**Tombol Place Order tidak pernah dinonaktifkan**, apa pun saldo, lot, atau harga yang diisi. Semua penolakan terjadi **saat tim menekan Place Order** dan alasannya ditampilkan di dalam form (§3.2). Beli dan jual keduanya dilakukan di halaman Pasar; Portofolio hanya menampilkan kepemilikan.
+**Tombol Beli/Jual** dinonaktifkan hanya bila pasar tidak `open` atau aset disuspensi (alasannya tertulis di tombol dan di bawah panel). Untuk saldo, stok, dan batas pegang, tombol tetap aktif: penolakan terjadi **saat tim menekan tombol** dan alasannya ditampilkan di dalam panel (§3.2), sehingga angka maksimum tidak bocor lewat tombol yang mati.
 
-### 3.2 Form order (di halaman Pasar)
+### 3.2 Panel Beli/Jual (di halaman Pasar)
 
-Kolom ketiga halaman Pasar (`/team/market`; Figma `Tim — Pasar (order book)`). Tidak ada dialog konfirmasi terpisah: pencocokan terjadi seketika dan hasilnya (terisi / sebagian / antre) tampil di ringkasan order terbuka di bawah form.
+Kolom ketiga halaman Pasar (`/team/market`; model toko, docs/17). Tidak ada dialog konfirmasi terpisah: transaksi terjadi seketika dan hasilnya tampil di bawah tombol serta sebagai toast.
 
-- Tab **Beli / Jual**, jenis **Limit / Market**. Limit: **Harga** dengan tombol −/+ yang melompat satu fraksi harga (Rp 500 / 1.000 / 2.500 menurut rentang) dan **Lot** dengan −/+. Market: hanya Lot; harga diganti keterangan "sapu hingga 5 level".
-- Form memakai **harga terakhir** sebagai isian awal. Bila harga acuan berubah (berita) saat form terbuka, isian **tidak** diganti diam-diam; batas ARA/ARB dan level order book diperbarui dan tim menekan Place Order lagi bila tetap mau.
-- *Trading Balance* menampilkan saldo bebas milik tim; saldo yang terkunci tampil di halaman Order. Input tidak dibatasi saldo atau lot yang dimiliki (supaya angka tidak bocor lewat nilai maksimum); database yang memeriksa.
-- Setiap pengiriman membawa `request_id` baru; tombol dinonaktifkan sementara selama proses. Kirim ulang karena jaringan putus memakai `request_id` yang sama sehingga tidak menggandakan order.
-- Bila database menolak, pesan Bahasa Indonesia dari tabel error ([04-rpc-contracts](04-rpc-contracts.md#7-error-code)) muncul di atas tombol, form tetap terisi: `insufficient_cash` ("Saldo tidak cukup."), `insufficient_holdings`, `price_out_of_range`, `invalid_tick`, `market_closed`, `asset_not_found`.
-- Order market yang tidak terisi penuh (kehabisan lawan atau saldo) menampilkan hasil sebagian: "Terisi 3 dari 6 lot; sisa dibatalkan."
+- Tab **Beli / Jual**; stepper **Jumlah unit** (−/+ atau ketik). Beli memakai **harga beli** (harga tayang); Jual memakai **harga jual** (tayang − selisih jual). Ringkasan: harga satuan, jumlah, total dibayar/diterima, dan (beli) saldo sesudah. Tombol berisi jumlah dan total ("Beli 2 unit · Rp 427.600").
+- Isian jumlah tidak dibatasi di klien; petunjuk di bawah stepper menyebut maksimal yang terjangkau (saldo, stok, batas pegang) tanpa menolak isian. Database yang memutuskan.
+- Setiap niat punya `request_id` sendiri; percobaan ulang atas isian yang sama memakai id yang sama sehingga tidak menggandakan transaksi.
+- Bila database menolak, pesan Bahasa Indonesia dari tabel error ([04-rpc-contracts](04-rpc-contracts.md#7-error-code)) muncul di bawah isian, panel tetap terisi: `insufficient_cash` ("Saldo tidak cukup untuk N unit (maksimal M)."), `insufficient_stock` ("Stok pasar tinggal N unit."), `hold_cap_exceeded` ("Batas pegang N unit per aset ..."), `insufficient_holdings`, `asset_suspended`, `market_closed`.
 
 ### 3.3 Masuk laptop trading (`/kiosk`)
 
@@ -313,8 +310,8 @@ Lima tim dengan **total tertinggi**. **Lima kartu tersusun ke bawah**, peringkat
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-- **Total** = saldo saat ini + nilai aset. **Nilai aset** = Σ unit × **harga peringkat** (VWAP 10 menit) tiap aset (termasuk lot yang terkunci di order jual). Saldo yang terkunci di order beli ikut menjadi bagian saldo.
-- Dasar angka: `get_leaderboard()` memakai harga peringkat (`rank_price`) untuk `holdings_value` dan `net_worth` (`cash` = saldo bebas + terkunci) ([03 §4](03-database.md#4-kalkulasi-net-worth)); peringkat dan pemenang akhir juga diurut menurut total ini. Layar mengambil seluruh hasil dan menampilkan 5 baris pertama.
+- **Total** = saldo saat ini + nilai aset. **Nilai aset** = Σ unit × **harga tayang** saat ini tiap aset.
+- Dasar angka: `get_leaderboard()` memakai harga tayang (`rank_price`, disalin dari `last_price`) untuk `holdings_value` dan `net_worth` ([03 §4](03-database.md#4-kalkulasi-net-worth)); peringkat dan pemenang akhir juga diurut menurut total ini. Layar mengambil seluruh hasil dan menampilkan 5 baris pertama.
 - Font sangat besar, kontras tinggi, terbaca dari jauh. Tanpa elemen interaktif.
 
 ### 3.7 Panel status (admin)
@@ -373,7 +370,7 @@ Harga tidak bisa diubah oleh siapa pun sampai game selesai.
 | **Memuat** | Kerangka (skeleton) pada daftar, bukan spinner layar penuh |
 | **Kosong** | Pesan jelas: "Kamu belum memiliki aset. Buka Pasar untuk mulai." |
 | **Sesi hampir habis** | 30 detik terakhir: **banner di atas isi halaman** (tidak ada bilah atas di layar tim) berisi "Sesi segera berakhir. Sentuh layar untuk melanjutkan." dan hitung mundur berkedip |
-| **Sesi habis** | Keluar otomatis ke `/kiosk`; form order yang terbuka dibatalkan; order yang sudah antre tetap berjalan, tidak ada transaksi setengah jadi |
+| **Sesi habis** | Keluar otomatis ke `/kiosk`; panel Beli/Jual yang terbuka ditutup; transaksi bersifat atomik sehingga tidak ada yang setengah jadi |
 | **Pasar tertutup** | Banner di atas; tombol Beli tetap aktif dan penolakan muncul saat Konfirmasi |
 | **Pasar dijeda** | Banner "Pasar dijeda panitia", data tetap terlihat |
 | **Aksi berjalan** | Tombol dinonaktifkan dan menampilkan "Memproses…" supaya tidak ditekan dua kali |
@@ -383,7 +380,7 @@ Harga tidak bisa diubah oleh siapa pun sampai game selesai.
 | **Harga berubah (efek berita diterapkan)** | Sorot singkat pada angka dengan panah dan teks, bukan hanya warna |
 | **Hadiah masuk** | Toast "Hadiah Rp 300.000 dari Pos 3 masuk" di akun tim; saldo dimuat ulang |
 | **Berita baru** | Toast dan lencana pada ikon berita |
-| **Saldo kurang / lot kurang / harga di luar batas** | Tombol Place Order tetap aktif; penolakan dengan alasan muncul di dalam form saat ditekan |
+| **Saldo kurang / stok kurang / batas pegang** | Tombol Beli tetap aktif; penolakan dengan alasan muncul di dalam panel saat ditekan |
 
 ## 5. Realtime di sisi klien
 

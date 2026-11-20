@@ -2,14 +2,14 @@
 
 Dokumen ini menjadi acuan **panitia** dan **developer**. Angka bertanda *(default)* bisa diubah lewat `game_settings`, data seed, atau panel admin.
 
-> **Perubahan 17 Nov 2026 (sudah diimplementasikan dan diuji):** mekanisme trading diganti menjadi order book (bandar panitia + order antar-tim). Bagian §1 (net worth), §2 (biaya), §3 (Trading), §4.5 (biaya jual), dan §7 di dokumen ini sudah disesuaikan; aturan lengkap, parameter, dan contoh ada di [`12-order-book.md`](12-order-book.md), SQL di [`03-database.md`](03-database.md) dan [`04-rpc-contracts.md`](04-rpc-contracts.md) §3.1.
+> **Perubahan 20 Nov 2026 (diterapkan dan diuji): mekanisme trading diganti dari order book menjadi model toko** (beli dan jual langsung ke pasar pada satu harga, selisih jual 2 %, tekanan stok, batas pegang). Aturan lengkap di [`17-trading-toko.md`](17-trading-toko.md); bagian §1, §2, §3, §4.5, dan §7 di dokumen ini sudah disesuaikan. Dokumen [`12-order-book.md`](12-order-book.md) hanya arsip.
 
 ## 1. Tujuan permainan
 
 Tim dengan **net worth tertinggi** saat status game `finished` menang.
 
 ```
-net worth = saldo bebas + saldo terkunci di order + Σ jumlah unit × harga peringkat (VWAP 10 menit)
+net worth = saldo + Σ jumlah unit × harga tayang saat ini
 ```
 
 Setiap tim **mulai dari Rp 0**. Satu-satunya sumber uang adalah **hadiah pos** (setelah disetujui admin). Setelah punya uang, tim berdagang; uang bertambah atau berkurang lewat trading, dan nilai aset yang dipegang ikut naik-turun mengikuti harga.
@@ -21,7 +21,9 @@ Setiap tim **mulai dari Rp 0**. Satu-satunya sumber uang adalah **hadiah pos** (
 | Parameter | Default | Tempat mengubah |
 |-----------|---------|-----------------|
 | Modal awal per tim | **Rp 0** (tetap, bukan pengaturan) | — |
-| Biaya transaksi | **0,25 % per sisi** (pembeli dan penjual), dibulatkan ke atas per pencocokan, dibayar ke panitia | `game_settings.fee_bps` (25) |
+| Selisih jual | **2 %** dari harga beli (satu-satunya biaya), dibulatkan ke bawah ke kelipatan Rp 100 | `game_settings.sell_spread_bps` (200) |
+| Tekanan stok | **0,2 %** per unit dibeli/dijual, maksimal ±15 % dari harga acuan, pulih dalam 10 menit | `pressure_bps_per_unit` (20), `pressure_cap_bps` (1500), `pressure_decay_minutes` (10) |
+| Batas pegang | **30 %** stok awal per aset per tim (minimal 1 unit) | `hold_cap_pct` (30) |
 | Batas kepemilikan per tim per aset | **Tidak ada** (dihapus 16 Nov); hanya stok dan saldo yang membatasi | — |
 | Batas kunjungan per tim per pos | **Tidak ada** | — |
 | Berita terbit → harga berubah | **Acak 3–15 menit**, diundi sistem untuk tiap berita (bukan patokan tetap) | `game_settings.news_delay_min_minutes` (3), `news_delay_max_minutes` (15) |
@@ -41,22 +43,20 @@ Setiap tim **mulai dari Rp 0**. Satu-satunya sumber uang adalah **hadiah pos** (
 | Pembekuan leaderboard | 15 menit sebelum akhir | Tombol admin |
 | Akhir game | Admin menekan **Selesai** setelah perubahan harga terakhir | `admin_set_game_state('finished')` |
 
-## 3. Trading (order book)
+## 3. Trading (model toko)
 
-Ringkasan; rincian, parameter, dan contoh angka di [`12-order-book.md`](12-order-book.md).
+Ringkasan; rincian, parameter, dan contoh di [`17-trading-toko.md`](17-trading-toko.md).
 
-1. **Hanya saat pasar `open`.** Saat `setup`, `paused`, atau `finished`, memasang dan membatalkan order ditolak. Saat game ditutup (`finished`), semua order antre dibatalkan otomatis dan kuncinya dikembalikan.
-2. **Dua jenis lawan.** Bandar panitia selalu memasang 5 bid dan 5 offer di sekitar harga acuan; tim juga saling mencocokkan order. Harga yang tampil adalah **harga transaksi terakhir**; harga yang dihitung untuk net worth dan peringkat adalah **harga peringkat** (VWAP 10 menit, `rank_price`). Harga acuan hanya digeser berita.
-3. **Order.** `limit` (harga + lot, antre sampai terisi, dibatalkan, atau pasar ditutup) dan `market` (lot saja, menyapu paling banyak 5 level harga terbaik, sisanya dibatalkan). 1 lot = 1 unit aset. Harga harus kelipatan fraksi (Rp 500 / 1.000 / 2.500 menurut rentang harga) dan berada dalam ±15 % harga acuan (ARA/ARB) serta batas min/maks aset.
-4. **Pencocokan** otomatis di server: harga terbaik dulu, lalu yang masuk lebih dulu; harga transaksi = harga order yang sudah antre; boleh sebagian (*partial fill*). Order tim yang sama tidak dicocokkan satu sama lain.
-5. **Kunci.** Order beli limit menahan `harga × lot + biaya` dari saldo; order jual menahan lot dari kepemilikan. Pembatalan mengembalikan sisa kunci. Saldo bebas dan lot bebas tidak bisa dipakai dua kali.
-6. **Biaya 0,25 % per sisi**, dibulatkan ke atas per pencocokan. Bandar tidak membayar biaya.
-7. **Stok adalah persediaan bandar.** Seluruh stok awal dipegang bandar; offer bandar dibatasi sisa persediaannya, sehingga unit aset tetap konstan: bandar + Σ milik tim = stok awal. Stok awal ditentukan per aset (murah: banyak, mahal: sedikit; §5). Level yang habis dimakan tidak diisi ulang sampai siklus berikutnya (tiap 5 menit atau setelah berita berlaku), jadi tekanan beli terasa di harga.
-8. **Tidak ada jual kosong (short selling), pinjaman, atau margin.** Saldo dan kepemilikan tidak boleh negatif. Tidak ada batas kepemilikan per tim.
-9. **Order dan pembatalan adalah keputusan tim.** Kesalahan sistem dikoreksi panitia lewat `admin_adjust_cash` dan tercatat di audit. Panitia tidak bisa mengubah harga acuan, kuotasi bandar, atau parameter order book sejak game dibuka.
-10. **Aset yang dinonaktifkan** (`is_active = false`) tidak punya kuotasi baru dan tidak bisa diorder; harganya tidak ikut berubah oleh berita.
-11. **Tim bersaldo Rp 0 tidak bisa memasang order beli.** Pesan: "Saldo belum cukup; dapatkan hadiah di pos dulu."
-12. **Hanya di perangkat trading panitia.** Tim tidak membawa ponsel. Mereka membawa **kartu QR** yang punya dua fungsi: dipindai penjaga untuk menerima hadiah, dan dipindai di laptop trading untuk masuk ke akun tim. Sesi keluar otomatis setelah **5 menit tanpa gerakan**, atau saat tim menekan *Selesai*. Pemindai di laptop memakai kamera. Order yang sudah antre tetap berjalan setelah tim keluar sesi.
+1. **Hanya saat pasar `open`.** Saat `setup`, `paused`, atau `finished`, beli dan jual ditolak.
+2. **Satu harga, langsung ke pasar.** Tim membeli dari dan menjual ke pasar (stok panitia); tidak ada transaksi antar tim dan tidak ada order antre. **Harga tayang** = harga acuan (digeser berita) × tekanan stok; itulah **harga beli**. **Harga jual** = harga tayang dikurangi **2 %**. Harga tayang juga dipakai untuk net worth, peringkat, dan IKC.
+3. **Beli/jual** 1 sampai batas pegang unit sekali ketuk; eksekusi atomik di server dan idempoten (`request_id`). 1 lot dan 1 unit sama (istilah lot tidak dipakai lagi).
+4. **Tekanan stok.** Tiap unit dibeli menaikkan harga tayang 0,2 %, tiap unit dijual menurunkannya 0,2 %, dibatasi ±15 % dari harga acuan, dan pulih ke netral dalam ±10 menit. Berita tetap penggerak utama.
+5. **Stok.** Stok pasar berkurang saat dibeli dan bertambah saat dijual; stok + Σ milik tim = stok awal (kecuali yang dilikuidasi saat bangkrut). Label: aman, menipis (< 50 %), **Langka** (< 20 %), habis. Stok awal per aset: murah banyak, mahal sedikit (§5).
+6. **Batas pegang:** satu tim memegang maksimal 30 % stok awal sebuah aset (minimal 1 unit).
+7. **Tidak ada jual kosong, pinjaman, atau margin.** Saldo dan kepemilikan tidak boleh negatif. Tim bersaldo Rp 0 tidak bisa membeli ("Saldo belum cukup; dapatkan hadiah di pos dulu.").
+8. **Transaksi adalah keputusan tim.** Kesalahan sistem dikoreksi panitia lewat `admin_adjust_cash` dan tercatat di audit. Panitia tidak bisa mengubah harga acuan atau pengaturan toko sejak game dibuka.
+9. **Aset yang dinonaktifkan** (bangkrut) tidak bisa dibeli atau dijual; unit yang dipegang tim dilikuidasi ke saldo. Aset yang disuspensi tidak bisa diperdagangkan sementara.
+10. **Hanya di perangkat trading panitia.** Tim tidak membawa ponsel. Mereka membawa **kartu QR** yang punya dua fungsi: dipindai penjaga untuk menerima hadiah, dan dipindai di laptop trading untuk masuk ke akun tim. Sesi keluar otomatis setelah **5 menit tanpa gerakan**, atau saat tim menekan *Selesai*. Pemindai di laptop memakai kamera.
 
 ## 4. Harga: berita dan waktunya diatur sistem
 
@@ -235,7 +235,7 @@ Menekan Selesai saat masih ada berita yang tayang **ditolak** (`news_pending`). 
 ### 4.5 Catatan desain untuk panitia
 
 - **Skala keuntungan trading.** Dengan efek 8–14 % (diputuskan untuk memperlebar pembeda), aset Rp 300.000 bergerak sekitar Rp 24.000–42.000 per unit; tanpa batas pegang, nilai satu tebakan tepat bergantung pada saldo dan stok: memegang 9 unit berarti sekitar Rp 216.000–378.000 per aset. Itu setara satu atau dua kunjungan pos. Pos tetap penghasil uang utama (sesuai tujuan panitia), trading kini menjadi pembeda yang nyata, bukan sekadar hiasan. Satu berita yang menyentuh 4–7 aset bisa menggeser kekayaan tim yang memegang aset-aset itu secara berarti, jadi salah baca berita juga menyakitkan (efek bisa negatif).
-- **Biaya transaksi 0,25 % per sisi** (diputuskan 17 Nov; `game_settings.fee_bps`). Jauh lebih kecil dari biaya jual 5 % sebelumnya karena bandar selalu memasang kuotasi dengan spread 2 fraksi harga; spread itu sendiri sudah menjadi biaya bolak-balik. Biaya dibayarkan ke panitia (uang hilang dari peredaran tim), tidak ke tim mana pun.
+- **Selisih jual 2 %** (diputuskan 20 Nov; `game_settings.sell_spread_bps`) adalah satu-satunya biaya. Beli di harga tayang, jual di harga tayang dikurangi 2 %: bolak-balik tanpa risiko tidak menguntungkan, dan pembaca berita yang cepat tetap diuntungkan. Selisih itu hilang dari peredaran tim (masuk stok pasar sebagai unit, bukan uang).
 - **Berita tampil di layar publik.** Tim tidak membawa ponsel, jadi berita ditampilkan di layar ruang publik (tanpa hitung mundur) dan di perangkat trading. Tanpa layar publik, tim yang kebetulan duduk di perangkat punya informasi lebih dulu.
 - **Perangkat trading terbatas.** Tim berdagang hanya di laptop panitia (§3 butir 12 dan dokumen 07). Saat berita tayang, tim berebut perangkat; keluar dari sesi (tombol Selesai atau 5 menit tanpa gerakan) membebaskan perangkat.
 - **Pembaca berita yang cepat menang.** Berita tampil di semua tim sekaligus, tetapi tim yang saldonya sudah ada saat berita tayang punya keunggulan atas tim yang belum sempat ke pos. Karena hadiah langsung masuk, tidak ada lagi keterlambatan akibat persetujuan.
@@ -358,13 +358,13 @@ Diisi panitia. Kolom `penjaga` menjadi akun `guard`.
 
 ## 7. Penilaian dan penentuan juara
 
-1. Peringkat berdasarkan **net worth** pada saat status `finished`. Net worth = saldo bebas + saldo terkunci + Σ jumlah unit × **harga peringkat** (VWAP transaksi 10 menit terakhir; bila volume jendela kurang dari 5 lot, kekurangannya diisi harga peringkat sebelumnya). Beranda tim menampilkan tiga angka: **total**, **saldo saat ini**, dan **nilai seluruh aset menurut harga peringkat**. **Konsekuensi:** naik-turun harga langsung memengaruhi peringkat tanpa perlu menjual; order yang masih antre dibatalkan otomatis saat game ditutup sehingga tidak ada kunci yang menggantung. **Mitigasi kolusi (diputuskan 17 Nov):** peringkat memakai VWAP 10 menit, bukan harga terakhir, sehingga satu transaksi kecil tidak menggeser nilai aset; pelaku harus berdagang ≥ 5 lot terus-menerus. Risiko **tidak hilang**: dua tim yang rela membayar biaya 0,25 % dan terus berdagang masih bisa menggeser harga sampai batas ARA/ARB (lihat `12-order-book.md` §7).
+1. Peringkat berdasarkan **net worth** pada saat status `finished`. Net worth = saldo + Σ jumlah unit × **harga tayang** saat itu. Beranda tim menampilkan tiga angka: **total**, **saldo saat ini**, dan **nilai seluruh aset menurut harga tayang**. **Konsekuensi:** naik-turun harga langsung memengaruhi peringkat tanpa perlu menjual. **Risiko kolusi:** dua tim yang rela membayar selisih jual 2 % dan terus membeli-menjual masih bisa mendorong harga tayang naik (tekanan stok) sampai +15 % dari harga acuan; batas pegang 30 % stok awal, selisih jual, dan pemulihan tekanan dalam 10 menit membatasinya, dan semua transaksi terlihat di halaman admin Transaksi.
 2. **Seri:** tim dengan saldo tunai lebih besar menang. Jika masih seri, juri/panitia memutuskan; sistem membagi peringkat yang sama.
 3. **Leaderboard tampil di ruang publik**, di layar yang login sebagai akun `display`. **Tim tidak melihat leaderboard di akun mereka**; mereka hanya melihat saldo dan portofolio sendiri. Konsekuensinya tim tidak tahu posisinya kecuali melihat layar publik.
 4. **Pembekuan.** Sekitar 15 menit sebelum akhir, admin membekukan leaderboard. Layar publik menampilkan 5 tim teratas saat pembekuan (tanpa lencana atau penanda bahwa data dibekukan), sementara admin tetap melihat data langsung. Saat game ditutup (`finished`), leaderboard otomatis dibekukan.
 5. **Penutupan game** dilakukan admin dengan menekan **Selesai**, setelah perubahan harga terakhir. Syaratnya: tidak ada berita yang masih tayang. Admin menunggu berita itu selesai; tidak ada jalan pintas.
 6. **Hasil final** diekspor dari panel admin ke CSV, dan disimpan sebagai bukti.
-7. **Keberatan.** Tim yang keberatan mengajukan ke panitia. Panitia memeriksa `trades`, `orders`, `payouts`, dan `audit_log`. Keputusan panitia final.
+7. **Keberatan.** Tim yang keberatan mengajukan ke panitia. Panitia memeriksa `transactions`, `payouts`, dan `audit_log`. Keputusan panitia final.
 
 ## 8. Fair play
 

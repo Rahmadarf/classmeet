@@ -179,19 +179,13 @@ export type Database = {
       }
       game_settings: {
         Row: {
-          band_bps: number
           bankrupt_max_per_day: number
           bankrupt_max_total: number
           event_asset_gap_minutes: number
           event_gap_minutes: number
           event_intensity_pct: number
           event_warmup_minutes: number
-          fee_bps: number
           hold_cap_pct: number
-          house_cash: number
-          house_levels: number
-          house_refresh_seconds: number
-          house_refreshed_at: string | null
           id: boolean
           leaderboard_frozen_at: string | null
           leaderboard_visible: boolean
@@ -209,31 +203,21 @@ export type Database = {
           pressure_cap_bps: number
           pressure_decay_minutes: number
           price_step: number
-          rank_min_lots: number
-          rank_window_minutes: number
-          sell_fee_bps: number
           sell_spread_bps: number
           started_at: string | null
           state: Database["public"]["Enums"]["game_state"]
           stock_low_pct: number
           stock_mid_pct: number
-          sweep_levels: number
           updated_at: string
         }
         Insert: {
-          band_bps?: number
           bankrupt_max_per_day?: number
           bankrupt_max_total?: number
           event_asset_gap_minutes?: number
           event_gap_minutes?: number
           event_intensity_pct?: number
           event_warmup_minutes?: number
-          fee_bps?: number
           hold_cap_pct?: number
-          house_cash?: number
-          house_levels?: number
-          house_refresh_seconds?: number
-          house_refreshed_at?: string | null
           id?: boolean
           leaderboard_frozen_at?: string | null
           leaderboard_visible?: boolean
@@ -251,31 +235,21 @@ export type Database = {
           pressure_cap_bps?: number
           pressure_decay_minutes?: number
           price_step?: number
-          rank_min_lots?: number
-          rank_window_minutes?: number
-          sell_fee_bps?: number
           sell_spread_bps?: number
           started_at?: string | null
           state?: Database["public"]["Enums"]["game_state"]
           stock_low_pct?: number
           stock_mid_pct?: number
-          sweep_levels?: number
           updated_at?: string
         }
         Update: {
-          band_bps?: number
           bankrupt_max_per_day?: number
           bankrupt_max_total?: number
           event_asset_gap_minutes?: number
           event_gap_minutes?: number
           event_intensity_pct?: number
           event_warmup_minutes?: number
-          fee_bps?: number
           hold_cap_pct?: number
-          house_cash?: number
-          house_levels?: number
-          house_refresh_seconds?: number
-          house_refreshed_at?: string | null
           id?: boolean
           leaderboard_frozen_at?: string | null
           leaderboard_visible?: boolean
@@ -293,15 +267,11 @@ export type Database = {
           pressure_cap_bps?: number
           pressure_decay_minutes?: number
           price_step?: number
-          rank_min_lots?: number
-          rank_window_minutes?: number
-          sell_fee_bps?: number
           sell_spread_bps?: number
           started_at?: string | null
           state?: Database["public"]["Enums"]["game_state"]
           stock_low_pct?: number
           stock_mid_pct?: number
-          sweep_levels?: number
           updated_at?: string
         }
         Relationships: []
@@ -310,21 +280,18 @@ export type Database = {
         Row: {
           asset_id: string
           cost_basis: number
-          locked_qty: number
           qty: number
           team_id: string
         }
         Insert: {
           asset_id: string
           cost_basis: number
-          locked_qty?: number
           qty: number
           team_id: string
         }
         Update: {
           asset_id?: string
           cost_basis?: number
-          locked_qty?: number
           qty?: number
           team_id?: string
         }
@@ -819,7 +786,6 @@ export type Database = {
           cash: number
           created_at: string
           id: string
-          locked_cash: number
           name: string
           qr_token: string
           short_code: string
@@ -828,7 +794,6 @@ export type Database = {
           cash?: number
           created_at?: string
           id: string
-          locked_cash?: number
           name: string
           qr_token?: string
           short_code: string
@@ -837,7 +802,6 @@ export type Database = {
           cash?: number
           created_at?: string
           id?: string
-          locked_cash?: number
           name?: string
           qr_token?: string
           short_code?: string
@@ -917,10 +881,8 @@ export type Database = {
     Views: {
       v_team_net_worth: {
         Row: {
-          avail_cash: number | null
           cash: number | null
           holdings_value: number | null
-          locked_cash: number | null
           name: string | null
           net_worth: number | null
           team_id: string | null
@@ -1392,7 +1354,6 @@ export type Database = {
         cash: number | null
         holdings_value: number | null
         net_worth: number | null
-        locked_cash: number | null
       }
       post_payout_row: {
         id: number | null

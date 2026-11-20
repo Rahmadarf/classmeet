@@ -10,7 +10,9 @@ Web simulasi bursa saham + game pos untuk lomba classmeet. Tim **mulai dari Rp 0
 >
 > Revisi 7 (17 Nov): berita dipilih dan dijadwalkan sepenuhnya oleh **sistem**; jeda perubahan harga acak 3–15 menit; panitia tidak bisa mengubah harga, berita, atau parameternya sejak game dibuka (penguncian database, [05](05-game-rules.md) §4.1a). Menggantikan aturan "efek 15 menit / jeda 5 menit / antrean admin" di revisi 2.
 >
-> Revisi 8 (17 Nov): trading diganti **order book** (bandar panitia + order antar-tim, limit/market, partial fill, biaya 0,25 % per sisi, peringkat memakai harga peringkat VWAP 10 menit). SQL, RPC, dan tes sudah ada ([12](12-order-book.md), [04](04-rpc-contracts.md) §3.1); `buy_item`, `sell_item`, dan tabel `transactions` dihapus. UI masih desain Figma. Risiko tersisa: dua tim yang rela berdagang ≥ 5 lot per 10 menit masih bisa menggeser peringkat (dibatasi ARA/ARB).
+> **Revisi 9 (20 Nov): trading diganti model toko** ([17](17-trading-toko.md)): beli dan jual langsung ke pasar pada satu harga, selisih jual 2 %, tekanan stok, batas pegang 30 % stok awal; order book, bandar, ARA/ARB, dan biaya 0,25 % dibuang. Berita format baru: petunjuk lewat ciri perusahaan tanpa nama ([15](15-mesin-berita-v2.md) §3a, [16](16-sifat-aset.md)). Panduan pemain ditulis ulang (`PANDUAN-TRADING.md`).
+>
+> Revisi 8 (17 Nov, digantikan revisi 9): trading diganti **order book** (bandar panitia + order antar-tim, limit/market, partial fill, biaya 0,25 % per sisi, peringkat memakai harga peringkat VWAP 10 menit). SQL, RPC, dan tes sudah ada ([12](12-order-book.md), [04](04-rpc-contracts.md) §3.1); `buy_item`, `sell_item`, dan tabel `transactions` dihapus. UI masih desain Figma. Risiko tersisa: dua tim yang rela berdagang ≥ 5 lot per 10 menit masih bisa menggeser peringkat (dibatasi ARA/ARB).
 >
 > Revisi 2: harga **tidak lagi acak**; hanya berubah lewat berita yang dipilih admin (efek 15 menit setelah tayang, jeda 5 menit, antrean otomatis); tanpa batas pegang per tim (dihapus 16 Nov); stok ditetapkan di awal; dashboard tim hanya tiga angka; game diakhiri manual; folder `app/` tanpa `src/`. Sebelumnya (revisi 1): modal Rp 0, tanpa batas kunjungan, leaderboard hanya di ruang publik, hadiah lewat QR → pengajuan → ACC admin.
 >
@@ -28,7 +30,10 @@ Web simulasi bursa saham + game pos untuk lomba classmeet. Tim **mulai dari Rp 0
 | 6 | [`06-security.md`](06-security.md) | Autentikasi, otorisasi, idempotensi, ancaman dan mitigasi | Developer |
 | 7 | [`07-ui-ux.md`](07-ui-ux.md) | Halaman per peran, alur, state UI, aksesibilitas | Developer + desainer |
 | 7b | [`DESIGN.md`](DESIGN.md) | Mode light (halaman biru pucat, kartu putih, sidebar putih, tombol utama biru royal) + aksen maskot, tanpa latar hitam, tipografi, rupa komponen sesuai Figma, kontras terhitung | Desainer + developer |
-| 12 | [`12-order-book.md`](12-order-book.md) | **Mekanisme trading order book** (bandar + antar-tim, limit/market, ARA/ARB, biaya 0,25 %, halaman UI). Sudah diimplementasikan dan diuji; menggantikan §3 di 05 |
+| 12 | [`12-order-book.md`](12-order-book.md) | Arsip: mekanisme order book (bandar + antar-tim, limit/market, ARA/ARB, biaya 0,25 %). **Digantikan oleh 17** | Arsip |
+| 17 | [`17-trading-toko.md`](17-trading-toko.md) | **Mekanisme trading model toko** (harga tayang, selisih jual, tekanan stok, batas pegang), keputusan, SQL, UI, catatan tahap | Panitia + developer |
+| 15 | [`15-mesin-berita-v2.md`](15-mesin-berita-v2.md) | Mesin berita: 10–15 aset, event berbasis peluang, pemilihan menurut kondisi pasar, format berita baru (§3a) | Developer |
+| 16 | [`16-sifat-aset.md`](16-sifat-aset.md) | Kamus sifat 30 aset (petunjuk di berita) | Panitia |
 | 8 | [`08-operations.md`](08-operations.md) | Setup, deployment, backup, runbook hari-H, rencana darurat | Panitia + developer |
 | 9 | [`09-roadmap-and-testing.md`](09-roadmap-and-testing.md) | Urutan pengerjaan, strategi uji, risiko | Developer |
 | 10 | [`10-verification-report.md`](10-verification-report.md) | Hasil menjalankan rancangan SQL di PostgreSQL sungguhan, bug yang ditemukan, yang belum diuji | Developer |
@@ -46,7 +51,7 @@ Web simulasi bursa saham + game pos untuk lomba classmeet. Tim **mulai dari Rp 0
 - **Hadiah pos langsung masuk saldo:** penjaga memindai kartu QR tim dan mengirim nominal; tanpa ACC, tanpa batas nominal. Koreksi hanya oleh admin sesudahnya (`admin_adjust_cash`).
 - **Harga digerakkan berita:** sistem memilih acak dari kumpulan berita siap, membuang calon yang membuat harga menabrak batas; waktu perubahan acak 3–15 menit diundi sistem, satu berita aktif sekali waktu, harga terkunci sejak game dibuka. Dijalankan `pg_cron` di database; tidak ada pergerakan acak.
 - **Login tim:** kartu QR (akun + rahasia) dipindai di laptop panitia; tanpa PIN; keluar otomatis 5 menit.
-- **Tanpa batas pegang** per tim (dihapus 16 Nov); pembatasnya hanya stok (ditetapkan di awal game) dan saldo.
+- **Batas pegang 30 % stok awal** per aset per tim (sejak 20 Nov, model toko); pembatas lain: stok pasar dan saldo.
 
 ## Skala target
 

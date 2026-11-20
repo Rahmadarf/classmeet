@@ -1037,3 +1037,7 @@ Cabang `feat/trading-toko`. Pasar (daftar aset dipertahankan, detail aset baru, 
 ## Trading model toko, tahap 5: admin dan display (20 Nov)
 
 Admin: halaman Transaksi baru, kartu Pengaturan toko di Aset, istilah bandar/order dibersihkan, label audit. Display: Transaksi terakhir dari `get_last_transactions`. SQL baru `admin_transaction_summary` dan `get_last_transactions` di `trading-shop.sql` (diterapkan ke Docker lokal). Rincian dan hasil uji di docs/17 §10. Halaman admin belum diuji di browser.
+
+## Trading model toko, tahap 6: pembersihan dan dokumentasi (20 Nov)
+
+`scripts/sql/trading-shop-cleanup.sql` membuang kolom order book (`locked_*`, `fee_bps`, `band_bps`, `house_*`, `rank_*`, dan lain-lain) dan menyesuaikan view/tipe ringkasan; diterapkan ke Docker lokal setelah cadangan. `PANDUAN-TRADING.md` ditulis ulang; docs/04, 05, 07, README diperbarui. Rincian di docs/17 §11.

@@ -10,8 +10,8 @@ Urutan blok `sql` pada dokumen ini adalah urutan eksekusi migrasi, setelah semua
 2. Cek peran di awal dengan `app_role()`.
 3. **Urutan kunci baris wajib seragam** (mencegah deadlock):
    `teams (urut id) → game_settings → news → assets (urut id)`.
-   - Fungsi order book (`place_order`, `cancel_order`, `process_house_quotes`, `process_market_cycle`, dan pemanggilnya `process_news_cycle`, `admin_set_game_state`) mengambil **`ob_lock()` paling awal** (kunci penasihat transaksi), lalu tim, lalu `game_settings`, `news`, aset. Alasannya di §3.1.
-   - Fungsi yang mengubah uang tim (`place_order`, `cancel_order`, `award_payout`, `admin_adjust_cash`) **mengunci baris tim lebih dulu**.
+   - Fungsi pasar (`buy_asset`, `sell_asset`, `process_market_cycle`, dan pemanggilnya `process_news_cycle`, `admin_set_game_state`) mengambil **`ob_lock()` paling awal** (kunci penasihat transaksi tunggal), lalu tim, lalu `game_settings`, `news`, aset. Nama `ob_lock` dipertahankan dari masa order book.
+   - Fungsi yang mengubah uang tim (`buy_asset`, `sell_asset`, `award_payout`, `admin_adjust_cash`) **mengunci baris tim lebih dulu**.
    - `admin_set_game_state('finished')` mengunci **semua** baris tim (urut `id`) sebelum mengubah status. Akibatnya transaksi yang sedang berjalan selesai dulu, dan transaksi berikutnya melihat status `finished`. Tidak ada transaksi "nyelip" setelah leaderboard dibekukan.
    - Status game dibaca **setelah** kunci tim diambil (pernyataan terpisah, sehingga melihat data terbaru).
    - Fungsi berita (`process_news_cycle`, `admin_save_news`, `admin_set_news_ready`) mengunci `game_settings` lebih dulu, lalu `news`, lalu aset urut `id`.
@@ -23,14 +23,15 @@ Urutan blok `sql` pada dokumen ini adalah urutan eksekusi migrasi, setelah semua
 
 | Fungsi | Peran | Status | Tujuan |
 |--------|-------|--------|--------|
-| `place_order(request_id, asset_id, side, kind, price?, qty)` | team | SQL + uji | Pasang order beli/jual, limit atau market; langsung dicocokkan |
-| `cancel_order(order_id)` | team | SQL + uji | Batalkan order antre; kunci dikembalikan |
-| `get_order_book(asset_id)` | team | SQL + uji | 5 level bid dan offer, lot, antrean, dan lot milik sendiri |
-| `get_market_summary()` | team, admin, display | SQL + uji | Acuan, harga terakhir, OHLC, Lot, Val, Avg, Freq per aset |
+| `buy_asset(request_id, asset_id, qty)` | team | SQL + uji | Beli langsung pada harga tayang; batas pegang, stok, saldo |
+| `sell_asset(request_id, asset_id, qty)` | team | SQL + uji | Jual langsung pada harga jual (tayang − selisih jual) |
+| `get_market_summary()` | team, admin, display | SQL + uji | Acuan, harga tayang, harga jual, stok, tekanan, statistik transaksi per aset |
+| `get_last_transactions(limit?)` | admin, display | SQL + uji | Transaksi terbaru tanpa nama tim |
+| `admin_transaction_summary()` | admin | SQL + uji | Arus unit dan nilai per aset |
+| `admin_set_trade_settings(...)` | admin | SQL + uji | Selisih jual, tekanan, batas pegang (sebelum game dimulai) |
 | `get_market_index()` | team, admin, display | SQL + uji | IKC dan indeks sektor (bobot sama rata) |
-| `process_house_quotes(asset?)` | internal | SQL + uji | Pasang ulang kuotasi bandar (5 bid + 5 offer) |
-| `process_market_cycle()` | internal / `pg_cron` (tiap 10 detik) | SQL + uji | Isi ulang kuotasi bandar tiap `house_refresh_seconds` |
-| `get_my_summary()` | team | SQL + uji | Saldo bebas, saldo terkunci, nilai aset (harga peringkat), net worth sendiri |
+| `process_market_cycle()` | internal / `pg_cron` (tiap 10 detik) | SQL + uji | Pulihkan tekanan stok, akhiri suspensi |
+| `get_my_summary()` | team | SQL + uji | Saldo, nilai aset (harga tayang), net worth sendiri |
 | `get_leaderboard()` | admin, display | SQL + uji | Peringkat. **Ditolak untuk tim dan penjaga** |
 | `resolve_team_qr(qr_token)` | guard, admin | SQL + uji | QR → id, nama, dan **saldo** tim (saldo ditampilkan di form hadiah, diputuskan 16 Nov) |
 | `resolve_team_code(code)` | guard, admin | SQL + uji | Kode cadangan → id, nama, dan saldo tim (tidak dipakai UI) |
@@ -58,514 +59,39 @@ Pembuatan **akun** (profil, tim, penjaga, display) tidak lewat RPC. Itu dikerjak
 
 ## 3. Fungsi inti (acuan implementasi)
 
-### 3.1 Order book: `place_order`, `cancel_order`, kuotasi bandar
+### 3.1 Beli dan jual (model toko): `buy_asset`, `sell_asset`
 
-Menggantikan `buy_item`/`sell_item` (dihapus 17 Nov). Aturan lengkap: `12-order-book.md`. Ringkasan implementasi:
+Menggantikan order book (20 Nov 2026; lihat [17](17-trading-toko.md)). Kode lengkap: `scripts/sql/trading-shop.sql`; tes: `scripts/sql/test-trading-shop.sql` (54 pemeriksaan, rollback).
 
-- **Satu kunci penasihat (`ob_lock`) menyerialkan semua fungsi order book.** Pencocokan menyentuh baris tim lawan, dan dua pencocokan pada aset berbeda bisa saling menunggu baris tim yang sama (kebuntuan). Satu antrean global menutup kemungkinan itu; beban turnamen (puluhan tim, order manual) jauh di bawah kapasitasnya. **Urutan kunci baru: `ob_lock` → tim (urut id bila banyak) → `game_settings` → `news` → aset.** Fungsi lain yang menyentuh `orders`, atau mengunci banyak tim bersama `game_settings` (`process_news_cycle`, `admin_set_game_state`), mengambil `ob_lock` paling awal.
-- **Harga transaksi = harga order yang sudah antre (maker).** Selisih kunci order beli penyerang dikembalikan ke saldo bebas.
-- **Kunci order beli limit** per lot = `harga + ceil(harga × fee_bps / 10000)`. Biaya sebenarnya dibulatkan ke atas **per pencocokan** dan tidak pernah melebihi kunci, sehingga saldo tidak bisa negatif oleh pembulatan. Order market beli tidak mengunci; ia memakai saldo bebas per pencocokan dan berhenti saat tak mampu.
-- **Order market** menyapu paling banyak `sweep_levels` level harga; sisanya dibatalkan (status `cancelled`, lot yang terisi tetap sah).
-- **Self-trade:** order milik tim yang sama dilewati saat mencari lawan.
-- **Bandar** adalah baris `orders` dengan `is_house`. Offer bandar dibatasi `assets.stock` (persediaan); bid bandar tidak dibatasi uang. Uang yang diterima/dibayar bandar dibukukan di `game_settings.house_cash`, sehingga: `Σ (cash + locked_cash) tim + house_cash = Σ hadiah + Σ koreksi saldo`. Unit: `stock + Σ holdings.qty = stok awal` untuk tiap aset.
-- **ARA/ARB:** order limit harus berada dalam `harga acuan ± band_bps` (default 15 %) dan di antara `min_price`/`max_price`. Catatan simpangan dari doc 12 §6: batas dihitung terhadap **harga acuan saat ini**, bukan acuan awal hari, karena skema tidak punya konsep hari; batas ikut bergeser bersama berita.
-- **Fraksi harga:** `tick_for()` (Rp 500 di bawah 200.000; Rp 1.000 sampai di bawah 500.000; Rp 2.500 mulai 500.000).
+**Model harga.** `assets.price` = harga acuan (digeser berita). `assets.price_factor_bps` = tekanan stok. `assets.last_price` (dan `rank_price`) = **harga tayang** = `shop_price(price, factor)`, dijaga trigger `assets_tayang` setiap `price` atau `price_factor_bps` berubah (dibulatkan ke `price_step`, dibatasi min/maks aset). Harga jual = `shop_sell_price(harga tayang)` = tayang dikurangi `sell_spread_bps`, dibulatkan ke bawah ke `price_step`.
 
-```sql
--- ---------- helper murni ----------
-create or replace function public.tick_for(p bigint) returns int
-language sql immutable
-as $$ select case when p < 200000 then 500 when p < 500000 then 1000 else 2500 end $$;
+**`buy_asset(p_request_id uuid, p_asset_id uuid, p_qty int) returns transactions`** (peran `team`)
 
-create or replace function public.floor_tick(p bigint) returns bigint
-language sql immutable
-as $$ select (p / public.tick_for(p)) * public.tick_for(p)::bigint $$;
+1. Peran `team`, masukan lengkap, `1 <= qty <= 100000` (`forbidden`, `invalid_input`).
+2. `ob_lock()` (kunci penasihat tunggal pasar), kunci baris tim (`team_not_found`).
+3. Idempoten: `request_id` sudah ada dengan parameter sama mengembalikan baris yang sama; parameter berbeda `request_id_conflict`.
+4. Status game `open` (`market_closed`); aset aktif (`asset_not_found`, juga untuk aset bangkrut); tidak disuspensi (`asset_suspended`).
+5. Batas pegang: `holding + qty <= max(1, floor(init_stock x hold_cap_pct / 100))` (`hold_cap_exceeded`); `qty <= stock` (`insufficient_stock`).
+6. Harga satuan = `last_price`; total = harga x qty; `cash >= total` (`insufficient_cash`).
+7. Efek (satu transaksi): saldo turun, `holdings` naik (`cost_basis` + total), `stock` turun, `price_factor_bps` naik `qty x pressure_bps_per_unit` (maks `pressure_cap_bps`), `last_trade_at`, baris `transactions`.
 
-create or replace function public.ceil_tick(p bigint) returns bigint
-language sql immutable
-as $$ select ((p + public.tick_for(p) - 1) / public.tick_for(p)) * public.tick_for(p)::bigint $$;
+**`sell_asset(p_request_id, p_asset_id, p_qty)`** sama, kecuali: syarat `holding >= qty` (`insufficient_holdings`), harga satuan = harga jual, saldo naik, `cost_basis` berkurang proporsional, `stock` naik, tekanan turun.
 
-create or replace function public.round_tick(p bigint) returns bigint
-language sql immutable
-as $$ select greatest(((p + public.tick_for(p) / 2) / public.tick_for(p)) * public.tick_for(p)::bigint,
-                      public.tick_for(p)::bigint) $$;
+**`transactions`**: `id`, `request_id` (unik), `team_id`, `asset_id`, `side` (`buy`/`sell`), `qty`, `unit_price`, `list_price`, `total`, `created_at`. RLS: tim membaca miliknya, admin semuanya; klien tidak bisa menulis.
 
--- biaya: dibulatkan ke atas
-create or replace function public.ob_fee(p_price bigint, p_qty int, p_bps int) returns bigint
-language sql immutable
-as $$ select (p_price * p_qty * p_bps + 9999) / 10000 $$;
+**Pengaturan** (`game_settings`, dikunci setelah game dimulai): `sell_spread_bps` (200), `pressure_bps_per_unit` (20), `pressure_cap_bps` (1500), `pressure_decay_minutes` (10), `hold_cap_pct` (30), `stock_mid_pct` (50), `stock_low_pct` (20). Diubah lewat `admin_set_trade_settings(spread, pressure, cap, decay, hold_cap)`.
 
--- batas ARB/ARA terhadap harga acuan
-create or replace function public.order_band(p_asset uuid)
-returns table (lo bigint, hi bigint)
-language sql stable security definer set search_path = public
-as $$
-  select greatest(public.ceil_tick((a.price * (10000 - g.band_bps) + 9999) / 10000), a.min_price),
-         least(public.floor_tick((a.price * (10000 + g.band_bps)) / 10000), a.max_price)
-    from assets a, game_settings g where a.id = p_asset
-$$;
+### 3.1a Fungsi baca dan siklus pasar
 
--- ---------- kunci serialisasi ----------
-create or replace function public.ob_lock() returns void
-language sql security definer set search_path = public
-as $$ select pg_advisory_xact_lock(7001) $$;
+| Fungsi | Peran | Keterangan |
+|--------|-------|-----------|
+| `get_market_summary()` | team, admin, display | Per aset aktif: `ref_price`, `last_price` (tayang), `sell_price`, `stock`, `init_stock`, `price_factor_bps`, serta open/high/low/lot/val/avg/freq dari `transactions` |
+| `get_last_transactions(limit)` | admin, display | Transaksi terbaru (simbol, sisi, qty, harga satuan, waktu), tanpa nama tim |
+| `admin_transaction_summary()` | admin | Per aset: unit dibeli, dijual, nilai, jumlah transaksi (seluruh transaksi) |
+| `get_my_summary()` | team | `cash`, `holdings_value`, `net_worth` (nilai aset = qty x harga tayang) |
+| `process_market_cycle()` | internal / `pg_cron` tiap 10 dtk | Menjalankan `process_suspensions()` dan memulihkan tekanan stok menuju 0 secara linear (`ceil(cap x detik / (menit x 60))` bps per siklus; jam di tabel `shop_clock`; berhenti saat pasar dijeda) |
 
--- ---------- pembatalan satu order (internal) ----------
-create or replace function public.ob_cancel(p_order bigint) returns void
-language plpgsql security definer set search_path = public
-as $$
-declare o public.orders;
-begin
-  perform set_config('classmeet.system', 'on', true);
-  select * into o from orders where id = p_order and status in ('open', 'partial') for update;
-  if not found then return; end if;
-  if not o.is_house then
-    if o.side = 'buy' and o.lock_per_lot > 0 then
-      update teams set locked_cash = locked_cash - o.lock_per_lot * o.remaining,
-                       cash        = cash        + o.lock_per_lot * o.remaining
-       where id = o.team_id;
-    elsif o.side = 'sell' then
-      update holdings set locked_qty = locked_qty - o.remaining
-       where team_id = o.team_id and asset_id = o.asset_id;
-    end if;
-  end if;
-  update orders set status = 'cancelled', closed_at = now() where id = o.id;
-end $$;
-
-create or replace function public.ob_cancel_all() returns void
-language plpgsql security definer set search_path = public
-as $$
-declare r record;
-begin
-  for r in select id from orders where status in ('open', 'partial') order by id loop
-    perform public.ob_cancel(r.id);
-  end loop;
-end $$;
-
--- ---------- pencocokan (internal; dipanggil place_order dan process_house_quotes) ----------
-create or replace function public.ob_match(p_order bigint) returns void
-language plpgsql security definer set search_path = public
-as $$
-declare
-  o         public.orders;
-  m         public.orders;
-  v_fee     int;
-  v_sweep   int;
-  v_n       int;
-  v_cost    bigint;
-  v_fb      bigint;
-  v_fs      bigint;
-  v_blpl    bigint;
-  v_buyer   uuid;
-  v_seller  uuid;
-  v_buy_ord bigint;
-  v_sell_ord bigint;
-  v_cash    bigint;
-  v_stock   int;
-  v_oldq    int;
-  v_oldc    bigint;
-  v_out     bigint;
-  v_levels  int := 0;
-  v_lastp   bigint;
-  v_lastfill bigint;
-  v_win     int;
-  v_minlots int;
-  v_filled  int := 0;
-  v_house   bigint := 0;
-begin
-  perform set_config('classmeet.system', 'on', true);
-  select * into o from orders where id = p_order for update;
-  select fee_bps, sweep_levels, rank_window_minutes, rank_min_lots into v_fee, v_sweep, v_win, v_minlots from game_settings;
-
-  loop
-    exit when o.remaining = 0;
-
-    if o.side = 'buy' then
-      select * into m from orders x
-       where x.asset_id = o.asset_id and x.side = 'sell' and x.status in ('open', 'partial')
-         and x.team_id is distinct from o.team_id
-         and (o.kind = 'market' or x.price <= o.price)
-       order by x.price asc, x.id asc limit 1 for update;
-    else
-      select * into m from orders x
-       where x.asset_id = o.asset_id and x.side = 'buy' and x.status in ('open', 'partial')
-         and x.team_id is distinct from o.team_id
-         and (o.kind = 'market' or x.price >= o.price)
-       order by x.price desc, x.id asc limit 1 for update;
-    end if;
-    exit when not found;
-
-    if m.price is distinct from v_lastp then v_levels := v_levels + 1; v_lastp := m.price; end if;
-    exit when o.kind = 'market' and v_levels > v_sweep;
-
-    v_n := least(o.remaining, m.remaining);
-
-    -- offer bandar dibatasi persediaan
-    if m.is_house and m.side = 'sell' then
-      select stock into v_stock from assets where id = o.asset_id;
-      v_n := least(v_n, v_stock);
-      if v_n < 1 then
-        update orders set status = 'cancelled', closed_at = now() where id = m.id;
-        continue;
-      end if;
-    end if;
-
-    -- order market beli: hanya sebanyak yang mampu dibayar
-    if o.kind = 'market' and o.side = 'buy' and o.team_id is not null then
-      select cash into v_cash from teams where id = o.team_id;
-      while v_n > 0 and m.price * v_n + public.ob_fee(m.price, v_n, v_fee) > v_cash loop
-        v_n := v_n - 1;
-      end loop;
-      exit when v_n < 1;
-    end if;
-
-    v_cost := m.price * v_n;
-    if o.side = 'buy' then
-      v_buyer := o.team_id; v_buy_ord := o.id; v_blpl := o.lock_per_lot;
-      v_seller := m.team_id; v_sell_ord := m.id;
-    else
-      v_buyer := m.team_id; v_buy_ord := m.id; v_blpl := m.lock_per_lot;
-      v_seller := o.team_id; v_sell_ord := o.id;
-    end if;
-    v_fb := case when v_buyer  is not null then public.ob_fee(m.price, v_n, v_fee) else 0 end;
-    v_fs := case when v_seller is not null then public.ob_fee(m.price, v_n, v_fee) else 0 end;
-
-    -- pembeli
-    if v_buyer is not null then
-      update teams set locked_cash = locked_cash - v_blpl * v_n,
-                       cash        = cash + v_blpl * v_n - v_cost - v_fb
-       where id = v_buyer;
-      insert into holdings (team_id, asset_id, qty, cost_basis)
-      values (v_buyer, o.asset_id, v_n, v_cost + v_fb)
-      on conflict (team_id, asset_id)
-      do update set qty = holdings.qty + excluded.qty,
-                    cost_basis = holdings.cost_basis + excluded.cost_basis;
-    else
-      update assets set stock = stock + v_n where id = o.asset_id;
-      v_house := v_house - v_cost;
-    end if;
-
-    -- penjual
-    if v_seller is not null then
-      select qty, cost_basis into v_oldq, v_oldc
-        from holdings where team_id = v_seller and asset_id = o.asset_id for update;
-      v_out := (v_oldc * v_n) / v_oldq;
-      update holdings set qty = qty - v_n, locked_qty = locked_qty - v_n, cost_basis = cost_basis - v_out
-       where team_id = v_seller and asset_id = o.asset_id;
-      update teams set cash = cash + v_cost - v_fs where id = v_seller;
-    else
-      update assets set stock = stock - v_n where id = o.asset_id;
-      v_house := v_house + v_cost;
-    end if;
-    v_house := v_house + v_fb + v_fs;
-
-    insert into trades (asset_id, price, qty, buy_order_id, sell_order_id, buyer_id, seller_id, buyer_fee, seller_fee, taker_side)
-    values (o.asset_id, m.price, v_n, v_buy_ord, v_sell_ord, v_buyer, v_seller, v_fb, v_fs, o.side);
-
-    update orders
-       set remaining = remaining - v_n,
-           status    = case when remaining - v_n = 0 then 'filled' else 'partial' end,
-           closed_at = case when remaining - v_n = 0 then now() else null end
-     where id = m.id;
-
-    o.remaining := o.remaining - v_n;
-    v_filled := v_filled + v_n;
-    v_lastfill := m.price;
-  end loop;
-
-  -- nasib order penyerang
-  if o.remaining = 0 then
-    update orders set remaining = 0, status = 'filled', closed_at = now() where id = o.id;
-  elsif o.kind = 'market' then
-    if o.side = 'sell' and o.team_id is not null then
-      update holdings set locked_qty = locked_qty - o.remaining
-       where team_id = o.team_id and asset_id = o.asset_id;
-    end if;
-    update orders set remaining = o.remaining, status = 'cancelled', closed_at = now() where id = o.id;
-  else
-    update orders set remaining = o.remaining,
-                      status = case when v_filled > 0 then 'partial' else 'open' end
-     where id = o.id;
-  end if;
-
-  if v_lastfill is not null then
-    -- harga peringkat: VWAP jendela (termasuk pencocokan ini) dilapis harga peringkat sebelumnya bila volume < rank_min_lots
-    update assets a
-       set last_price = v_lastfill, last_trade_at = now(),
-           rank_price = round((w.pq + coalesce(a.rank_price, a.price)::numeric * greatest(v_minlots - w.q, 0))
-                              / greatest(w.q, v_minlots))
-      from (select coalesce(sum(t.price * t.qty), 0)::numeric as pq, coalesce(sum(t.qty), 0) as q
-              from trades t
-             where t.asset_id = o.asset_id
-               and t.created_at >= now() - make_interval(mins => v_win)) w
-     where a.id = o.asset_id;
-  end if;
-  if v_house <> 0 then
-    update game_settings set house_cash = house_cash + v_house;
-  end if;
-end $$;
-
--- ---------- pasang order (tim) ----------
-create or replace function public.place_order(
-  p_request_id uuid,
-  p_asset_id   uuid,
-  p_side       text,
-  p_kind       text,
-  p_price      bigint,
-  p_qty        int
-) returns public.orders
-language plpgsql security definer set search_path = public
-as $$
-declare
-  v_uid   uuid := auth.uid();
-  v_state game_state;
-  v_fee   int;
-  v_a     public.assets;
-  v_lo    bigint;
-  v_hi    bigint;
-  v_lock  bigint := 0;
-  v_ex    public.orders;
-  v_ord   public.orders;
-  v_id    bigint;
-begin
-  if app_role() is distinct from 'team' then raise exception 'forbidden'; end if;
-  if p_request_id is null or p_asset_id is null
-     or p_side not in ('buy', 'sell') or p_kind not in ('limit', 'market')
-     or p_qty is null or p_qty < 1 or p_qty > 100000
-     or (p_kind = 'limit'  and (p_price is null or p_price < 1))
-     or (p_kind = 'market' and p_price is not null) then
-    raise exception 'invalid_input';
-  end if;
-
-  perform public.ob_lock();
-  perform 1 from teams where id = v_uid for update;
-  if not found then raise exception 'team_not_found'; end if;
-
-  select * into v_ex from orders where request_id = p_request_id;
-  if found then
-    if v_ex.team_id = v_uid and v_ex.asset_id = p_asset_id and v_ex.side = p_side
-       and v_ex.kind = p_kind and v_ex.qty = p_qty and v_ex.price is not distinct from p_price then
-      return v_ex;                                 -- permintaan ulang yang sama
-    end if;
-    raise exception 'request_id_conflict';
-  end if;
-
-  select state, fee_bps into v_state, v_fee from game_settings;
-  if v_state <> 'open' then raise exception 'market_closed'; end if;
-
-  select * into v_a from assets where id = p_asset_id for update;
-  if not found or not v_a.is_active then raise exception 'asset_not_found'; end if;
-
-  perform set_config('classmeet.system', 'on', true);
-
-  if p_kind = 'limit' then
-    if p_price % public.tick_for(p_price) <> 0 then raise exception 'invalid_tick'; end if;
-    select lo, hi into v_lo, v_hi from public.order_band(p_asset_id);
-    if p_price < v_lo or p_price > v_hi then raise exception 'price_out_of_range'; end if;
-  end if;
-
-  if p_side = 'buy' then
-    if p_kind = 'limit' then
-      v_lock := p_price + public.ob_fee(p_price, 1, v_fee);
-      update teams set cash = cash - v_lock * p_qty, locked_cash = locked_cash + v_lock * p_qty
-       where id = v_uid and cash >= v_lock * p_qty;
-      if not found then raise exception 'insufficient_cash'; end if;
-    else
-      perform 1 from teams where id = v_uid and cash > 0;
-      if not found then raise exception 'insufficient_cash'; end if;
-    end if;
-  else
-    update holdings set locked_qty = locked_qty + p_qty
-     where team_id = v_uid and asset_id = p_asset_id and qty - locked_qty >= p_qty;
-    if not found then raise exception 'insufficient_holdings'; end if;
-  end if;
-
-  insert into orders (request_id, team_id, asset_id, side, kind, price, qty, remaining, lock_per_lot)
-  values (p_request_id, v_uid, p_asset_id, p_side, p_kind, p_price, p_qty, p_qty, v_lock)
-  returning id into v_id;
-
-  perform public.ob_match(v_id);
-
-  select * into v_ord from orders where id = v_id;
-  perform set_config('classmeet.system', 'off', true);
-  return v_ord;
-end $$;
-
--- ---------- batalkan order (tim) ----------
-create or replace function public.cancel_order(p_order_id bigint)
-returns public.orders
-language plpgsql security definer set search_path = public
-as $$
-declare
-  v_uid   uuid := auth.uid();
-  v_state game_state;
-  v_ord   public.orders;
-begin
-  if app_role() is distinct from 'team' then raise exception 'forbidden'; end if;
-  if p_order_id is null then raise exception 'invalid_input'; end if;
-
-  perform public.ob_lock();
-  perform 1 from teams where id = v_uid for update;
-  if not found then raise exception 'team_not_found'; end if;
-
-  select state into v_state from game_settings;
-  if v_state <> 'open' then raise exception 'market_closed'; end if;
-
-  select * into v_ord from orders where id = p_order_id and team_id = v_uid for update;
-  if not found then raise exception 'order_not_found'; end if;
-  if v_ord.status not in ('open', 'partial') then raise exception 'order_not_open'; end if;
-
-  perform public.ob_cancel(p_order_id);
-  perform set_config('classmeet.system', 'off', true);
-  select * into v_ord from orders where id = p_order_id;
-  return v_ord;
-end $$;
-
--- ---------- kuotasi bandar (sistem) ----------
-create or replace function public.process_house_quotes(p_asset uuid default null)
-returns void
-language plpgsql security definer set search_path = public
-as $$
-declare
-  g      public.game_settings;
-  a      public.assets;
-  v_ref  bigint;
-  v_lo   bigint;
-  v_hi   bigint;
-  v_p    bigint;
-  v_lot  int;
-  v_bud  int;
-  v_q    int;
-  v_k    int;
-  v_id   bigint;
-begin
-  perform public.ob_lock();
-  select * into g from game_settings;
-  if g.state <> 'open' then return; end if;
-  perform set_config('classmeet.system', 'on', true);
-
-  for a in select * from assets where is_active and (p_asset is null or id = p_asset) order by id loop
-    if a.init_stock is null then
-      update assets set init_stock = stock, base_price = price where id = a.id returning * into a;
-    end if;
-
-    update orders set status = 'cancelled', closed_at = now()
-     where asset_id = a.id and is_house and status in ('open', 'partial');
-
-    select lo, hi into v_lo, v_hi from public.order_band(a.id);
-    v_ref := public.round_tick(a.price);
-    v_lot := greatest(ceil(a.init_stock / 10.0)::int, 1);
-
-    -- offer: persediaan menjadi batas
-    v_p := v_ref; v_bud := a.stock;
-    for v_k in 1 .. g.house_levels loop
-      v_p := v_p + public.tick_for(v_p);
-      exit when v_p > v_hi;
-      v_q := least(v_lot, v_bud);
-      exit when v_q < 1;
-      insert into orders (asset_id, side, kind, price, qty, remaining, is_house)
-      values (a.id, 'sell', 'limit', v_p, v_q, v_q, true) returning id into v_id;
-      perform public.ob_match(v_id);
-      v_bud := v_bud - v_q;
-    end loop;
-
-    -- bid
-    v_p := v_ref;
-    for v_k in 1 .. g.house_levels loop
-      v_p := v_p - public.tick_for(v_p - 1);
-      exit when v_p < v_lo or v_p < 1;
-      insert into orders (asset_id, side, kind, price, qty, remaining, is_house)
-      values (a.id, 'buy', 'limit', v_p, v_lot, v_lot, true) returning id into v_id;
-      perform public.ob_match(v_id);
-    end loop;
-  end loop;
-
-  update game_settings set house_refreshed_at = now();
-  perform set_config('classmeet.system', 'off', true);
-end $$;
-
--- dipanggil penjadwal tiap 10 detik, bersama process_news_cycle()
-create or replace function public.process_market_cycle() returns text
-language plpgsql security definer set search_path = public
-as $$
-declare g public.game_settings;
-begin
-  perform public.ob_lock();
-  select * into g from game_settings;
-  if g.state <> 'open' then return 'idle'; end if;
-  if g.house_refreshed_at is null or now() >= g.house_refreshed_at + make_interval(secs => g.house_refresh_seconds) then
-    perform public.process_house_quotes();
-    return 'refreshed';
-  end if;
-  return 'idle';
-end $$;
-```
-
-### 3.1a Fungsi baca order book
-
-```sql
--- order book 5 level per sisi, hanya untuk tim. `mine` = lot milik tim pemanggil di level itu
-create or replace function public.get_order_book(p_asset_id uuid)
-returns table (side text, price bigint, lots bigint, freq bigint, mine bigint)
-language plpgsql stable security definer set search_path = public
-as $$
-declare v_lv int;
-begin
-  if app_role() is distinct from 'team' then raise exception 'forbidden'; end if;
-  select house_levels into v_lv from game_settings;
-  return query
-    with l as (
-      select o.side as s, o.price as p, sum(o.remaining)::bigint as lots, count(*)::bigint as freq,
-             coalesce(sum(o.remaining) filter (where o.team_id = auth.uid()), 0)::bigint as mine
-        from orders o
-       where o.asset_id = p_asset_id and o.status in ('open', 'partial')
-       group by o.side, o.price
-    ), r as (
-      select l.*, row_number() over (partition by l.s order by case when l.s = 'sell' then l.p end asc,
-                                                               case when l.s = 'buy'  then l.p end desc) as rn
-        from l
-    )
-    select r.s, r.p, r.lots, r.freq, r.mine from r where r.rn <= v_lv
-     order by r.s desc, case when r.s = 'sell' then r.p end asc, case when r.s = 'buy' then r.p end desc;
-end $$;
-
--- ringkasan pasar per aset: acuan, harga terakhir, OHLC, Lot, Val, Avg, Freq (dari tabel trades)
-create or replace function public.get_market_summary()
-returns table (asset_id uuid, symbol text, ref_price bigint, last_price bigint,
-               open_price bigint, high_price bigint, low_price bigint,
-               lot bigint, val bigint, avg_price bigint, freq bigint)
-language plpgsql stable security definer set search_path = public
-as $$
-begin
-  if app_role() is null or app_role() not in ('team', 'admin', 'display') then raise exception 'forbidden'; end if;
-  return query
-    select a.id, a.symbol, a.price, coalesce(a.last_price, a.price),
-           (select t.price from trades t where t.asset_id = a.id order by t.id asc  limit 1),
-           (select max(t.price) from trades t where t.asset_id = a.id),
-           (select min(t.price) from trades t where t.asset_id = a.id),
-           coalesce((select sum(t.qty) from trades t where t.asset_id = a.id), 0)::bigint,
-           coalesce((select sum(t.price * t.qty) from trades t where t.asset_id = a.id), 0)::bigint,
-           (select (sum(t.price * t.qty) / nullif(sum(t.qty), 0))::bigint from trades t where t.asset_id = a.id),
-           (select count(*) from trades t where t.asset_id = a.id)::bigint
-      from assets a where a.is_active order by a.symbol;
-end $$;
-
--- IKC (semua aset) dan indeks sektor: rata-rata sama rata (harga terakhir / harga awal) x 1000
-create or replace function public.get_market_index()
-returns table (scope text, value numeric)
-language plpgsql stable security definer set search_path = public
-as $$
-begin
-  if app_role() is null or app_role() not in ('team', 'admin', 'display') then raise exception 'forbidden'; end if;
-  return query
-    select 'IKC'::text, round(avg(coalesce(a.last_price, a.price)::numeric / coalesce(a.base_price, a.price)) * 1000, 2)
-      from assets a where a.is_active
-    union all
-    select 'sektor:' || a.sector, round(avg(coalesce(a.last_price, a.price)::numeric / coalesce(a.base_price, a.price)) * 1000, 2)
-      from assets a where a.is_active group by a.sector
-    order by 1;
-end $$;
-```
+`bankrupt_asset` dan `suspend_asset` tidak lagi menyentuh order: bangkrut melikuidasi unit tim ke saldo (`liquidation_price`) dan menonaktifkan aset; suspensi mengisi `suspended_until`. Kolom lama (`fee_bps`, `band_bps`, `house_*`, `rank_*`, `locked_*`) dibuang oleh `scripts/sql/trading-shop-cleanup.sql`.
 
 ### 3.2 Alur hadiah pos: kartu QR → hadiah langsung masuk
 
@@ -735,6 +261,8 @@ Poin penting:
 - Setelah `finished`, hadiah ditolak (`game_not_active`) supaya leaderboard beku tidak bergeser.
 
 ### 3.3 Status game, pembekuan leaderboard, dan leaderboard publik
+
+> Catatan 20 Nov: kode di bagian ini dan §3.4 masih memanggil `ob_cancel_all` dan `process_house_quotes` (order book lama). Keduanya sudah dibuang; versi yang berlaku ada di `scripts/sql/trading-shop.sql` (`admin_set_game_state` memanggil `shop_init_assets()` saat dibuka; tidak ada pembatalan order saat selesai).
 
 ```sql
 create or replace function public.freeze_leaderboard_internal()
@@ -1379,10 +907,7 @@ revoke execute on function public.check_news_effects(uuid)      from authenticat
 revoke execute on function public.news_would_hit_bounds(uuid)   from authenticated;
 revoke execute on function public.freeze_leaderboard_internal() from authenticated;
 revoke execute on function public.ob_lock()                     from authenticated;
-revoke execute on function public.ob_match(bigint)              from authenticated;
-revoke execute on function public.ob_cancel(bigint)             from authenticated;
-revoke execute on function public.ob_cancel_all()               from authenticated;
-revoke execute on function public.process_house_quotes(uuid)    from authenticated;
+revoke execute on function public.process_market_cycle()           from authenticated;
 revoke execute on function public.process_market_cycle()        from authenticated;
 ```
 
@@ -1398,11 +923,11 @@ Pemeriksaan peran di dalam setiap fungsi tetap wajib; hak `execute` hanya lapisa
 | `game_not_active` | Status game tidak mengizinkan pemberian hadiah | "Permainan belum dimulai atau sudah selesai." |
 | `game_finished` | Aksi tidak boleh setelah selesai | "Permainan sudah selesai." |
 | `asset_not_found` | Aset tidak ada atau nonaktif | "Aset tidak tersedia." |
-| `invalid_tick` | Harga bukan kelipatan fraksi harga | "Harga harus kelipatan fraksi harga." |
-| `order_not_found` | Order tidak ada atau bukan milik tim | "Order tidak ditemukan." |
-| `order_not_open` | Order sudah selesai atau dibatalkan | "Order ini sudah tidak aktif." |
 | `insufficient_cash` | Saldo kurang | "Saldo tidak cukup." |
 | `insufficient_holdings` | Aset yang dimiliki kurang | "Jumlah aset yang kamu miliki tidak cukup." |
+| `insufficient_stock` | Stok pasar kurang | "Stok aset di pasar tidak cukup." |
+| `hold_cap_exceeded` | Melebihi batas pegang per aset per tim | "Melebihi batas kepemilikan per aset untuk satu tim." |
+| `asset_suspended` | Aset sedang disuspensi | "Aset ini sedang disuspensi sementara. Beli dan jual belum bisa dilakukan." |
 | `request_id_conflict` | `request_id` dipakai untuk aksi berbeda | "Permintaan bentrok, muat ulang halaman." |
 | `post_closed` | Pos ditutup | "Pos sedang ditutup." |
 | `invalid_amount` | Nominal bukan bilangan bulat positif | "Nominal tidak valid." |
@@ -1412,7 +937,6 @@ Pemeriksaan peran di dalam setiap fungsi tetap wajib; hak `execute` hanya lapisa
 | `game_started_locked` | Mengubah harga, kumpulan berita, atau pengaturan berita setelah game dibuka | "Game sudah dimulai. Harga dan berita tidak bisa diubah lagi." |
 | `news_invalid_effects` | Efek melanggar aturan (jumlah aset bukan 4–7, aset ganda/nonaktif, persen nol atau melebihi batas) | "Efek berita tidak memenuhi aturan." |
 | `news_pending` | Menutup game saat ada berita live | "Masih ada berita yang belum selesai berjalan." |
-| `price_out_of_range` | Harga di luar ARA/ARB atau min/maks aset | "Harga di luar batas yang diizinkan." |
 | `invalid_state_transition` | Perpindahan status tidak sah | "Perpindahan status tidak diizinkan." |
 | `leaderboard_hidden` | Leaderboard disembunyikan | "Leaderboard belum dibuka." |
 

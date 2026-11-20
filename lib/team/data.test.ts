@@ -14,7 +14,7 @@ describe("fetchSummary", () => {
   it("memetakan get_my_summary ke camelCase", async () => {
     const s = await fetchSummary(
       rpcClient({
-        data: { cash: 1_200_000, holdings_value: 4_325_000, net_worth: 5_525_000, locked_cash: 0 },
+        data: { cash: 1_200_000, holdings_value: 4_325_000, net_worth: 5_525_000 },
         error: null,
       }),
     );
@@ -29,14 +29,10 @@ describe("fetchSummary", () => {
     expect(await fetchSummary(rpcClient({ data: null, error: { message: "forbidden" } }))).toBeNull();
     expect(await fetchSummary(rpcClient({ data: null, error: null }))).toBeNull();
     expect(
-      await fetchSummary(
-        rpcClient({ data: { cash: null, holdings_value: 0, net_worth: 0, locked_cash: 0 }, error: null }),
-      ),
+      await fetchSummary(rpcClient({ data: { cash: null, holdings_value: 0, net_worth: 0 }, error: null })),
     ).toBeNull();
     expect(
-      await fetchSummary(
-        rpcClient({ data: { cash: 1.5, holdings_value: 0, net_worth: 0, locked_cash: 0 }, error: null }),
-      ),
+      await fetchSummary(rpcClient({ data: { cash: 1.5, holdings_value: 0, net_worth: 0 }, error: null })),
     ).toBeNull();
   });
 });
