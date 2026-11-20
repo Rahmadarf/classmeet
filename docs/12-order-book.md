@@ -1,5 +1,7 @@
 # 12 — Mekanisme Trading Order Book (menggantikan harga tetap server)
 
+> **Akan digantikan oleh [17](17-trading-toko.md)** (rancangan 20 Nov 2026, model toko tanpa order book; belum diterapkan). Dokumen ini tetap berlaku sampai penggantinya diterapkan.
+
 Status: **diputuskan dan diimplementasikan 17 Nov 2026** (SQL di `03-database.md` dan `04-rpc-contracts.md` §3.1, tes di `tests/run_ob.py`, `run_ob2.py`, `run3.py`; hasil di `10-verification-report.md`). Dokumen ini menjadi acuan aturan; `05-game-rules.md` §3 hanya ringkasannya. UI masih berupa desain Figma, belum ada kode Next.js.
 
 ## 1. Keputusan
