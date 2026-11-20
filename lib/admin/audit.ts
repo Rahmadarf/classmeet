@@ -52,6 +52,7 @@ export function categoryOf(action: string): AuditCategory {
     [
       "upsert_asset",
       "set_stock",
+      "set_trade_settings",
       "asset_bankrupt",
       "asset_bankrupt_failed",
       "asset_dividend",
@@ -75,6 +76,8 @@ export type AuditRow = {
 };
 
 const num = (v: unknown) => (typeof v === "number" ? v : Number(v));
+/** Basis poin → persen dengan koma desimal: 200 → "2", 20 → "0,2". */
+const pctText = (bps: number) => String(bps / 100).replace(".", ",");
 const str = (v: unknown) => (typeof v === "string" ? v : "");
 const signed = (n: number) => `${n < 0 ? "−" : "+"}${formatRupiah(Math.abs(n))}`;
 
@@ -120,6 +123,8 @@ export function summarize(row: AuditRaw, lookup: Lookup): string {
       return `${p.created === true ? "Aset baru" : "Aset diubah"}: ${str(p.symbol)}`;
     case "set_stock":
       return `Stok ${lookup.assets?.[str(p.asset_id)] ?? "aset"} ${num(p.before)} → ${num(p.after)} · alasan: ${str(p.reason)}`;
+    case "set_trade_settings":
+      return `Pengaturan toko diubah: selisih jual ${pctText(num(p.sell_spread_bps))} %, tekanan ${pctText(num(p.pressure_bps_per_unit))} % per unit, batas pegang ${num(p.hold_cap_pct)} %`;
     case "set_news_settings":
       return "Pengaturan berita diubah";
     case "restart_news":

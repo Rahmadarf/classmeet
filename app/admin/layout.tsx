@@ -1,4 +1,14 @@
-import { Download, Gift, ListChecks, MapPin, Newspaper, SlidersHorizontal, Users, Box } from "lucide-react";
+import {
+  ArrowLeftRight,
+  Box,
+  Download,
+  Gift,
+  ListChecks,
+  MapPin,
+  Newspaper,
+  SlidersHorizontal,
+  Users,
+} from "lucide-react";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { AdminSignOut } from "@/components/admin/admin-sign-out";
@@ -12,6 +22,7 @@ const NAV = [
   { href: "/admin/payouts", label: "Hadiah", icon: <Gift /> },
   { href: "/admin/state", label: "Status", icon: <SlidersHorizontal /> },
   { href: "/admin/assets", label: "Aset", icon: <Box /> },
+  { href: "/admin/transactions", label: "Transaksi", icon: <ArrowLeftRight /> },
   { href: "/admin/news", label: "Berita", icon: <Newspaper /> },
   { href: "/admin/teams", label: "Tim", icon: <Users /> },
   { href: "/admin/posts", label: "Pos", icon: <MapPin /> },

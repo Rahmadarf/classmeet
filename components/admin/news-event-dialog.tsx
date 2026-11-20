@@ -40,7 +40,7 @@ const KINDS: Record<
     min: 1,
     max: 30,
     initial: "5",
-    help: "Aset tidak bisa diorder selama itu dan bandar menarik kuotasinya. Order antre masih bisa dibatalkan.",
+    help: "Aset tidak bisa dibeli atau dijual selama itu.",
   },
 };
 

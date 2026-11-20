@@ -187,7 +187,7 @@ export function StateBoard({ initial }: { initial: { game: AdminGame; pool: News
 
           {game.state === "finished" ? (
             <p className="text-ink-muted text-base">
-              Game sudah selesai: peringkat akhir dibekukan dan tidak ada order. Tidak ada tombol yang
+              Game sudah selesai: peringkat akhir dibekukan dan tidak ada transaksi. Tidak ada tombol yang
               tersisa.
             </p>
           ) : (
@@ -309,7 +309,7 @@ export function StateBoard({ initial }: { initial: { game: AdminGame; pool: News
         open={pending === "open-first"}
         onOpenChange={(o) => !o && setPending(null)}
         title="Buka pasar untuk pertama kali?"
-        description="Setelah dibuka, harga aset, kumpulan berita, dan pengaturan berita terkunci dan tidak bisa diubah siapa pun sampai game selesai. Bandar langsung memasang kuotasi."
+        description="Setelah dibuka, harga aset, kumpulan berita, dan pengaturan berita terkunci dan tidak bisa diubah siapa pun sampai game selesai."
         confirmLabel="Buka pasar"
         loading={busy}
         error={dialogError}
@@ -319,7 +319,7 @@ export function StateBoard({ initial }: { initial: { game: AdminGame; pool: News
         open={pending === "pause"}
         onOpenChange={(o) => !o && setPending(null)}
         title="Tutup pasar sekarang?"
-        description="Tim tidak bisa memasang atau membatalkan order sampai pasar dibuka lagi. Order yang sudah antre tetap antre, dan siklus berita ikut berhenti."
+        description="Tim tidak bisa membeli atau menjual sampai pasar dibuka lagi, dan siklus berita ikut berhenti."
         confirmLabel="Tutup pasar"
         loading={busy}
         error={dialogError}
@@ -329,7 +329,7 @@ export function StateBoard({ initial }: { initial: { game: AdminGame; pool: News
         open={pending === "finish"}
         onOpenChange={(o) => !o && setPending(null)}
         title="Akhiri game?"
-        description="Semua order yang masih antre dibatalkan dan peringkat akhir dibekukan. Ini tidak bisa dibatalkan, dan pasar tidak bisa dibuka lagi."
+        description="Peringkat akhir dibekukan. Ini tidak bisa dibatalkan, dan pasar tidak bisa dibuka lagi."
         confirmLabel="Akhiri game"
         tone="danger"
         loading={busy}

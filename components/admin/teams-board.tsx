@@ -62,7 +62,7 @@ export function TeamsBoard({ initial }: { initial: TeamRow[] }) {
         </div>
         <DataTable
           caption="Peringkat langsung semua tim"
-          head={["#", "Tim", "Saldo", "Nilai aset (harga peringkat)", "Total", ""]}
+          head={["#", "Tim", "Saldo", "Nilai aset (harga tayang)", "Total", ""]}
           widths={[72, 220, 150, 230, 160]}
           minWidth={980}
           align={["left", "left", "right", "right", "right"]}
@@ -107,9 +107,8 @@ export function TeamsBoard({ initial }: { initial: TeamRow[] }) {
           ))}
         </DataTable>
         <p className="text-ink-muted text-sm">
-          Total = saldo + nilai aset menurut harga peringkat (rata-rata transaksi 10 menit). Koreksi saldo
-          mengubah saldo bebas, wajib beralasan, dan tercatat di audit. Ganti QR dijalankan lewat skrip lokal;
-          kartu lama langsung mati.
+          Total = saldo + nilai aset menurut harga tayang saat ini. Koreksi saldo mengubah saldo bebas, wajib
+          beralasan, dan tercatat di audit. Ganti QR dijalankan lewat skrip lokal; kartu lama langsung mati.
         </p>
       </Card>
 

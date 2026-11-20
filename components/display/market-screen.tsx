@@ -221,10 +221,13 @@ export function MarketScreen({ initial, live = true }: { initial: MarketBoardDat
                   <p className="text-ink-muted text-[18px] font-medium">Belum ada transaksi.</p>
                 ) : (
                   data.lastTrades.map((t) => (
-                    <div key={t.symbol} className="flex items-center gap-3">
+                    <div key={`${t.symbol}-${t.at}`} className="flex items-center gap-3">
                       <p className="text-brand-text w-14 shrink-0 text-[16px] font-bold">{t.symbol}</p>
                       <p className="tnum text-ink min-w-0 flex-1 truncate text-[16px] font-semibold">
-                        @ {formatNumber(t.price)}
+                        <span className={t.side === "buy" ? "text-ok-text" : "text-bad-text"}>
+                          {t.side === "buy" ? "Beli" : "Jual"}
+                        </span>{" "}
+                        {formatNumber(t.qty)} unit @ {formatNumber(t.price)}
                       </p>
                       <p className="tnum text-ink-muted shrink-0 text-[14px]">{formatTimeWib(t.at)}</p>
                     </div>

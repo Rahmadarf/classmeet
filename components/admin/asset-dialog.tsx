@@ -155,9 +155,9 @@ export function AssetDialog({
             <>
               <p className="text-ink-muted rounded-row bg-field px-4 py-3 text-base">
                 Game sudah dimulai: harga acuan ({asset ? formatNumber(asset.price) : "–"}), rentang, dan
-                status aktif terkunci. Hanya stok bandar yang bisa diubah.
+                status aktif terkunci. Hanya stok pasar yang bisa diubah.
               </p>
-              <Field id={`${uid}-stock`} label="Stok bandar" className={label}>
+              <Field id={`${uid}-stock`} label="Stok pasar" className={label}>
                 <input
                   id={`${uid}-stock`}
                   inputMode="numeric"
@@ -250,7 +250,7 @@ export function AssetDialog({
                   />
                 </Field>
               </div>
-              <Field id={`${uid}-stock`} label="Stok bandar" className={label}>
+              <Field id={`${uid}-stock`} label="Stok pasar" className={label}>
                 <input
                   id={`${uid}-stock`}
                   inputMode="numeric"

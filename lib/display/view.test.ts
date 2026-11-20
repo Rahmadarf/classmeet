@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lastTrades, movers, parseIndex, topFive } from "./view";
+import { mapLastTrades, movers, parseIndex, topFive } from "./view";
 
 describe("topFive", () => {
   const row = (rank: number, name: string, net: number) => ({
@@ -71,16 +71,40 @@ describe("movers", () => {
   });
 });
 
-describe("lastTrades", () => {
-  it("terbaru dulu dan hanya aset yang pernah bertransaksi", () => {
-    const out = lastTrades(
+describe("mapLastTrades", () => {
+  const row = (symbol: string, at: string, over: object = {}) => ({
+    symbol,
+    side: "buy",
+    qty: 2,
+    unit_price: 100_000,
+    created_at: at,
+    ...over,
+  });
+
+  it("terbaru dulu, dipotong sesuai jumlah, dengan sisi dan jumlah unit", () => {
+    const out = mapLastTrades(
       [
-        { symbol: "A", lastPrice: 1, lastTradeAt: "2026-11-18T01:00:00Z" },
-        { symbol: "B", lastPrice: 2, lastTradeAt: null },
-        { symbol: "C", lastPrice: 3, lastTradeAt: "2026-11-18T02:00:00Z" },
+        row("A", "2026-11-18T01:00:00Z"),
+        row("C", "2026-11-18T02:00:00Z", { side: "sell", qty: 5, unit_price: 94_300 }),
+        row("B", "2026-11-18T03:00:00Z"),
       ],
-      3,
+      2,
     );
-    expect(out.map((t) => t.symbol)).toEqual(["C", "A"]);
+    expect(out.map((t) => t.symbol)).toEqual(["B", "C"]);
+    expect(out[1]).toEqual({ symbol: "C", side: "sell", qty: 5, price: 94_300, at: "2026-11-18T02:00:00Z" });
+  });
+
+  it("membuang sisi tak dikenal dan angka rusak", () => {
+    const out = mapLastTrades([
+      row("A", "2026-11-18T01:00:00Z", { side: "hold" }),
+      row("B", "2026-11-18T01:00:00Z", { qty: 0 }),
+      row("C", "2026-11-18T01:00:00Z", { unit_price: 1.5 }),
+      row("D", "2026-11-18T01:00:00Z"),
+    ]);
+    expect(out.map((t) => t.symbol)).toEqual(["D"]);
+  });
+
+  it("kosong → kosong", () => {
+    expect(mapLastTrades([])).toEqual([]);
   });
 });

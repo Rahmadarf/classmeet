@@ -1028,8 +1028,12 @@ Mulai ulang berita di Docker laptop (memanggil `admin_restart_news` sebagai admi
 
 ## Trading model toko, tahap 2: SQL (20 Nov)
 
-Cabang `feat/trading-toko`. Spesifikasi di docs/17. `scripts/sql/trading-shop.sql` (migrasi sekali, diterapkan ke Docker laptop setelah cadangan penuh) dan `scripts/sql/test-trading-shop.sql` (53 pemeriksaan, rollback). Isi dan keputusan teknis di docs/17 §8. Total kas sebelum dan sesudah sama (Rp 310.316.320); order lama dibuang; simulasi berita 3 hari sehat. UI tim, display, dan admin masih memakai order book lama sehingga sementara tidak berfungsi sampai tahap 4–5.
+Cabang `feat/trading-toko`. Spesifikasi di docs/17. `scripts/sql/trading-shop.sql` (migrasi sekali, diterapkan ke Docker laptop setelah cadangan penuh) dan `scripts/sql/test-trading-shop.sql` (54 pemeriksaan, rollback). Isi dan keputusan teknis di docs/17 §8. Total kas sebelum dan sesudah sama (Rp 310.316.320); order lama dibuang; simulasi berita 3 hari sehat. UI tim, display, dan admin masih memakai order book lama sehingga sementara tidak berfungsi sampai tahap 4–5.
 
 ## Trading model toko, tahap 4: UI tim (20 Nov)
 
 Cabang `feat/trading-toko`. Pasar (daftar aset dipertahankan, detail aset baru, panel Beli/Jual), Portofolio, Riwayat memakai `transactions`; halaman Orders dan komponen order book dihapus; `database.types.ts` dibuat ulang; tes diperbarui (135 lolos). Rincian di docs/17 §9. Display dan admin belum diubah; `PANDUAN-TRADING.md` ditulis ulang di tahap dokumentasi.
+
+## Trading model toko, tahap 5: admin dan display (20 Nov)
+
+Admin: halaman Transaksi baru, kartu Pengaturan toko di Aset, istilah bandar/order dibersihkan, label audit. Display: Transaksi terakhir dari `get_last_transactions`. SQL baru `admin_transaction_summary` dan `get_last_transactions` di `trading-shop.sql` (diterapkan ke Docker lokal). Rincian dan hasil uji di docs/17 §10. Halaman admin belum diuji di browser.

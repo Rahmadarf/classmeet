@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { StatusPill } from "@/components/ui/chip";
-import { fetchAssetsPage, type AdminAsset } from "@/lib/admin/data";
+import { TradeSettingsCard } from "@/components/admin/trade-settings-card";
+import { fetchAssetsPage, type AdminAsset, type TradeSettings } from "@/lib/admin/data";
 import { usePolling } from "@/lib/hooks/use-polling";
 import { formatNumber } from "@/lib/money";
 import { createClient } from "@/lib/supabase/client";
@@ -22,7 +23,15 @@ type AssetsInitial = AdminAsset[];
  * (docs/04 §3.9). Sebelum game dibuka: semua isian lewat `admin_upsert_asset`. Sesudahnya: hanya stok lewat
  * `admin_set_stock` (harga, rentang, status terkunci oleh database); "Tambah aset" disembunyikan.
  */
-export function AssetsBoard({ initial, locked }: { initial: AssetsInitial; locked: boolean }) {
+export function AssetsBoard({
+  initial,
+  locked,
+  trade,
+}: {
+  initial: AssetsInitial;
+  locked: boolean;
+  trade: TradeSettings;
+}) {
   const supabase = useMemo(() => createClient(), []);
   const [assets, setAssets] = useState(initial);
   const [query, setQuery] = useState("");
@@ -56,7 +65,7 @@ export function AssetsBoard({ initial, locked }: { initial: AssetsInitial; locke
       <PageHeader
         eyebrow="Pasar"
         title="Aset"
-        subtitle="Harga, rentang harga, dan stok bandar tiap aset."
+        subtitle="Harga, rentang harga, stok pasar, dan pengaturan toko."
         actions={
           locked ? null : (
             <Button size="lg" onClick={() => setDialog({ open: true, asset: null })}>
@@ -65,7 +74,8 @@ export function AssetsBoard({ initial, locked }: { initial: AssetsInitial; locke
           )
         }
       />
-      <Card aria-labelledby="aset-judul" className="flex flex-col gap-2">
+      <TradeSettingsCard initial={trade} locked={locked} />
+      <Card aria-labelledby="aset-judul" className="mt-6 flex flex-col gap-2">
         <p className="text-brand-text text-[13px] font-semibold tracking-[0.12em] uppercase">Daftar aset</p>
         <h2 id="aset-judul" className="text-ink text-2xl font-bold">
           {shown.length === assets.length
@@ -103,8 +113,8 @@ export function AssetsBoard({ initial, locked }: { initial: AssetsInitial; locke
 
         <DataTable
           caption="Daftar aset"
-          head={["Kode", "Nama", "Sektor", "Acuan", "Terakhir", "Rentang harga", "Stok", "Status", ""]}
-          widths={[60, 150, 150, 110, 100, 175, 56, 108]}
+          head={["Kode", "Nama", "Sektor", "Acuan", "Harga beli", "Rentang harga", "Stok", "Status", ""]}
+          widths={[60, 150, 150, 110, 100, 175, 84, 108]}
           minWidth={1010}
           align={["left", "left", "left", "right", "right", "right", "right"]}
         >
@@ -118,7 +128,10 @@ export function AssetsBoard({ initial, locked }: { initial: AssetsInitial; locke
               <td className="tnum text-right">
                 {formatNumber(a.min)} – {formatNumber(a.max)}
               </td>
-              <td className="tnum text-right">{formatNumber(a.stock)}</td>
+              <td className="tnum text-right">
+                {formatNumber(a.stock)}
+                {a.initStock !== null ? ` / ${formatNumber(a.initStock)}` : ""}
+              </td>
               <td>
                 <StatusPill tone={a.active ? "ok" : "bad"}>{a.active ? "Aktif" : "Nonaktif"}</StatusPill>
               </td>
@@ -140,7 +153,8 @@ export function AssetsBoard({ initial, locked }: { initial: AssetsInitial; locke
         ) : null}
         <p className="text-ink-muted text-sm">
           Harga acuan hanya berubah lewat berita yang terbit; rentang harga membatasi efek berita (min dan
-          maks). Stok adalah persediaan bandar.{" "}
+          maks). Harga beli = harga acuan dengan tekanan stok; stok adalah persediaan pasar (sisa / stok
+          awal).{" "}
           {locked
             ? "Game sudah dimulai: harga acuan, rentang, dan status terkunci. Hanya stok yang bisa diubah, dengan alasan."
             : "Sebelum game dimulai, semua isian aset bisa diubah. Setelah game dimulai hanya stok."}

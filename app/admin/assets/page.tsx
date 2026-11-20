@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { AssetsBoard } from "@/components/admin/assets-board";
 import { ListSkeleton } from "@/components/admin/list-skeleton";
 import { PageHeader } from "@/components/shell/page-header";
-import { fetchAssetsPage } from "@/lib/admin/data";
+import { fetchAssetsPage, fetchTradeSettings } from "@/lib/admin/data";
 import { fetchAdminGame } from "@/lib/admin/state";
 import { createClient } from "@/lib/supabase/server";
 
@@ -21,14 +21,18 @@ export default function AssetsPage() {
 async function Content() {
   await connection();
   const supabase = await createClient();
-  const [assets, game] = await Promise.all([fetchAssetsPage(supabase), fetchAdminGame(supabase)]);
-  if (!assets || !game) {
+  const [assets, game, trade] = await Promise.all([
+    fetchAssetsPage(supabase),
+    fetchAdminGame(supabase),
+    fetchTradeSettings(supabase),
+  ]);
+  if (!assets || !game || !trade) {
     return (
       <>
         <PageHeader
           eyebrow="Pasar"
           title="Aset"
-          subtitle="Harga, rentang harga, dan stok bandar tiap aset."
+          subtitle="Harga, rentang harga, stok pasar, dan pengaturan toko."
         />
         <p role="alert" className="text-bad-text text-lg font-medium">
           Data aset belum bisa dimuat. Muat ulang halaman ini.
@@ -36,5 +40,5 @@ async function Content() {
       </>
     );
   }
-  return <AssetsBoard initial={assets} locked={game.startedAt !== null} />;
+  return <AssetsBoard initial={assets} locked={game.startedAt !== null} trade={trade} />;
 }

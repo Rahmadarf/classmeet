@@ -316,6 +316,34 @@ begin
   return case when v_n > 0 then 'decayed' else 'idle' end;
 end $$;
 
+-- Transaksi terakhir untuk layar display (akun display tidak bisa membaca `transactions` langsung): tanpa nama tim.
+create or replace function public.get_last_transactions(p_limit integer default 6)
+returns table(symbol text, side text, qty integer, unit_price bigint, created_at timestamptz)
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if app_role() is null or app_role() not in ('admin', 'display') then raise exception 'forbidden'; end if;
+  return query
+    select a.symbol, t.side, t.qty, t.unit_price, t.created_at
+      from transactions t join assets a on a.id = t.asset_id
+     order by t.id desc
+     limit greatest(1, least(coalesce(p_limit, 6), 30));
+end $$;
+
+-- Ringkasan transaksi per aset untuk admin (seluruh transaksi, bukan hanya yang terbaru).
+create or replace function public.admin_transaction_summary()
+returns table(asset_id uuid, bought bigint, sold bigint, volume bigint, n bigint)
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if app_role() is distinct from 'admin' then raise exception 'forbidden'; end if;
+  return query
+    select t.asset_id,
+           coalesce(sum(t.qty) filter (where t.side = 'buy'), 0)::bigint,
+           coalesce(sum(t.qty) filter (where t.side = 'sell'), 0)::bigint,
+           coalesce(sum(t.total), 0)::bigint,
+           count(*)::bigint
+      from transactions t group by t.asset_id;
+end $$;
+
 create or replace function public.admin_set_trade_settings(
   p_sell_spread_bps int, p_pressure_bps_per_unit int, p_pressure_cap_bps int, p_pressure_decay_minutes int, p_hold_cap_pct int)
 returns void
@@ -690,6 +718,10 @@ revoke all on function public.sell_asset(uuid, uuid, integer) from public, anon;
 grant execute on function public.sell_asset(uuid, uuid, integer) to authenticated, service_role;
 revoke all on function public.get_market_summary() from public, anon;
 grant execute on function public.get_market_summary() to authenticated, service_role;
+revoke all on function public.admin_transaction_summary() from public, anon;
+grant execute on function public.admin_transaction_summary() to authenticated, service_role;
+revoke all on function public.get_last_transactions(integer) from public, anon;
+grant execute on function public.get_last_transactions(integer) to authenticated, service_role;
 revoke all on function public.admin_set_trade_settings(int, int, int, int, int) from public, anon;
 grant execute on function public.admin_set_trade_settings(int, int, int, int, int) to authenticated, service_role;
 revoke all on function public.shop_init_assets() from public, anon, authenticated;

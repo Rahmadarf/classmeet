@@ -2,7 +2,7 @@
 
 import { mapRpcError } from "@/lib/errors";
 import type { ActionResult } from "@/lib/schemas/common";
-import { setStockSchema, upsertAssetSchema } from "@/lib/schemas/admin";
+import { setStockSchema, tradeSettingsSchema, upsertAssetSchema } from "@/lib/schemas/admin";
 import { createClient } from "@/lib/supabase/server";
 
 const INVALID: ActionResult<never> = {
@@ -12,7 +12,7 @@ const INVALID: ActionResult<never> = {
   retryable: false,
 };
 
-/** Ubah stok bandar (`admin_set_stock`; boleh sesudah game dibuka; alasan wajib; tercatat di audit). */
+/** Ubah stok pasar (`admin_set_stock`; boleh sesudah game dibuka; alasan wajib; tercatat di audit). */
 export async function setStock(input: unknown): Promise<ActionResult> {
   const parsed = setStockSchema.safeParse(input);
   if (!parsed.success) return INVALID;
@@ -52,6 +52,35 @@ export async function upsertAsset(input: unknown): Promise<ActionResult> {
     const mapped = mapRpcError(error);
     if (!mapped.code && !mapped.retryable)
       console.error("[admin_upsert_asset] galat tak terduga:", error.message);
+    return { ok: false, ...mapped };
+  }
+  return { ok: true, data: undefined };
+}
+
+/** Pengaturan toko (`admin_set_trade_settings`). Hanya sebelum game dibuka: sesudahnya database menjawab `game_started_locked`. */
+export async function setTradeSettings(input: unknown): Promise<ActionResult> {
+  const parsed = tradeSettingsSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: "Isian belum benar. Periksa selisih jual, tekanan, lama pemulihan, dan batas pegang.",
+      code: "invalid_input",
+      retryable: false,
+    };
+  }
+  const v = parsed.data;
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_set_trade_settings", {
+    p_sell_spread_bps: v.sellSpreadBps,
+    p_pressure_bps_per_unit: v.pressureBpsPerUnit,
+    p_pressure_cap_bps: v.pressureCapBps,
+    p_pressure_decay_minutes: v.pressureDecayMinutes,
+    p_hold_cap_pct: v.holdCapPct,
+  });
+  if (error) {
+    const mapped = mapRpcError(error);
+    if (!mapped.code && !mapped.retryable)
+      console.error("[admin_set_trade_settings] galat tak terduga:", error.message);
     return { ok: false, ...mapped };
   }
   return { ok: true, data: undefined };

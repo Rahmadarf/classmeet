@@ -88,15 +88,25 @@ export function movers(
   };
 }
 
-export type LastTrade = { symbol: string; price: number; at: string };
+/** Satu transaksi beli/jual untuk layar display (tanpa nama tim). `price` = harga satuan yang dibayar/diterima. */
+export type LastTrade = { symbol: string; side: "buy" | "sell"; qty: number; price: number; at: string };
 
-/** Transaksi terakhir per aset (dari `assets.last_trade_at`): akun display tidak bisa membaca `trades`. */
-export function lastTrades(
-  assets: { symbol: string; lastPrice: number; lastTradeAt: string | null }[],
-  count = 3,
-): LastTrade[] {
-  return assets
-    .flatMap((a) => (a.lastTradeAt ? [{ symbol: a.symbol, price: a.lastPrice, at: a.lastTradeAt }] : []))
+type TradeRow = { symbol: string; side: string; qty: number; unit_price: number; created_at: string };
+
+/**
+ * Transaksi terbaru dari `get_last_transactions()` (akun display tidak bisa membaca `transactions` langsung). Baris
+ * dengan sisi tak dikenal atau angka rusak dibuang; hasil terbaru dulu, paling banyak `count`.
+ */
+export function mapLastTrades(rows: TradeRow[], count = 4): LastTrade[] {
+  return rows
+    .flatMap((r) =>
+      (r.side === "buy" || r.side === "sell") &&
+      Number.isInteger(r.qty) &&
+      r.qty > 0 &&
+      Number.isInteger(r.unit_price)
+        ? [{ symbol: r.symbol, side: r.side, qty: r.qty, price: r.unit_price, at: r.created_at } as LastTrade]
+        : [],
+    )
     .sort((a, b) => Date.parse(b.at) - Date.parse(a.at))
     .slice(0, count);
 }

@@ -5,7 +5,7 @@ import type { Database } from "@/lib/supabase/database.types";
 import { isMoney } from "@/lib/money";
 import { fetchNews, type NewsItem } from "@/lib/team/data";
 import {
-  lastTrades,
+  mapLastTrades,
   movers,
   parseIndex,
   topFive,
@@ -51,14 +51,15 @@ export type MarketBoardData = {
   news: NewsItem | null;
 };
 
-/** Semua yang dibutuhkan layar Display pasar. Tidak memuat saldo tim atau order book (docs/12 §9). */
+/** Semua yang dibutuhkan layar Display pasar. Tidak memuat saldo tim atau nama tim di transaksi (docs/17). */
 export async function fetchMarketBoard(supabase: Db): Promise<MarketBoardData | null> {
-  const [assets, index, game, news, dayOpen] = await Promise.all([
-    supabase.from("assets").select("id,symbol,name,price,last_price,last_trade_at").eq("is_active", true),
+  const [assets, index, game, news, dayOpen, trades] = await Promise.all([
+    supabase.from("assets").select("id,symbol,name,price,last_price").eq("is_active", true),
     supabase.rpc("get_market_index"),
     fetchGame(supabase),
     fetchNews(supabase, 1),
     supabase.rpc("get_day_open_prices"),
+    supabase.rpc("get_last_transactions", { p_limit: 6 }),
   ]);
   if (assets.error || !assets.data || index.error || !index.data || !game) return null;
 
@@ -73,7 +74,6 @@ export async function fetchMarketBoard(supabase: Db): Promise<MarketBoardData | 
             name: a.name,
             openPrice: isMoney(opens.get(a.id)) ? (opens.get(a.id) as number) : a.price,
             lastPrice,
-            lastTradeAt: a.last_trade_at,
           },
         ]
       : [];
@@ -85,7 +85,7 @@ export async function fetchMarketBoard(supabase: Db): Promise<MarketBoardData | 
     assetCount: rows.length,
     best,
     worst,
-    lastTrades: lastTrades(rows),
+    lastTrades: mapLastTrades(trades.data ?? [], 3),
     news: news?.[0] ?? null,
   };
 }

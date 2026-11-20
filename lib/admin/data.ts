@@ -6,6 +6,7 @@ import { postNumber } from "@/lib/history/view";
 import { postTitle } from "@/lib/posts/view";
 import { fetchNews, type NewsItem } from "@/lib/team/data";
 import { fetchNewsPool, type NewsPool } from "./state";
+import { buildTransactionsPage, type TransactionsPage } from "./transactions";
 
 type Db = SupabaseClient<Database>;
 
@@ -119,14 +120,20 @@ export type AdminAsset = {
   lastPrice: number | null;
   min: number;
   max: number;
+  /** Sisa stok pasar dan stok awal (`init_stock`; null sebelum pasar pertama dibuka). */
   stock: number;
+  initStock: number | null;
+  /** Tekanan stok (bps). */
+  factorBps: number;
   active: boolean;
 };
 
 export async function fetchAssetsPage(supabase: Db): Promise<AdminAsset[] | null> {
   const { data, error } = await supabase
     .from("assets")
-    .select("id,symbol,name,sector,price,last_price,min_price,max_price,stock,is_active")
+    .select(
+      "id,symbol,name,sector,price,last_price,min_price,max_price,stock,init_stock,price_factor_bps,is_active",
+    )
     .order("symbol");
   if (error || !data) return null;
   return data.map((a) => ({
@@ -139,6 +146,8 @@ export async function fetchAssetsPage(supabase: Db): Promise<AdminAsset[] | null
     min: a.min_price,
     max: a.max_price,
     stock: a.stock,
+    initStock: a.init_stock,
+    factorBps: a.price_factor_bps,
     active: a.is_active,
   }));
 }
@@ -388,4 +397,83 @@ export async function fetchNewsPage(supabase: Db, locked: boolean): Promise<News
     }));
   }
   return { locked, current: news[0] ?? null, pool, kinds, currentEffects, applied, coverage, drafts, assets };
+}
+
+// ---------- Toko (model trading, docs/17) ----------
+export type TradeSettings = {
+  sellSpreadBps: number;
+  pressureBpsPerUnit: number;
+  pressureCapBps: number;
+  pressureDecayMinutes: number;
+  holdCapPct: number;
+  stockMidPct: number;
+  stockLowPct: number;
+};
+
+export async function fetchTradeSettings(supabase: Db): Promise<TradeSettings | null> {
+  const { data, error } = await supabase
+    .from("game_settings")
+    .select(
+      "sell_spread_bps,pressure_bps_per_unit,pressure_cap_bps,pressure_decay_minutes,hold_cap_pct,stock_mid_pct,stock_low_pct",
+    )
+    .maybeSingle();
+  if (error || !data) return null;
+  return {
+    sellSpreadBps: data.sell_spread_bps,
+    pressureBpsPerUnit: data.pressure_bps_per_unit,
+    pressureCapBps: data.pressure_cap_bps,
+    pressureDecayMinutes: data.pressure_decay_minutes,
+    holdCapPct: data.hold_cap_pct,
+    stockMidPct: data.stock_mid_pct,
+    stockLowPct: data.stock_low_pct,
+  };
+}
+
+const TX_LIST_LIMIT = 100;
+
+/** Halaman Transaksi: 100 transaksi terbaru + ringkasan per aset dari seluruh transaksi (RLS: admin membaca semuanya). */
+export async function fetchTransactionsPage(supabase: Db): Promise<TransactionsPage | null> {
+  const [txs, summary, teams, assets, settings] = await Promise.all([
+    supabase
+      .from("transactions")
+      .select("id,team_id,asset_id,side,qty,unit_price,total,created_at")
+      .order("id", { ascending: false })
+      .limit(TX_LIST_LIMIT),
+    supabase.rpc("admin_transaction_summary"),
+    supabase.from("teams").select("id,name"),
+    supabase.from("assets").select("id,symbol,name,stock,init_stock,price_factor_bps").eq("is_active", true),
+    fetchTradeSettings(supabase),
+  ]);
+  if (txs.error || !txs.data || summary.error || !summary.data || teams.error || !teams.data) return null;
+  if (assets.error || !assets.data) return null;
+  return buildTransactionsPage(
+    txs.data.map((t) => ({
+      id: t.id,
+      teamId: t.team_id,
+      assetId: t.asset_id,
+      side: t.side,
+      qty: t.qty,
+      unitPrice: t.unit_price,
+      total: t.total,
+      createdAt: t.created_at,
+    })),
+    summary.data.map((s) => ({
+      assetId: s.asset_id,
+      bought: s.bought,
+      sold: s.sold,
+      volume: s.volume,
+      n: s.n,
+    })),
+    Object.fromEntries(teams.data.map((t) => [t.id, t.name])),
+    assets.data.map((a) => ({
+      id: a.id,
+      symbol: a.symbol,
+      name: a.name,
+      stock: a.stock,
+      initStock: a.init_stock ?? a.stock,
+      factorBps: a.price_factor_bps,
+    })),
+    settings?.stockMidPct,
+    settings?.stockLowPct,
+  );
 }

@@ -14,7 +14,7 @@ export const adjustCashSchema = z.object({
 
 export type AdjustCashInput = z.infer<typeof adjustCashSchema>;
 
-/** Stok bandar (`admin_set_stock`): bilangan bulat ≥ 0 + alasan wajib. */
+/** Stok pasar (`admin_set_stock`): bilangan bulat ≥ 0 + alasan wajib. */
 export const setStockSchema = z.object({
   assetId: uuidSchema,
   stock: z.number().int().min(0).max(1_000_000),
@@ -78,4 +78,17 @@ export const createPostSchema = z.object({
   gameName: z.string().trim().min(2).max(60),
   location: z.string().trim().min(2).max(80),
   password: z.string().min(8).max(72),
+});
+
+/**
+ * Pengaturan toko (`admin_set_trade_settings`, docs/17): selisih jual, tekanan stok per unit, batas tekanan (basis poin),
+ * lama pemulihan (menit), dan batas pegang (% stok awal). Hanya pagar bentuk; database menegakkan rentang dan kunci
+ * setelah game dimulai.
+ */
+export const tradeSettingsSchema = z.object({
+  sellSpreadBps: z.number().int().min(0).max(2000),
+  pressureBpsPerUnit: z.number().int().min(0).max(500),
+  pressureCapBps: z.number().int().min(0).max(5000),
+  pressureDecayMinutes: z.number().int().min(1).max(240),
+  holdCapPct: z.number().int().min(1).max(100),
 });

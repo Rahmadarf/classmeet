@@ -1048,6 +1048,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      admin_transaction_summary: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          asset_id: string
+          bought: number
+          n: number
+          sold: number
+          volume: number
+        }[]
+      }
       admin_unfreeze_leaderboard: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -1155,6 +1165,16 @@ export type Database = {
         Returns: {
           at: string
           value: number
+        }[]
+      }
+      get_last_transactions: {
+        Args: { p_limit?: number }
+        Returns: {
+          created_at: string
+          qty: number
+          side: string
+          symbol: string
+          unit_price: number
         }[]
       }
       get_leaderboard: {

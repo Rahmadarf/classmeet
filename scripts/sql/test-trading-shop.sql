@@ -198,6 +198,16 @@ begin
   perform pg_temp.ok(v_n > 0 and (select max(trades_10m) from public.market_state()) >= 1, 'market_state menghitung trades_10m dari transactions');
   perform pg_temp.ok((select sum(h.qty * coalesce(x.rank_price, x.price)) from holdings h join assets x on x.id = h.asset_id where h.team_id = v_team) is not null, 'nilai aset memakai harga tayang');
 
+  -- 14b. RPC admin/display untuk transaksi
+  perform pg_temp.as_user(v_admin);
+  perform pg_temp.ok((select coalesce(sum(n), 0) from public.admin_transaction_summary()) >= 1, 'admin_transaction_summary menghitung transaksi');
+  perform pg_temp.ok((select count(*) from public.get_last_transactions(5)) >= 1, 'get_last_transactions (admin) mengembalikan transaksi terbaru');
+  perform pg_temp.as_user((select id from profiles where role = 'display' limit 1));
+  perform pg_temp.ok((select count(*) from public.get_last_transactions(5)) >= 1, 'get_last_transactions (display) tanpa nama tim');
+  perform pg_temp.expect_err('select * from public.admin_transaction_summary()', 'forbidden');
+  perform pg_temp.as_user(v_team);
+  perform pg_temp.expect_err('select * from public.get_last_transactions(5)', 'forbidden');
+
   -- 15. nilai tim dan pengaturan
   perform pg_temp.as_user(v_team);
   perform pg_temp.ok((select net_worth from public.get_my_summary()) > 0, 'get_my_summary berjalan');

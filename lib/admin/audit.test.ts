@@ -87,6 +87,29 @@ describe("aksi dari fungsi admin baru (scripts/sql/admin-functions-missing.sql)"
     ]);
   });
 
+  it("pengaturan toko: kategori aset dan ringkasan", () => {
+    expect(categoryOf("set_trade_settings")).toBe("aset");
+    const [r] = buildAuditRows(
+      [
+        row(
+          "set_trade_settings",
+          {
+            sell_spread_bps: 200,
+            pressure_bps_per_unit: 20,
+            pressure_cap_bps: 1500,
+            pressure_decay_minutes: 10,
+            hold_cap_pct: 30,
+          },
+          "ad",
+        ),
+      ],
+      lookup,
+    );
+    expect(r.summary).toBe(
+      "Pengaturan toko diubah: selisih jual 2 %, tekanan 0,2 % per unit, batas pegang 30 %",
+    );
+  });
+
   it("event aset bangkrut", () => {
     expect(categoryOf("asset_bankrupt")).toBe("aset");
     expect(categoryOf("set_news_bankruptcy")).toBe("berita");
