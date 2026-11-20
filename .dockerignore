@@ -1,0 +1,21 @@
+node_modules
+.next
+.git
+.claude
+.impeccable
+.playwright-mcp
+.vscode
+coverage
+**/*.log
+*.tsbuildinfo
+.DS_Store
+# rahasia: dibaca saat berjalan lewat env_file, bukan masuk image
+.env*
+!.env.example
+KREDENSIAL.local.md
+scripts/.seed-output.local.json
+scripts/.qr-output.local
+# tidak dipakai aplikasi saat berjalan
+deploy
+docs
+Dockerfile

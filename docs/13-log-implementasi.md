@@ -1041,3 +1041,37 @@ Admin: halaman Transaksi baru, kartu Pengaturan toko di Aset, istilah bandar/ord
 ## Trading model toko, tahap 6: pembersihan dan dokumentasi (20 Nov)
 
 `scripts/sql/trading-shop-cleanup.sql` membuang kolom order book (`locked_*`, `fee_bps`, `band_bps`, `house_*`, `rank_*`, dan lain-lain) dan menyesuaikan view/tipe ringkasan; diterapkan ke Docker lokal setelah cadangan. `PANDUAN-TRADING.md` ditulis ulang; docs/04, 05, 07, README diperbarui. Rincian di docs/17 §11.
+
+## Cloudflare Tunnel sebagai pengganti Caddy (20 Nov)
+
+Alasan: tester lain di jaringan yang sama membuka `https://192.192.2.222:3443` tetapi realtime gagal, karena API/WebSocket di `https://192.192.2.222` (port 443) memakai sertifikat CA internal Caddy yang belum dipercaya perangkatnya (pengecualian peramban hanya berlaku untuk `:3443`). Saat acara pasti ada internet, jadi Caddy diganti Cloudflare Tunnel (sertifikat publik, tanpa instal CA, tidak terikat WiFi/IP).
+
+Dibuat:
+- `deploy/supabase/docker-compose.tunnel.yml`: kontainer `cloudflared` (tunnel dikelola jarak jauh lewat `TUNNEL_TOKEN`).
+- `deploy/supabase/10-up.sh --tunnel`: memeriksa URL https dan token, menyetel `COMPOSE_FILE`, menghentikan `supabase-caddy`.
+- `deploy/supabase/55-tunnel-env.sh app.<domain> api.<domain>`: menyetel `SUPABASE_PUBLIC_URL`, `API_EXTERNAL_URL`, `SITE_URL`, mencetak baris `.env.local`.
+- `next.config.ts`: `allowedDevOrigins` ikut membaca `CLASSMEET_PUBLIC_HOSTS`.
+- README: bagian "Cloudflare Tunnel (mode C)". Caddy dan `dev:https` tetap ada sebagai cadangan.
+
+Hasil (domain `rahmadarifin.my.id`, app dan api lewat tunnel `classmeet`): HTTPS aktif setelah sertifikat Universal Cloudflare terbit; `/display/market` memuat data, WebSocket Realtime menjawab ok. Catatan: penyebaran nameserver `.id` lambat; resolver 8.8.8.8/9.9.9.9/1.0.0.1 masih menjawab nameserver lama (NXDOMAIN) berjam-jam setelah ganti nameserver, sehingga perangkat di jaringan tertentu belum bisa membuka alamatnya (Safari: "tidak dapat menemukan server").
+
+## Mode server sekolah: image aplikasi di port 8111 (20 Nov)
+
+Server sekolah (`172.16.27.38`, SFTP port 2222) dipasangi lewat VS Code SFTP. Dibuat:
+- `.vscode/sftp.json`: bagian `ignore` (node_modules, .next, .git, data Postgres mentah, dump, kredensial lokal); berkasnya sendiri masuk `.gitignore` karena berisi kata sandi server.
+- `Dockerfile` (3 tahap: `npm ci`, `next build`, `next start`; node 22; `NEXT_PUBLIC_*` sebagai build arg; rahasia tidak masuk image) dan `.dockerignore`.
+- `deploy/supabase/docker-compose.app.yml`: layanan `app` (`classmeet-app`), port 8111 menuju 3000, `env_file: .env.local`.
+- `10-up.sh --server`: Supabase + cloudflared + aplikasi.
+Hasil uji lokal (laptop): image dibangun (`classmeet-app:local`), kontainer sehat di port 8111, `/login` 200, `/display/market` 200 dan menampilkan data pasar (masuk otomatis peran display). Temuan: penyebaran DNS domain belum selesai, sehingga kontainer tidak bisa menjangkau `api.<domain>` lewat DNS biasa; pengujian memakai `extra_hosts` sementara (tidak disimpan). Opsi `dns: 1.1.1.1` di compose dicoba dan dibuang (tidak membantu, dan bisa memutus resolusi bila jaringan sekolah memblokir DNS luar).
+
+## Paket migrasi database ke server sekolah (20 Nov)
+
+Keputusan: di server sekolah hanya skema dan akun admin yang dipindah; data game dan berita menyusul.
+- `deploy/supabase/80-export-bundle.sh [--roles admin[,display]]`: satu berkas `bundle/migrasi-<waktu>.sql` berisi ekstensi, penetral hak bawaan, skema `public` (tanpa `CREATE SCHEMA public`), akun terpilih (auth.users, auth.identities, public.profiles lewat COPY dengan kolom non-turunan), baris `game_settings` bawaan, job cron (3), dan tabel Realtime (5).
+- `deploy/supabase/85-import-bundle.sh <berkas>`: menolak bila `teams` sudah ada, menunggu `auth.users`, memuat berkas, mencetak pemeriksaan (tabel, fungsi, cron, Realtime, akun).
+- Pengujian: berkas dimuat ke database sementara (`scratch_mig`, auth.* dan `auth.uid()` ditiru; pg_cron tidak bisa di luar database `postgres`): 20 tabel, 70 fungsi, 2 akun + 2 identitas, 1 baris pengaturan, 5 tabel Realtime, impor sukses (exit 0). Hak akses cocok dengan sumber (anon 0 fungsi dieksekusi, authenticated 47, anon 0 hak tabel). Pernyataan cron dijalankan ulang di database asli: daftar job identik (idempoten). Penjaga `teams` ada: impor ke database yang sudah berisi ditolak. Impor penuh ke stack baru belum dicoba (butuh server sekolah).
+- Folder `deploy/supabase/bundle/` ada di `.gitignore`; sengaja tidak masuk ignore SFTP supaya bisa diunggah.
+
+## Pemulihan setelah sinkron remote ke lokal (20 Nov)
+
+Sinkron "remote -> lokal" lewat SFTP membuat 32 berkas menjadi 0 byte (`.gitignore`, `.env.example`, `README.md`, `lib/supabase/*`, `deploy/supabase/10-up.sh`, README deploy, docs, generator berita, dan `stack/.env`). Dipulihkan dari git (HEAD) lalu perubahan hari ini diterapkan ulang; daftar berkas 0 byte disimpan di `~/classmeet-recovery/zero-files.txt`.

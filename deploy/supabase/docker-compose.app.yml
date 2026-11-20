@@ -1,0 +1,26 @@
+# Aplikasi Classmeet sebagai kontainer, dipakai BERSAMA docker-compose.yml resmi dan docker-compose.tunnel.yml:
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.tunnel.yml:docker-compose.app.yml
+# (10-up.sh --server menyetel ini dan menyalin berkas ini ke stack/). Jalan di port 8111 server (http://<IP server>:8111),
+# dan tunnel meneruskan app.<domain> ke kontainer ini (route Cloudflare: http://classmeet-app:3000).
+# Berkas dibaca dari folder stack/, jadi ../../.. adalah akar repo.
+services:
+  app:
+    container_name: classmeet-app
+    image: classmeet-app:local
+    build:
+      context: ../../..
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${SUPABASE_PUBLIC_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${ANON_KEY}
+    restart: unless-stopped
+    env_file: ../../../.env.local
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+    ports:
+      - "8111:3000"
+    depends_on:
+      api-gw:
+        condition: service_healthy

@@ -154,6 +154,80 @@ sertifikat. Atur IP statis/reservasi DHCP selama acara. Bila terpaksa berubah: u
 `API_EXTERNAL_URL`, `SITE_URL` di `stack/.env` (lihat `00-setup-stack.sh`), `NEXT_PUBLIC_SUPABASE_URL` di `.env.local`,
 jalankan `./10-up.sh --https`, `docker restart supabase-caddy`, ekspor ulang CA bila perlu, dan pasang ulang di perangkat.
 
+## Cloudflare Tunnel (mode C: ada internet, tanpa memasang sertifikat)
+
+Menggantikan Caddy. Laptop tetap menjalankan semuanya; `cloudflared` (kontainer) membuka sambungan keluar ke Cloudflare,
+dan Cloudflare memegang sertifikat HTTPS publik. Perangkat tim/penjaga cukup membuka alamat, tanpa CA, tanpa satu
+jaringan WiFi dengan laptop. **Butuh internet** di laptop dan di perangkat pemakai.
+
+### Sekali saja, di dasbor Cloudflare (manual, akun milikmu)
+
+1. Daftar di cloudflare.com (paket Free), **Add a site** dengan domainmu. Cloudflare memindai catatan DNS yang ada; periksa
+   hasilnya (catatan web/email di IDCloudHost harus ikut terbawa) sebelum lanjut.
+2. Di **IDCloudHost** (panel domain, bagian Nameserver/DNS), ganti nameserver ke dua nameserver yang diberikan Cloudflare.
+   Penyebaran bisa menit sampai beberapa jam; status situs di Cloudflare menjadi _Active_.
+3. **Zero Trust > Networks > Tunnels > Create a tunnel > Cloudflared**, beri nama `classmeet`. Salin **token** (rahasia).
+4. Di tab **Public Hostname** tambahkan dua entri (HTTP, bukan HTTPS):
+
+   | Hostname       | Service                            |
+   | -------------- | ---------------------------------- |
+   | `api.<domain>` | `http://api-gw:8000`               |
+   | `app.<domain>` | `http://host.docker.internal:3000` |
+
+   Jangan menambahkan Studio. Cloudflare membuat catatan DNS-nya otomatis.
+
+### Di laptop
+
+```bash
+cd deploy/supabase
+./55-tunnel-env.sh app.<domain> api.<domain>   # mengubah stack/.env, mencetak baris untuk .env.local
+echo 'TUNNEL_TOKEN=<token dari langkah 3>' >> stack/.env   # stack/ diabaikan git
+./10-up.sh --tunnel                            # menjalankan Supabase + cloudflared (Caddy dihentikan)
+```
+
+Salin tiga baris dari `55-tunnel-env.sh` ke `.env.local` (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+`CLASSMEET_PUBLIC_HOSTS`), lalu jalankan aplikasi dengan **`npm run dev`** (bukan `dev:https`; tidak ada CA internal,
+jadi `NODE_EXTRA_CA_CERTS` tidak perlu). Buka **`https://app.<domain>`**. Akun yang sudah ada tetap berlaku.
+`CLASSMEET_PUBLIC_HOSTS` memberi izin Next dev untuk host itu (tanpa ini JS halaman 403).
+
+Keamanan: API Supabase kini terbuka ke internet; yang menjaganya RLS dan kunci. `SERVICE_ROLE_KEY` tidak pernah masuk
+`.env.local` klien (hanya server). Studio tidak ikut terbuka. Pertimbangkan Cloudflare Access bila ingin membatasi
+`app.<domain>`.
+
+## Server sekolah (mode D: semuanya sebagai kontainer, aplikasi di port 8111)
+
+Untuk server yang dipasangi lewat SFTP (VS Code SFTP: `.vscode/sftp.json`, bagian `ignore` sudah mengecualikan `node_modules`, `.next`,
+`.git`, data Postgres mentah, dan `KREDENSIAL.local.md`; berkas itu sendiri diabaikan git karena berisi kata sandi).
+
+Yang ikut di-upload dan wajib ada di server: seluruh kode, `.env.local` (rahasia aplikasi), `deploy/supabase/stack/` (termasuk `stack/.env`
+yang memuat kunci dan `TUNNEL_TOKEN`, tanpa `volumes/db/data`). Kirim hanya lewat SFTP.
+
+Di server (perlu Docker + Compose dan internet keluar; tidak perlu Node di host, build terjadi di dalam image):
+
+```bash
+cd <folder proyek>/deploy/supabase
+./10-up.sh --server     # Supabase + cloudflared + aplikasi (membangun image, pertama kali beberapa menit)
+./10-up.sh logs         # ikuti log
+./10-up.sh down         # hentikan
+```
+
+- Aplikasi: `http://172.16.27.38:8111` (HTTP biasa di LAN; kamera butuh HTTPS, jadi pemakai membuka `https://app.<domain>` lewat tunnel).
+- Ubah route Cloudflare `app.<domain>` menjadi `http://classmeet-app:3000` (sebelumnya `host.docker.internal:3000` untuk `npm run dev` di laptop).
+  Matikan tunnel di laptop lebih dulu (`./10-up.sh down`): token yang sama di dua mesin membuat trafik terbagi.
+- `NEXT_PUBLIC_*` dipanggang saat build dari `stack/.env` (`SUPABASE_PUBLIC_URL`, `ANON_KEY`); rahasia server dibaca lewat `env_file: .env.local`
+  dan tidak masuk image. Ubah `.env.local` atau `stack/.env` lalu `./10-up.sh --server` ulang untuk membangun ulang.
+- **DNS baru menyebar pelan.** Setelah nameserver domain diganti, sebagian resolver (Google 8.8.8.8, Quad9, DNS ISP/sekolah) masih menjawab NXDOMAIN
+  untuk `api.<domain>` sampai 24 sampai 48 jam. Aplikasi di server memanggil `https://api.<domain>` dari sisi server juga, jadi bila resolver
+  server masih basi, login dan `/display` gagal. Uji di server: `docker exec classmeet-app node -e "fetch('https://api.<domain>/auth/v1/health').then(r=>console.log(r.status))"`
+  (401 = berhasil sampai API; `ENOTFOUND`/`EAI_AGAIN` = DNS belum menyebar, tunggu).
+- **Database di server baru dimulai kosong; pindahkan skema dan akun dengan paket migrasi** (bukan menyalin `volumes/db/data`):
+  1. Laptop (database Docker harus jalan): `./80-export-bundle.sh --roles admin,display` menulis `bundle/migrasi-<waktu>.sql` (skema public, job cron,
+     tabel Realtime, akun admin dan layar publik; tanpa tim, saldo, order, berita, aset). Berkas berisi hash kata sandi; izin 600; folder diabaikan git.
+  2. Upload berkas itu lewat SFTP ke `deploy/supabase/bundle/` di server.
+  3. Server, setelah `./10-up.sh --server` (tunggu auth selesai): `./85-import-bundle.sh bundle/migrasi-<waktu>.sql`, lalu
+     `docker restart realtime-dev.supabase-realtime`. Impor menolak bila tabel `teams` sudah ada.
+     Tim, pos, aset, dan berita dibuat menyusul (halaman admin, `npm run seed`, atau `npm run load-news`).
+
 ## Pencadangan dan pemulihan
 
 ```bash

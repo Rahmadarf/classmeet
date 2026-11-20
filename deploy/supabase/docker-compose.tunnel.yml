@@ -1,0 +1,23 @@
+# Tambahan untuk Cloudflare Tunnel (menggantikan Caddy bila ada internet). Dipakai BERSAMA docker-compose.yml resmi:
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.tunnel.yml
+# (10-up.sh --tunnel menyetel ini dan menyalin berkas ini ke stack/).
+#
+# cloudflared membuka sambungan KELUAR ke Cloudflare (tanpa port masuk, tanpa pengaturan router/firewall), dan Cloudflare
+# yang memegang sertifikat HTTPS publik, jadi perangkat tim/penjaga tidak perlu memasang CA apa pun.
+# Tunnel dikelola jarak jauh: daftar hostname dan tujuannya diatur di dasbor Cloudflare (lihat README, bagian Cloudflare Tunnel):
+#   api.<domain>  ->  http://api-gw:8000                (gerbang API Supabase: auth, rest, realtime)
+#   app.<domain>  ->  http://host.docker.internal:3000  (aplikasi Next di mesin host)
+# Studio TIDAK didaftarkan ke tunnel.
+services:
+  cloudflared:
+    container_name: supabase-cloudflared
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?isi TUNNEL_TOKEN di stack/.env (lihat README, bagian Cloudflare Tunnel)}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      api-gw:
+        condition: service_healthy
