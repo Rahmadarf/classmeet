@@ -60,6 +60,21 @@ terakhir, dan dikurangi bila harga akan menabrak batas. Dirata-ratakan per berit
   Sesudah dibuka: hanya jumlah per jenis (`get_news_pool_kinds`); `news_pool_coverage` ditolak (`game_started_locked`) supaya
   admin tidak tahu aset mana yang masih punya berita event.
 
+## 3a. Format berita baru: petunjuk lewat sifat, tanpa nama (20 Nov)
+
+Menggantikan paragraf kedua lama ("Analis memperkirakan Pertamina, PLN dan Adaro naik…", yang menyebut nama langsung).
+
+| Bagian | Isi |
+|--------|-----|
+| Paragraf 1 | Kejadian dan reaksi pelaku usaha (2–3 kalimat; varian b menambah konteks sektor). Berita event menyebut perusahaan subjeknya dan sebabnya |
+| Paragraf 2 | Kalimat petunjuk ("Perusahaan yang A serta B … berpeluang menguat. Sebaliknya, perusahaan yang C serta D … melemah.") lalu dua kalimat pengecoh: "Di sisi lain, …" (berdekatan topik dengan sektor utama berita) dan "Selain itu, …" (umum) |
+
+- Petunjuk diambil dari **kamus sifat** ([16](16-sifat-aset.md)): maksimal 2 aset naik dan 2 turun, yang efeknya terbesar dan minimal 1 % (`HINT_MIN_BPS`). Efek pengisi (≤ 0,9 %, untuk memenuhi 10–15 aset) tidak disebut, jadi petunjuk selalu cocok dengan efek sebenarnya.
+- Berita harga tidak menyebut nama perusahaan sama sekali; berita event hanya menyebut subjeknya. Diperiksa `validatePool`.
+- Tema bergaya tren sektor dari contoh panitia (permintaan produk kesehatan, perlindungan finansial, hiburan digital) ditambah 3 tema serupa (kendaraan ramah lingkungan, makan di rumah, pembayaran nontunai) di `scripts/data/news-themes-3.ts`; tema dapat menyasar aset tertentu lewat bobot per simbol (`a`). Enam tema lama (perizinan, internet desa, perangkat bekas, label produk, pekan raya, tabungan) dilepas supaya jumlah tema tetap 130 dan kumpulan tetap 1000.
+- Bank pengecoh di `scripts/data/news-noise.ts` (27 umum + 18 per sektor, termasuk contoh panitia); tidak boleh memuat kata kunci sifat aset mana pun (diperiksa tes).
+- Memuat ulang kumpulan: `npm run load-news -- --replace` mengganti semua berita `ready`/`draft` (isi dan efek); yang sudah punya riwayat dibatalkan dan diberi judul arsip, yang sudah terbit tidak disentuh.
+
 ## 4. Simulasi dan hasil
 `scripts/sim-news-engine.sh [hari] [suhu] [benih] [intensitas]` menjalankan 3 hari permainan (jam simulasi via
 `classmeet.now`) di dalam transaksi yang di-ROLLBACK, memakai kumpulan berita yang sama. Jangan dijalankan saat acara

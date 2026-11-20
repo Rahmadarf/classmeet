@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import assetsFile from "./data/assets.example.json";
+import { ASSET_TRAITS } from "./data/asset-traits";
+import { NOISE_BY_SECTOR, NOISE_GENERIC } from "./data/news-noise";
 import {
   buildPool,
   DEFAULT_CONFIG,
-  impactParagraph,
+  hintSentence,
   makeRng,
   poolToSql,
   validatePool,
@@ -71,44 +73,72 @@ describe("buildPool", () => {
   });
 });
 
-describe("isi berita dua paragraf", () => {
-  it("tiap berita minimal 2 paragraf dan paragraf kedua menyebut aset yang bergerak sesuai arah efeknya", () => {
-    const name = new Map(assets.map((a) => [a.symbol, a.name]));
+describe("isi berita dua paragraf dengan petunjuk sifat", () => {
+  it("tiap berita minimal 2 paragraf; paragraf kedua memuat petunjuk sifat dan dua kalimat pengecoh", () => {
     for (const n of pool) {
-      const [, impact] = n.body.split(/\n{2,}/);
-      expect(n.body.split(/\n{2,}/).length).toBeGreaterThanOrEqual(2);
-      const top = [...n.effects].sort((a, b) => Math.abs(b.pct_bps) - Math.abs(a.pct_bps))[0];
-      // efek terbesar paling sering disebut; setidaknya satu nama aset berefek ada di paragraf kedua
-      expect(n.effects.some((e) => impact.includes(name.get(e.symbol) ?? "__"))).toBe(true);
-      expect(top).toBeDefined();
+      const parts = n.body.split(/\n{2,}/);
+      expect(parts.length).toBeGreaterThanOrEqual(2);
+      expect(parts[1]).toContain("Di sisi lain, ");
+      expect(parts[1]).toMatch(/\. (Selain itu|Sementara itu|Pada waktu yang sama), /);
     }
   });
 
-  it("impactParagraph: yang naik disebut sebagai menguat, yang turun melemah, sisanya bergerak tipis", () => {
-    const names = new Map([
-      ["AA", "Apel"],
-      ["BB", "Bata"],
-      ["CC", "Cuka"],
-    ]);
-    const p = impactParagraph(
-      "Judul",
-      [
-        { symbol: "AA", pct_bps: 300 },
-        { symbol: "BB", pct_bps: -200 },
-        { symbol: "CC", pct_bps: 50 },
-      ],
-      names,
-    );
-    expect(p).toContain("Apel");
-    expect(p).toContain("Bata");
-    expect(p).toMatch(/menguat|naik|penerima manfaat/);
-    expect(p).toMatch(/melemah|turun|tertekan/);
+  it("berita harga tidak menyebut nama perusahaan; berita event hanya menyebut subjeknya", () => {
+    for (const n of pool) {
+      for (const a of assets) {
+        const re = new RegExp(
+          `(?<![\\p{L}])${a.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\p{L}])`,
+          "u",
+        );
+        const mentioned = re.test(n.body) || re.test(n.title);
+        expect(mentioned).toBe(n.event?.symbol === a.symbol);
+      }
+    }
   });
 
-  it("deterministik menurut judul", () => {
-    const names = new Map([["AA", "Apel"]]);
-    const fx = [{ symbol: "AA", pct_bps: 100 }];
-    expect(impactParagraph("X", fx, names)).toBe(impactParagraph("X", fx, names));
+  it("aset naik dan turun terbesar punya frasa sifatnya di paragraf kedua (kecuali subjek event)", () => {
+    expect(validatePool(pool, assets).filter((p) => p.includes("petunjuk"))).toEqual([]);
+    const sample = pool.find((n) => n.kind === "price")!;
+    expect(sample.body.split(/\n{2,}/)[1]).toMatch(/Perusahaan yang|perusahaan yang/);
+  });
+
+  it("hintSentence: sifat aset naik disebut menguntungkan, yang turun tertekan; deterministik; tanpa nama aset", () => {
+    const fx = [
+      { symbol: "KA", pct_bps: 300 },
+      { symbol: "AD", pct_bps: -200 },
+      { symbol: "IN", pct_bps: 50 },
+    ];
+    const a = hintSentence("Judul", fx);
+    expect(a).toBe(hintSentence("Judul", fx));
+    expect(a).not.toMatch(/Kalbe|Adaro|Indofood/);
+    expect(a).toMatch(/keuntungan|menguat|posisi menguntungkan|memanfaatkan/);
+    expect(a).toMatch(/tertekan|melemah|negatif|tekanan/);
+    expect(hintSentence("Judul", fx, ["KA", "IN"])).not.toMatch(/obat bebas|vitamin|apotek|mi instan/);
+    expect(hintSentence("Judul", [], [])).toContain("terbatas");
+  });
+
+  it("kalimat pengecoh tidak memuat kata kunci sifat aset mana pun", () => {
+    const keys = Object.values(ASSET_TRAITS).flatMap((t) => t.keys);
+    const all = [...NOISE_GENERIC, ...Object.values(NOISE_BY_SECTOR).flat()];
+    for (const sentence of all)
+      for (const k of keys)
+        expect(
+          new RegExp(`(?<![\\p{L}])${k}(?![\\p{L}])`, "iu").test(sentence),
+          `"${sentence}" memuat "${k}"`,
+        ).toBe(false);
+  });
+
+  it("kamus sifat: 30 aset, tiap frasa memuat kata kuncinya, tidak ada kata kunci ganda antar aset", () => {
+    expect(Object.keys(ASSET_TRAITS).sort()).toEqual(assets.map((a) => a.symbol).sort());
+    const seen = new Map<string, string>();
+    for (const [sym, t] of Object.entries(ASSET_TRAITS)) {
+      expect(t.phrases.length).toBeGreaterThanOrEqual(3);
+      expect(t.phrases.some((p) => t.keys.some((k) => p.includes(k)))).toBe(true);
+      for (const k of t.keys) {
+        expect(seen.has(k), `kata kunci "${k}" dipakai ${seen.get(k)} dan ${sym}`).toBe(false);
+        seen.set(k, sym);
+      }
+    }
   });
 });
 

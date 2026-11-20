@@ -4,10 +4,11 @@
  * Urutan berita saat permainan TIDAK ditentukan di sini: yang dibuat hanyalah kumpulannya; yang terbit dipilih
  * mesin saat permainan berjalan (pick_next_news) menurut kondisi pasar.
  */
+import { ASSET_TRAITS } from "./data/asset-traits";
+import { NOISE_BY_SECTOR, NOISE_GENERIC } from "./data/news-noise";
 import {
   BANKRUPT_CAUSES,
   DIVIDEND_CAUSES,
-  NOISE,
   SECTOR_CONTEXT,
   SECTOR_NAMES,
   SUSPEND_CAUSES,
@@ -16,8 +17,9 @@ import {
   type SectorKey,
 } from "./data/news-themes";
 import { THEMES_2 } from "./data/news-themes-2";
+import { THEMES_3 } from "./data/news-themes-3";
 
-const THEMES = [...BASE_THEMES, ...THEMES_2];
+const THEMES = [...BASE_THEMES, ...THEMES_2, ...THEMES_3];
 
 export type PoolKind = "price" | "bankrupt" | "suspend" | "dividend";
 export type PoolEffect = { symbol: string; pct_bps: number };
@@ -88,48 +90,98 @@ function hashOf(text: string): number {
   return h >>> 0;
 }
 
-const list = (names: string[]) =>
-  names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} dan ${names[names.length - 1]}`;
+/** Gabung daftar dengan koma dan "serta" sebelum butir terakhir (frasa sifat sering memuat "dan"). */
+const listSerta = (xs: string[]) =>
+  xs.length <= 1
+    ? (xs[0] ?? "")
+    : xs.length === 2
+      ? `${xs[0]} serta ${xs[1]}`
+      : `${xs.slice(0, -1).join(", ")}, serta ${xs[xs.length - 1]}`;
+
+/** Frasa sifat satu aset untuk satu berita (deterministik menurut judul + simbol; tidak memakai RNG utama). */
+export function traitPhrase(symbol: string, title: string): string | null {
+  const t = ASSET_TRAITS[symbol];
+  return t ? t.phrases[hashOf(`${title}|${symbol}`) % t.phrases.length] : null;
+}
 
 /**
- * Paragraf kedua berita: menyebut perusahaan yang diperkirakan naik dan turun (menurut efek sebenarnya), supaya pembaca dapat
- * menebak aset mana yang bergerak. Nama diambil dari efek terbesar; sisanya disebut "bergerak tipis". Deterministik menurut judul.
+ * Kalimat petunjuk dampak: tanpa menyebut nama perusahaan, hanya ciri aset yang bergerak paling besar (maks. 2 naik, 2
+ * turun, masing-masing dari aset berbeda; hanya efek berarti >= HINT_MIN_BPS). Aset di `exclude` (subjek berita event,
+ * yang sudah disebut namanya) dilewati. Deterministik menurut judul. Aset pengisi berefek kecil tidak disebut.
  */
-export function impactParagraph(title: string, effects: PoolEffect[], names: Map<string, string>): string {
+export function hintSentence(title: string, effects: PoolEffect[], exclude: string[] = []): string {
   const byMag = (a: PoolEffect, b: PoolEffect) => Math.abs(b.pct_bps) - Math.abs(a.pct_bps);
-  const up = effects.filter((e) => e.pct_bps > 0).sort(byMag);
-  const down = effects.filter((e) => e.pct_bps < 0).sort(byMag);
-  const nm = (e: PoolEffect) => names.get(e.symbol) ?? e.symbol;
-  const gain = list(up.slice(0, 4).map(nm));
-  const loss = list(down.slice(0, 3).map(nm));
-  const rest = effects.length - Math.min(up.length, 4) - Math.min(down.length, 3);
+  const pool = effects.filter(
+    (e) => !exclude.includes(e.symbol) && ASSET_TRAITS[e.symbol] && Math.abs(e.pct_bps) >= HINT_MIN_BPS,
+  );
+  const phrases = (xs: PoolEffect[]) =>
+    xs
+      .sort(byMag)
+      .slice(0, HINT_PER_SIDE)
+      .map((e) => traitPhrase(e.symbol, title)!)
+      .filter(Boolean);
+  const up = phrases(pool.filter((e) => e.pct_bps > 0));
+  const down = phrases(pool.filter((e) => e.pct_bps < 0));
   const h = hashOf(title);
-  let main: string;
-  if (up.length > 0 && down.length > 0) {
+  const A = listSerta(up);
+  const B = listSerta(down);
+  if (up.length && down.length) {
     const t = [
-      `Pelaku pasar menilai saham ${gain} berpeluang menguat, sementara ${loss} diperkirakan melemah.`,
-      `Analis memperkirakan ${gain} menjadi penerima manfaat terbesar. Di sisi lain, ${loss} berisiko tertekan.`,
-      `Dampak paling terasa pada ${gain} yang diperkirakan naik, adapun ${loss} cenderung turun.`,
-      `Investor mencermati ${gain} yang diproyeksikan menguat serta ${loss} yang berpotensi turun.`,
+      `Perusahaan yang ${A} diperkirakan mendapat keuntungan dari situasi ini, sedangkan perusahaan yang ${B} berisiko tertekan.`,
+      `Pelaku pasar menilai perusahaan yang ${A} berpeluang menguat. Sebaliknya, perusahaan yang ${B} diperkirakan melemah.`,
+      `Perusahaan yang ${A} dinilai paling siap memanfaatkan perubahan ini. Adapun perusahaan yang ${B} cenderung terdampak negatif.`,
+      `Analis menyebut perusahaan yang ${A} berada di posisi menguntungkan, sementara perusahaan yang ${B} menghadapi tekanan.`,
     ];
-    main = t[h % t.length];
-  } else if (up.length > 0) {
-    const t = [
-      `Pelaku pasar menilai saham ${gain} berpeluang menguat setelah kabar ini.`,
-      `Analis memperkirakan ${gain} menjadi penerima manfaat terbesar dari perkembangan ini.`,
-    ];
-    main = t[h % t.length];
-  } else {
-    const t = [
-      `Pelaku pasar menilai saham ${loss} berpotensi melemah setelah kabar ini.`,
-      `Analis memperkirakan ${loss} menjadi pihak yang paling tertekan oleh perkembangan ini.`,
-    ];
-    main = t[h % t.length];
+    return t[h % t.length];
   }
-  const tail =
-    rest > 0 ? ` ${rest} emiten lain diperkirakan bergerak tipis mengikuti sentimen yang sama.` : "";
-  return `${main}${tail}`;
+  if (up.length) {
+    const t = [
+      `Perusahaan yang ${A} diperkirakan mendapat keuntungan dari situasi ini.`,
+      `Pelaku pasar menilai perusahaan yang ${A} berpeluang menguat setelah kabar ini.`,
+    ];
+    return t[h % t.length];
+  }
+  if (down.length) {
+    const t = [
+      `Perusahaan yang ${B} diperkirakan menghadapi tekanan akibat situasi ini.`,
+      `Pelaku pasar menilai perusahaan yang ${B} berpotensi melemah setelah kabar ini.`,
+    ];
+    return t[h % t.length];
+  }
+  return "Dampak pada perusahaan lain diperkirakan terbatas.";
 }
+
+/** Sektor dengan bobot terbesar pada efek (untuk memilih pengecoh yang berdekatan topiknya). */
+function leadSectorOf(effects: PoolEffect[], sectorOf: Map<string, SectorKey>): SectorKey | undefined {
+  const top = [...effects].sort((a, b) => Math.abs(b.pct_bps) - Math.abs(a.pct_bps))[0];
+  return top ? sectorOf.get(top.symbol) : undefined;
+}
+
+/**
+ * Paragraf kedua: kalimat petunjuk + dua kalimat pengecoh ("Di sisi lain, ..." dan "Selain itu, ..."): satu pengecoh
+ * berdekatan topiknya dengan sektor utama berita, satu umum. Memakai RNG utama untuk memilih pengecoh.
+ */
+function secondParagraph(
+  rng: Rng,
+  title: string,
+  effects: PoolEffect[],
+  sectorOf: Map<string, SectorKey>,
+  exclude: string[] = [],
+): string {
+  const lead = leadSectorOf(
+    effects.filter((e) => !exclude.includes(e.symbol)),
+    sectorOf,
+  );
+  const adjacent = lead ? rng.pick(NOISE_BY_SECTOR[lead]) : rng.pick(NOISE_GENERIC);
+  let generic = rng.pick(NOISE_GENERIC);
+  while (generic === adjacent) generic = rng.pick(NOISE_GENERIC);
+  const link = ["Selain itu", "Sementara itu", "Pada waktu yang sama"][hashOf(title) % 3];
+  return `${hintSentence(title, effects, exclude)} Di sisi lain, ${adjacent}. ${link}, ${generic}.`;
+}
+
+/** Efek berarti (tematis) bermagnitudo >= ini dan layak jadi petunjuk; efek pengisi selalu di bawahnya (<= 90 bps). */
+export const HINT_MIN_BPS = 100;
+const HINT_PER_SIDE = 2;
 
 const clampBps = (bps: number, cap: number) => {
   const v = Math.max(-cap, Math.min(cap, Math.round(bps / 10) * 10));
@@ -147,38 +199,47 @@ function fillEffects(
   const rest = rng.shuffle(assets.filter((a) => !chosen.has(a.symbol)));
   for (const a of rest) {
     if (chosen.size >= target) break;
-    chosen.set(a.symbol, clampBps((rng.next() < 0.5 ? -1 : 1) * rng.int(40, 140), cap));
+    chosen.set(a.symbol, clampBps((rng.next() < 0.5 ? -1 : 1) * rng.int(40, 90), cap));
   }
 }
 
-function priceNews(assets: PoolAsset[], cfg: PoolConfig, rng: Rng): PoolNews[] {
-  const out: PoolNews[] = [];
-  const names = new Map(assets.map((a) => [a.symbol, a.name]));
-  const bySector = new Map<SectorKey, PoolAsset[]>();
+function sectorMap(assets: PoolAsset[]): Map<string, SectorKey> {
+  const m = new Map<string, SectorKey>();
   for (const a of assets) {
     const k = SECTOR_KEY_BY_NAME[a.sector];
-    if (k) bySector.set(k, [...(bySector.get(k) ?? []), a]);
+    if (k) m.set(a.symbol, k);
   }
+  return m;
+}
+
+/** Bobot tema untuk satu aset: bobot per simbol (`a`) menimpa bobot sektor (`w`). */
+const weightOf = (theme: (typeof THEMES)[number], symbol: string, sector?: SectorKey) =>
+  theme.a?.[symbol] ?? (sector ? (theme.w[sector] ?? 0) : 0);
+
+function priceNews(assets: PoolAsset[], cfg: PoolConfig, rng: Rng): PoolNews[] {
+  const out: PoolNews[] = [];
+  const sectorOf = sectorMap(assets);
   for (const theme of THEMES) {
     for (const dir of ["pos", "neg"] as const) {
       const dirSign = dir === "pos" ? 1 : -1;
       for (const variant of [0, 1] as const) {
         const target = rng.int(cfg.minAssets, cfg.maxAssets);
         const chosen = new Map<string, number>();
-        const ranked = (Object.entries(theme.w) as [SectorKey, number][]).sort(
-          (x, y) => Math.abs(y[1]) - Math.abs(x[1]),
-        );
-        for (const [sector, w] of ranked) {
-          for (const a of rng.shuffle(bySector.get(sector) ?? [])) {
-            if (chosen.size >= target) break;
-            if (rng.next() < 0.85) {
-              const mag = Math.abs(w) * rng.int(130, 330) * (0.75 + rng.next() * 0.5);
-              chosen.set(a.symbol, clampBps(Math.sign(w) * dirSign * mag, cfg.capBps));
-            }
+        // calon: aset berbobot; yang bobotnya terbesar didahulukan, urutan di antara bobot sama diacak
+        const ranked = rng
+          .shuffle(assets)
+          .map((a) => ({ a, w: weightOf(theme, a.symbol, sectorOf.get(a.symbol)) }))
+          .filter((x) => x.w !== 0)
+          .sort((x, y) => Math.abs(y.w) - Math.abs(x.w));
+        for (const { a, w } of ranked) {
+          if (chosen.size >= target) break;
+          if (rng.next() < (Math.abs(w) >= 2 ? 0.97 : 0.85)) {
+            const mag = Math.abs(w) * rng.int(130, 330) * (0.75 + rng.next() * 0.5);
+            chosen.set(a.symbol, clampBps(Math.sign(w) * dirSign * mag, cfg.capBps));
           }
         }
         fillEffects(rng, chosen, assets, Math.max(target, cfg.minAssets), cfg.capBps);
-        const lead = ranked[0]?.[0];
+        const lead = ranked[0] ? sectorOf.get(ranked[0].a.symbol) : undefined;
         const base = theme[dir].b;
         const second = variant === 1 && lead ? ` ${SECTOR_CONTEXT[lead]}` : "";
         const title = theme[dir].t[variant];
@@ -186,7 +247,7 @@ function priceNews(assets: PoolAsset[], cfg: PoolConfig, rng: Rng): PoolNews[] {
         out.push({
           kind: "price",
           title,
-          body: `${base}${second} ${rng.pick(NOISE)}\n\n${impactParagraph(title, effects, names)}`,
+          body: `${base}${second}\n\n${secondParagraph(rng, title, effects, sectorOf)}`,
           effects,
           event: null,
         });
@@ -204,7 +265,7 @@ const idPct = (bps: number) => (bps / 100).toLocaleString("id-ID", { maximumFrac
 
 function eventNews(assets: PoolAsset[], cfg: PoolConfig, rng: Rng): PoolNews[] {
   const out: PoolNews[] = [];
-  const names = new Map(assets.map((a) => [a.symbol, a.name]));
+  const sectorOf = sectorMap(assets);
   const kinds: { kind: Exclude<PoolKind, "price">; causes: Cause[]; count: number }[] = [
     { kind: "bankrupt", causes: BANKRUPT_CAUSES, count: cfg.perAsset.bankrupt },
     { kind: "suspend", causes: SUSPEND_CAUSES, count: cfg.perAsset.suspend },
@@ -240,7 +301,7 @@ function eventNews(assets: PoolAsset[], cfg: PoolConfig, rng: Rng): PoolNews[] {
           shufPeers
             .slice(0, 2)
             .forEach((p) =>
-              chosen.set(p.symbol, clampBps((kind === "dividend" ? 1 : -1) * rng.int(50, 150), cfg.capBps)),
+              chosen.set(p.symbol, clampBps((kind === "dividend" ? 1 : -1) * rng.int(100, 180), cfg.capBps)),
             );
         }
         const universe = kind === "bankrupt" ? assets.filter((a) => a.symbol !== asset.symbol) : assets;
@@ -249,7 +310,7 @@ function eventNews(assets: PoolAsset[], cfg: PoolConfig, rng: Rng): PoolNews[] {
         out.push({
           kind,
           title,
-          body: `${body} ${rng.pick(NOISE)}\n\n${impactParagraph(title, effects, names)}`,
+          body: `${body}\n\n${secondParagraph(rng, title, effects, sectorOf, [asset.symbol])}`,
           effects,
           event: { symbol: asset.symbol, amount },
         });
@@ -271,6 +332,12 @@ export function validatePool(
 ): string[] {
   const problems: string[] = [];
   const symbols = new Set(assets.map((a) => a.symbol));
+  const nameRe = new Map(
+    assets.map((a) => [
+      a.symbol,
+      new RegExp(`(?<![\\p{L}])${a.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\p{L}])`, "u"),
+    ]),
+  );
   const titles = new Set<string>();
   const cover = new Map<string, Record<string, number>>();
   for (const a of assets) cover.set(a.symbol, { bankrupt: 0, suspend: 0, dividend: 0 });
@@ -279,6 +346,30 @@ export function validatePool(
     if (!n.title.trim() || !n.body.trim()) problems.push(`${tag}: judul/isi kosong`);
     const paragraphs = n.body.split(/\n{2,}/).filter((p) => p.trim());
     if (paragraphs.length < 2) problems.push(`${tag}: isi kurang dari 2 paragraf`);
+    // nama perusahaan: berita harga tidak menyebut satu pun; berita event hanya menyebut subjeknya
+    for (const a of assets) {
+      const mentioned = nameRe.get(a.symbol)!.test(n.body) || nameRe.get(a.symbol)!.test(n.title);
+      if (mentioned && a.symbol !== n.event?.symbol) problems.push(`${tag}: menyebut nama ${a.name}`);
+    }
+    if (n.event && !nameRe.get(n.event.symbol)!.test(n.body))
+      problems.push(`${tag}: paragraf event tidak menyebut perusahaan subjek`);
+    // petunjuk: aset naik dan turun terbesar (selain subjek) harus punya frasa sifatnya di paragraf kedua
+    {
+      const second = paragraphs[1] ?? "";
+      const rest = n.effects.filter(
+        (e) => e.symbol !== n.event?.symbol && Math.abs(e.pct_bps) >= HINT_MIN_BPS,
+      );
+      for (const sign of [1, -1]) {
+        const top = rest
+          .filter((e) => Math.sign(e.pct_bps) === sign)
+          .sort((x, y) => Math.abs(y.pct_bps) - Math.abs(x.pct_bps))[0];
+        if (top) {
+          const phrase = traitPhrase(top.symbol, n.title);
+          if (phrase && !second.includes(phrase))
+            problems.push(`${tag}: petunjuk ${top.symbol} tidak ada di paragraf kedua`);
+        }
+      }
+    }
     if (titles.has(n.title)) problems.push(`${tag}: judul ganda`);
     titles.add(n.title);
     if (n.effects.length < cfg.minAssets || n.effects.length > cfg.maxAssets)
@@ -317,12 +408,21 @@ const q = (s: string) => `'${s.replaceAll("'", "''")}'`;
  * SQL untuk memuat kumpulan langsung ke database (uji/simulasi atau penyiapan tanpa RPC admin): berita berstatus `ready`.
  * Harus dijalankan SEBELUM game dibuka, atau dengan `classmeet.system = on` (simulasi).
  */
-export function poolToSql(pool: PoolNews[]): string {
+export function poolToSql(pool: PoolNews[], opts: { replace?: boolean } = {}): string {
   const lines: string[] = [
     "do $pool$",
     "declare v uuid; v_admin uuid := (select id from profiles where role = 'admin' limit 1);",
     "begin",
   ];
+  // replace: ganti seluruh berita yang belum dipakai (ready/draft; efek, event, dan bangkrut ikut terhapus lewat cascade),
+  // supaya isi baru dan efeknya tetap cocok. Yang sudah punya riwayat (mis. dikembalikan ke `ready` oleh "Mulai ulang
+  // berita") tidak bisa dihapus: dibatalkan dan diberi judul arsip supaya tidak menghalangi berita baru berjudul sama.
+  // Berita yang sudah terbit/diterapkan tidak disentuh.
+  if (opts.replace)
+    lines.push(
+      "update news n set status = 'cancelled', title = n.title || ' [arsip ' || left(n.id::text, 4) || ']' where n.status in ('ready', 'draft') and (exists (select 1 from price_history x where x.news_id = n.id) or exists (select 1 from news_feed x where x.news_id = n.id) or exists (select 1 from dividends x where x.news_id = n.id) or exists (select 1 from market_event_log x where x.news_id = n.id));",
+      "delete from news where status in ('ready', 'draft');",
+    );
   for (const n of pool) {
     // idempoten: berita dengan judul yang sama tidak dimuat dua kali; isi berita `ready` yang sudah ada diperbarui
     lines.push(`if not exists (select 1 from news where title = ${q(n.title)}) then`);
@@ -373,7 +473,8 @@ export function poolToMarkdown(pool: PoolNews[], assets: PoolAsset[]): string {
   const out: string[] = [
     "# Kumpulan berita (hasil `npm run generate-news`)",
     "",
-    "Dibuat otomatis dari `scripts/data/news-themes.ts`; teks fiksi. Tinjau, ubah temanya di berkas itu, lalu bangkitkan ulang.",
+    "Dibuat otomatis dari `scripts/data/news-themes*.ts`, `news-noise.ts`, dan kamus sifat `asset-traits.ts` (docs/16); teks fiksi.",
+    "Berita harga tidak menyebut nama perusahaan: aset yang terdampak ditebak dari ciri yang disebut di paragraf kedua. Berita event menyebut perusahaan subjeknya.",
     "Urutan terbit TIDAK ditentukan di sini: mesin memilih saat permainan berjalan menurut kondisi pasar.",
     "",
     `Jumlah: ${pool.length} berita (${(["price", "bankrupt", "suspend", "dividend"] as PoolKind[]).map((k) => `${byKind(k).length} ${k}`).join(", ")}).`,

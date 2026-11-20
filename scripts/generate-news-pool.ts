@@ -1,7 +1,7 @@
 /**
  * Membangkitkan kumpulan berita (harga + event) dari `scripts/data/news-themes.ts`.
  *   npm run generate-news            -> scripts/data/news-pool.json + docs/14-kumpulan-berita.md
- *   npm run generate-news -- --sql /tmp/pool.sql   (juga tulis SQL untuk simulasi / muat langsung)
+ *   npm run generate-news -- --sql /tmp/pool.sql [--replace]   (juga tulis SQL; --replace mengganti berita ready/draft)
  *   opsi: --seed teks  --min 10  --max 15  --cap 1500
  * Tidak menyentuh database. Berkas JSON dibaca `npm run seed` (seed-dev.ts).
  */
@@ -59,7 +59,7 @@ writeFileSync(
 );
 writeFileSync(mdPath, poolToMarkdown(pool, assets) + "\n");
 const sqlPath = opt("sql");
-if (sqlPath) writeFileSync(sqlPath, poolToSql(pool) + "\n");
+if (sqlPath) writeFileSync(sqlPath, poolToSql(pool, { replace: args.includes("--replace") }) + "\n");
 const count = (k: string) => pool.filter((n) => n.kind === k).length;
 console.log(
   `✔ ${pool.length} berita: ${count("price")} harga, ${count("bankrupt")} bangkrut, ${count("suspend")} suspensi, ${count("dividend")} dividen`,

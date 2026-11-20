@@ -18,7 +18,10 @@ export const SECTOR_NAMES: Record<SectorKey, string> = {
 };
 
 export type Theme = {
+  /** Bobot per sektor (positif = naik pada versi "pos"). */
   w: Partial<Record<SectorKey, number>>;
+  /** Bobot per simbol aset; menimpa bobot sektor untuk aset itu (untuk tema yang menyasar ciri tertentu). */
+  a?: Record<string, number>;
   pos: { t: [string, string]; b: string };
   neg: { t: [string, string]; b: string };
 };
@@ -744,22 +747,6 @@ export const THEMES: Theme[] = [
       b: "Pelanggan layanan hiburan streaming berhenti berlangganan dalam jumlah besar. Penyedia platform dan produsen perangkat menurunkan target pendapatan.",
     },
   },
-];
-
-/** Kalimat tambahan yang tidak berpengaruh pada harga (gaya yang sama dengan berita contoh). */
-export const NOISE: string[] = [
-  "Sebuah lomba cipta puisi digelar di perpustakaan kota.",
-  "Kelompok pecinta kucing menggelar kontes tahunan.",
-  "Sebuah seminar tentang desain antarmuka digelar di beberapa kampus.",
-  "Komunitas hobi fotografi mengumumkan acara kumpul bulanan.",
-  "Sebuah pertandingan bola voli persahabatan digelar akhir pekan ini.",
-  "Kelompok pecinta tanaman mengadakan tukar bibit di taman kota.",
-  "Sebuah festival layang-layang akan digelar di lapangan kota.",
-  "Klub catur setempat membuka pendaftaran turnamen terbuka.",
-  "Sebuah pameran lukisan anak sekolah dibuka di balai warga.",
-  "Komunitas pelari mengadakan lari pagi bersama setiap hari Minggu.",
-  "Sebuah bazar buku bekas digelar di halaman gedung pertemuan.",
-  "Kelompok teater remaja menyiapkan pementasan akhir tahun.",
 ];
 
 /** Kalimat penutup umum per sektor untuk varian b (konteks yang tidak menyebut perusahaan tertentu). */

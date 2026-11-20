@@ -119,7 +119,7 @@ Contoh dari panitia (berita 3, kategori kesehatan/distribusi):
 
 Petunjuk inti: perusahaan yang punya **ketersediaan produk dan sistem distribusi yang kuat** diuntungkan (aset kesehatan/distribusi dengan sifat itu naik). Dua kalimat pengecoh: seminar organisasi profesi dan program keanggotaan pusat kebugaran. Kunci jawabannya (aset mana, berapa persen) baru bisa ditulis setelah profil aset ada. Tiga kalimat pertama menjadi konteks (sektor kesehatan, permintaan naik, ekspansi pemasaran), kalimat keempat memuat petunjuk, dua kalimat terakhir pengecoh. Sistem tidak peduli bentuknya karena teks disimpan apa adanya.
 
-Contoh berita untuk aset daftar final (usulan, 13 Nov). Format: empat kalimat inti yang memuat kata kunci sifat (§5.1), lalu dua kalimat pengecoh tanpa kata kunci aset mana pun.
+Contoh berita untuk aset daftar final (usulan, 13 Nov). Format: empat kalimat inti yang memuat kata kunci sifat (§5.1), lalu dua kalimat pengecoh tanpa kata kunci aset mana pun. **Diperbarui 20 Nov:** berita harga tidak menyebut nama perusahaan; petunjuk lewat sifat aset ([16](16-sifat-aset.md)), format dua paragraf di [15](15-mesin-berita-v2.md) §3a.
 
 **Contoh A: berita positif, lintas sektor (5 aset)**
 

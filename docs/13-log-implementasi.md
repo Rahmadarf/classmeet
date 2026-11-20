@@ -1008,3 +1008,16 @@ Perbaikan (disetujui pengguna: A dan B):
 ### Fitur hapus tim dicabut (19 Nov)
 
 Permintaan pengguna: tombol/fungsi hapus tim tidak jadi dipakai, kembalikan ke commit sebelumnya. Dilakukan dengan `git revert` commit `10ed4a4` (riwayat git tetap utuh, bisa dikembalikan lagi dari commit itu): dialog Hapus, pascode 6 digit, aksi `deleteTeam`, `scripts/sql/team-delete.sql`, dan catatan `ADMIN_DELETE_PASSCODE` dihapus. Dipertahankan (bukan bagian fitur hapus): perbaikan pembuatan QR tim baru tanpa internet (`lib/admin/qr-png.ts` memuat biner `.wasm` dari `node_modules`) dan entri `.gitignore` untuk `KREDENSIAL.local.md`. Di database Docker, objek SQL fitur itu juga dicabut: fungsi `admin_delete_team`, trigger `orders_deleted_team_guard`, kolom `teams.deleted_at`, dan view/fungsi (`v_team_net_worth`, `get_leaderboard`, `resolve_team_qr`, `resolve_team_code`, `award_payout`) dikembalikan ke definisi semula; tidak ada tim yang sempat tertandai dihapus. Baris pascode di `KREDENSIAL.local.md` dihapus. Untuk memakainya lagi: `git revert` pada commit pencabutan ini.
+
+## Berita format baru: petunjuk lewat sifat aset, tanpa nama perusahaan (20 Nov)
+
+Permintaan: berita bergaya contoh panitia (tren sektor, ciri perusahaan sebagai petunjuk, kalimat pengecoh), minimal 2 paragraf; perbarui tema dan mesin berita. Rancangan disetujui sebelum mulai (lihat docs/15 §3a).
+
+Perubahan (hanya generator dan data; mesin SQL `news-engine-v2` tidak berubah):
+- `scripts/data/asset-traits.ts`: kamus sifat 30 aset (frasa ciri + kata kunci khas); `docs/16-sifat-aset.md` untuk ditinjau.
+- `scripts/data/news-noise.ts`: bank pengecoh (27 umum + 18 per sektor, termasuk contoh panitia); tidak memuat kata kunci sifat aset.
+- `scripts/data/news-themes-3.ts`: 6 tema tren sektor (3 dari contoh panitia, 3 tambahan); `Theme.a` = bobot per simbol. Enam tema lama paling mirip dilepas: tetap 130 tema, 1000 berita (520 harga + 480 event).
+- `scripts/news-pool-lib.ts`: paragraf 2 = `hintSentence` (maks. 2 aset naik + 2 turun dari ciri, efek ≥ 1 %) + "Di sisi lain, …" (topik berdekatan dengan sektor utama) + "Selain itu, …". Efek pengisi dikecilkan (≤ 0,9 %) agar tidak pernah jadi petunjuk; peluang masuk aset berbobot ≥ 2 dinaikkan (97 %). `validatePool` baru: berita harga tidak menyebut nama aset, berita event hanya subjeknya, petunjuk aset naik/turun terbesar ada di paragraf 2.
+- `npm run load-news -- --replace`: mengganti semua berita `ready`/`draft` (isi dan efek); yang punya riwayat dibatalkan + judul arsip; yang sudah terbit tidak disentuh. Dimuat ke Docker lokal: ready 952 (48 judul sudah terpakai di game uji lama), cancelled 12.
+
+Hasil: vitest 144 lolos (tes baru: nama tidak bocor, petunjuk cocok efek, pengecoh bebas kata kunci, kamus tanpa kata kunci ganda), tsc/eslint/prettier bersih. Simulasi 3 hari (rollback): 192 berita terbit (164 harga, 28 event; 2 bangkrut), event paling awal 198/61/39 menit setelah pasar dibuka (≥ 30), sisa berita harga 318, tidak ada aset di batas harga, sd perubahan akhir 0,14. Server sekolah belum memuat berita (ditunda sesuai keputusan).
