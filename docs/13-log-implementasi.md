@@ -1021,3 +1021,7 @@ Perubahan (hanya generator dan data; mesin SQL `news-engine-v2` tidak berubah):
 - `npm run load-news -- --replace`: mengganti semua berita `ready`/`draft` (isi dan efek); yang punya riwayat dibatalkan + judul arsip; yang sudah terbit tidak disentuh. Dimuat ke Docker lokal: ready 952 (48 judul sudah terpakai di game uji lama), cancelled 12.
 
 Hasil: vitest 144 lolos (tes baru: nama tidak bocor, petunjuk cocok efek, pengecoh bebas kata kunci, kamus tanpa kata kunci ganda), tsc/eslint/prettier bersih. Simulasi 3 hari (rollback): 192 berita terbit (164 harga, 28 event; 2 bangkrut), event paling awal 198/61/39 menit setelah pasar dibuka (≥ 30), sisa berita harga 318, tidak ada aset di batas harga, sd perubahan akhir 0,14. Server sekolah belum memuat berita (ditunda sesuai keputusan).
+
+## Mulai ulang berita dan petunjuk aset bangkrut (20 Nov)
+
+Mulai ulang berita di Docker laptop (memanggil `admin_restart_news` sebagai admin): 1000 berita `ready`, feed dan catatan event dikosongkan, berita pertama terbit dari kumpulan baru. Temuan: petunjuk menyebut ciri Xiaomi, padahal Xiaomi bangkrut sehingga efeknya dibuang saat terbit. Perbaikan: `news_pool()` di `scripts/sql/news-engine-v2.sql` mengecualikan berita yang aset berpetunjuknya nonaktif (lihat docs/15 §3a). Diterapkan ke Docker laptop (bukan cloud). Uji: 721 dari 999 berita `ready` layak pakai, 0 yang petunjuknya menyebut aset nonaktif (diperiksa terhadap aturan pembuat berita); satu berita yang efeknya sudah terpangkas karena pernah terbit diganti lewat `load-news -- --replace`.

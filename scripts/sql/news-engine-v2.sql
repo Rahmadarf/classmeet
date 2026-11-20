@@ -102,7 +102,10 @@ language sql stable security definer set search_path = public as $$
          ef.n, ef.n_active,
          (ef.n_active >= (select min_news_assets from game_settings)
           and (coalesce(b.asset_id, ev.asset_id) is null
-               or exists (select 1 from assets a where a.id = coalesce(b.asset_id, ev.asset_id) and a.is_active)))
+               or exists (select 1 from assets a where a.id = coalesce(b.asset_id, ev.asset_id) and a.is_active))
+          -- petunjuk di teks berita menyebut ciri aset yang efeknya terbesar; bila salah satunya sudah bangkrut (nonaktif),
+          -- efeknya dibuang saat terbit dan petunjuk menyesatkan, jadi berita itu tidak dipilih (aturan docs/15 §3a)
+          and coalesce(hint.all_active, true))
     from news n
     left join news_bankruptcies b on b.news_id = n.id
     left join lateral (select e.kind, e.asset_id, e.amount from news_events e
@@ -110,6 +113,16 @@ language sql stable security definer set search_path = public as $$
     left join lateral (select count(*)::int as n, (count(*) filter (where a.is_active))::int as n_active
                          from news_effects x join assets a on a.id = x.asset_id
                         where x.news_id = n.id) ef on true
+    -- aset berpetunjuk = 2 naik + 2 turun dengan |efek| terbesar (minimal 100 bps), selain subjek event; rank() mengikutkan
+    -- yang seri sehingga himpunannya selalu mencakup yang dipakai pembuat berita (scripts/news-pool-lib.ts: HINT_MIN_BPS, HINT_PER_SIDE)
+    left join lateral (
+      select bool_and(h.is_active) as all_active
+        from (select a.is_active,
+                     rank() over (partition by (x.pct_bps > 0) order by abs(x.pct_bps) desc) as rk
+                from news_effects x join assets a on a.id = x.asset_id
+               where x.news_id = n.id and abs(x.pct_bps) >= 100
+                 and x.asset_id is distinct from coalesce(b.asset_id, ev.asset_id)) h
+       where h.rk <= 2) hint on true
 $$;
 
 -- ---------------------------------------------------------------------------------------------------------------------
