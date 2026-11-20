@@ -421,6 +421,8 @@ export function poolToSql(pool: PoolNews[], opts: { replace?: boolean } = {}): s
   if (opts.replace)
     lines.push(
       "update news n set status = 'cancelled', title = n.title || ' [arsip ' || left(n.id::text, 4) || ']' where n.status in ('ready', 'draft') and (exists (select 1 from price_history x where x.news_id = n.id) or exists (select 1 from news_feed x where x.news_id = n.id) or exists (select 1 from dividends x where x.news_id = n.id) or exists (select 1 from market_event_log x where x.news_id = n.id));",
+      // satu aset hanya boleh punya satu pemetaan bangkrut: lepaskan yang milik berita batal agar berita baru bisa dimuat
+      "delete from news_bankruptcies where news_id in (select id from news where status = 'cancelled');",
       "delete from news where status in ('ready', 'draft');",
     );
   for (const n of pool) {
