@@ -1008,3 +1008,50 @@ Perbaikan (disetujui pengguna: A dan B):
 ### Fitur hapus tim dicabut (19 Nov)
 
 Permintaan pengguna: tombol/fungsi hapus tim tidak jadi dipakai, kembalikan ke commit sebelumnya. Dilakukan dengan `git revert` commit `10ed4a4` (riwayat git tetap utuh, bisa dikembalikan lagi dari commit itu): dialog Hapus, pascode 6 digit, aksi `deleteTeam`, `scripts/sql/team-delete.sql`, dan catatan `ADMIN_DELETE_PASSCODE` dihapus. Dipertahankan (bukan bagian fitur hapus): perbaikan pembuatan QR tim baru tanpa internet (`lib/admin/qr-png.ts` memuat biner `.wasm` dari `node_modules`) dan entri `.gitignore` untuk `KREDENSIAL.local.md`. Di database Docker, objek SQL fitur itu juga dicabut: fungsi `admin_delete_team`, trigger `orders_deleted_team_guard`, kolom `teams.deleted_at`, dan view/fungsi (`v_team_net_worth`, `get_leaderboard`, `resolve_team_qr`, `resolve_team_code`, `award_payout`) dikembalikan ke definisi semula; tidak ada tim yang sempat tertandai dihapus. Baris pascode di `KREDENSIAL.local.md` dihapus. Untuk memakainya lagi: `git revert` pada commit pencabutan ini.
+
+## Cloudflare Tunnel sebagai pengganti Caddy (20 Nov)
+
+Alasan: tester lain di jaringan yang sama membuka `https://192.192.2.222:3443` tetapi realtime gagal, karena API/WebSocket di `https://192.192.2.222` (port 443) memakai sertifikat CA internal Caddy yang belum dipercaya perangkatnya (pengecualian peramban hanya berlaku untuk `:3443`). Saat acara pasti ada internet, jadi Caddy diganti Cloudflare Tunnel (sertifikat publik, tanpa instal CA, tidak terikat WiFi/IP).
+
+Dibuat:
+- `deploy/supabase/docker-compose.tunnel.yml`: kontainer `cloudflared` (tunnel dikelola jarak jauh lewat `TUNNEL_TOKEN`).
+- `deploy/supabase/10-up.sh --tunnel`: memeriksa URL https dan token, menyetel `COMPOSE_FILE`, menghentikan `supabase-caddy`.
+- `deploy/supabase/55-tunnel-env.sh app.<domain> api.<domain>`: menyetel `SUPABASE_PUBLIC_URL`, `API_EXTERNAL_URL`, `SITE_URL`, mencetak baris `.env.local`.
+- `next.config.ts`: `allowedDevOrigins` ikut membaca `CLASSMEET_PUBLIC_HOSTS`.
+- README: bagian "Cloudflare Tunnel (mode C)". Caddy dan `dev:https` tetap ada sebagai cadangan.
+
+Hasil (domain `rahmadarifin.my.id`, app dan api lewat tunnel `classmeet`): HTTPS aktif setelah sertifikat Universal Cloudflare terbit; `/display/market` memuat data, WebSocket Realtime menjawab ok. Catatan: penyebaran nameserver `.id` lambat; resolver 8.8.8.8/9.9.9.9/1.0.0.1 masih menjawab nameserver lama (NXDOMAIN) berjam-jam setelah ganti nameserver, sehingga perangkat di jaringan tertentu belum bisa membuka alamatnya (Safari: "tidak dapat menemukan server").
+
+## Mode server sekolah: image aplikasi di port 8111 (20 Nov)
+
+Server sekolah (`172.16.27.38`, SFTP port 2222) dipasangi lewat VS Code SFTP. Dibuat:
+- `.vscode/sftp.json`: bagian `ignore` (node_modules, .next, .git, data Postgres mentah, dump, kredensial lokal); berkasnya sendiri masuk `.gitignore` karena berisi kata sandi server.
+- `Dockerfile` (3 tahap: `npm ci`, `next build`, `next start`; node 22; `NEXT_PUBLIC_*` sebagai build arg; rahasia tidak masuk image) dan `.dockerignore`.
+- `deploy/supabase/docker-compose.app.yml`: layanan `app` (`classmeet-app`), port 8111 menuju 3000, `env_file: .env.local`.
+- `10-up.sh --server`: Supabase + cloudflared + aplikasi.
+Hasil uji lokal (laptop): image dibangun (`classmeet-app:local`), kontainer sehat di port 8111, `/login` 200, `/display/market` 200 dan menampilkan data pasar (masuk otomatis peran display). Temuan: penyebaran DNS domain belum selesai, sehingga kontainer tidak bisa menjangkau `api.<domain>` lewat DNS biasa; pengujian memakai `extra_hosts` sementara (tidak disimpan). Opsi `dns: 1.1.1.1` di compose dicoba dan dibuang (tidak membantu, dan bisa memutus resolusi bila jaringan sekolah memblokir DNS luar).
+
+## Paket migrasi database ke server sekolah (20 Nov)
+
+Keputusan: di server sekolah hanya skema dan akun admin yang dipindah; data game dan berita menyusul.
+- `deploy/supabase/80-export-bundle.sh [--roles admin[,display]]`: satu berkas `bundle/migrasi-<waktu>.sql` berisi ekstensi, penetral hak bawaan, skema `public` (tanpa `CREATE SCHEMA public`), akun terpilih (auth.users, auth.identities, public.profiles lewat COPY dengan kolom non-turunan), baris `game_settings` bawaan, job cron (3), dan tabel Realtime (5).
+- `deploy/supabase/85-import-bundle.sh <berkas>`: menolak bila `teams` sudah ada, menunggu `auth.users`, memuat berkas, mencetak pemeriksaan (tabel, fungsi, cron, Realtime, akun).
+- Pengujian: berkas dimuat ke database sementara (`scratch_mig`, auth.* dan `auth.uid()` ditiru; pg_cron tidak bisa di luar database `postgres`): 20 tabel, 70 fungsi, 2 akun + 2 identitas, 1 baris pengaturan, 5 tabel Realtime, impor sukses (exit 0). Hak akses cocok dengan sumber (anon 0 fungsi dieksekusi, authenticated 47, anon 0 hak tabel). Pernyataan cron dijalankan ulang di database asli: daftar job identik (idempoten). Penjaga `teams` ada: impor ke database yang sudah berisi ditolak. Impor penuh ke stack baru belum dicoba (butuh server sekolah).
+- Folder `deploy/supabase/bundle/` ada di `.gitignore`; sengaja tidak masuk ignore SFTP supaya bisa diunggah.
+
+## Berita format baru: petunjuk lewat sifat aset, tanpa nama perusahaan (20 Nov)
+
+Permintaan: berita bergaya contoh panitia (tren sektor, ciri perusahaan sebagai petunjuk, kalimat pengecoh), minimal 2 paragraf; perbarui tema dan mesin berita. Rancangan disetujui sebelum mulai (lihat docs/15 §3a).
+
+Perubahan (hanya generator dan data; mesin SQL `news-engine-v2` tidak berubah):
+- `scripts/data/asset-traits.ts`: kamus sifat 30 aset (frasa ciri + kata kunci khas); `docs/16-sifat-aset.md` untuk ditinjau.
+- `scripts/data/news-noise.ts`: bank pengecoh (27 umum + 18 per sektor, termasuk contoh panitia); tidak memuat kata kunci sifat aset.
+- `scripts/data/news-themes-3.ts`: 6 tema tren sektor (3 dari contoh panitia, 3 tambahan); `Theme.a` = bobot per simbol. Enam tema lama paling mirip dilepas: tetap 130 tema, 1000 berita (520 harga + 480 event).
+- `scripts/news-pool-lib.ts`: paragraf 2 = `hintSentence` (maks. 2 aset naik + 2 turun dari ciri, efek ≥ 1 %) + "Di sisi lain, …" (topik berdekatan dengan sektor utama) + "Selain itu, …". Efek pengisi dikecilkan (≤ 0,9 %) agar tidak pernah jadi petunjuk; peluang masuk aset berbobot ≥ 2 dinaikkan (97 %). `validatePool` baru: berita harga tidak menyebut nama aset, berita event hanya subjeknya, petunjuk aset naik/turun terbesar ada di paragraf 2.
+- `npm run load-news -- --replace`: mengganti semua berita `ready`/`draft` (isi dan efek); yang punya riwayat dibatalkan + judul arsip; yang sudah terbit tidak disentuh. Dimuat ke Docker lokal: ready 952 (48 judul sudah terpakai di game uji lama), cancelled 12.
+
+Hasil: vitest 144 lolos (tes baru: nama tidak bocor, petunjuk cocok efek, pengecoh bebas kata kunci, kamus tanpa kata kunci ganda), tsc/eslint/prettier bersih. Simulasi 3 hari (rollback): 192 berita terbit (164 harga, 28 event; 2 bangkrut), event paling awal 198/61/39 menit setelah pasar dibuka (≥ 30), sisa berita harga 318, tidak ada aset di batas harga, sd perubahan akhir 0,14. Server sekolah belum memuat berita (ditunda sesuai keputusan).
+
+## Pemulihan setelah sinkron remote ke lokal (20 Nov)
+
+Sinkron "remote -> lokal" lewat SFTP membuat 32 berkas menjadi 0 byte (`.gitignore`, `.env.example`, `README.md`, `lib/supabase/*`, `deploy/supabase/10-up.sh`, README deploy, docs, generator berita, dan `stack/.env`). Dipulihkan dari git (HEAD) lalu perubahan hari ini diterapkan ulang; daftar berkas 0 byte disimpan di `~/classmeet-recovery/zero-files.txt`.

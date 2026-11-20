@@ -58,3 +58,9 @@ next-env.d.ts
 
 # daftar kredensial lokal (kata sandi, PIN, pascode): JANGAN di-commit
 /KREDENSIAL.local.md
+
+# konfigurasi SFTP (memuat kata sandi server; jangan di-commit)
+/.vscode/sftp.json
+
+# paket migrasi database (berisi hash kata sandi akun; jangan di-commit)
+/deploy/supabase/bundle/

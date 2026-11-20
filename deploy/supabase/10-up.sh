@@ -2,6 +2,8 @@
 # Jalankan layanan Supabase yang dipakai Classmeet dan tunggu sampai database sehat.
 #   ./10-up.sh            jalankan (HTTP; gerbang API di port 8000)
 #   ./10-up.sh --https    jalankan dengan Caddy (HTTPS LAN; lihat README, bagian HTTPS)
+#   ./10-up.sh --tunnel   jalankan dengan Cloudflare Tunnel (butuh internet; lihat README, bagian Cloudflare Tunnel)
+#   ./10-up.sh --server   seperti --tunnel, ditambah aplikasi Classmeet sebagai kontainer di port 8111 (server sekolah)
 #   ./10-up.sh down       hentikan (data tetap di stack/volumes/db/data)
 #   ./10-up.sh logs       ikuti log
 set -euo pipefail
@@ -13,8 +15,8 @@ MODE="${1:-up}"
 case "$MODE" in
   down) dc down; exit 0 ;;
   logs) dc logs -f --tail 100 "${SERVICES[@]}"; exit 0 ;;
-  up|--https) ;;
-  *) die "pilihan: up | --https | down | logs" ;;
+  up|--https|--tunnel|--server) ;;
+  *) die "pilihan: up | --https | --tunnel | --server | down | logs" ;;
 esac
 
 if [ "$MODE" = "--https" ]; then
@@ -27,6 +29,26 @@ if [ "$MODE" = "--https" ]; then
   set_env COMPOSE_FILE "docker-compose.yml:docker-compose.caddy.yml:docker-compose.https.yml"
   SERVICES+=(caddy)
 fi
+
+if [ "$MODE" = "--tunnel" ] || [ "$MODE" = "--server" ]; then
+  [ "$(get_env SUPABASE_PUBLIC_URL | cut -c1-8)" = "https://" ] \
+    || die "SUPABASE_PUBLIC_URL harus https://api.<domain>. Jalankan ./55-tunnel-env.sh app.<domain> api.<domain>."
+  [ -n "$(get_env TUNNEL_TOKEN)" ] || die "TUNNEL_TOKEN belum diisi di stack/.env (lihat README, bagian Cloudflare Tunnel)."
+  cp "$HERE/docker-compose.tunnel.yml" "$STACK/docker-compose.tunnel.yml"
+  set_env COMPOSE_FILE "docker-compose.yml:docker-compose.tunnel.yml"
+  # Caddy (bila pernah dipakai) tidak dipakai lagi; hentikan supaya tidak menahan port 443/3443.
+  docker stop supabase-caddy >/dev/null 2>&1 || true
+  SERVICES+=(cloudflared)
+fi
+
+if [ "$MODE" = "--server" ]; then
+  [ -f "$HERE/../../.env.local" ] || die ".env.local aplikasi belum ada di akar repo (lihat README, bagian Server sekolah)."
+  cp "$HERE/docker-compose.app.yml" "$STACK/docker-compose.app.yml"
+  set_env COMPOSE_FILE "docker-compose.yml:docker-compose.tunnel.yml:docker-compose.app.yml"
+  SERVICES+=(app)
+fi
+
+[ "$MODE" = "--server" ] && { info "Membangun image aplikasi (pertama kali beberapa menit) ..."; dc build app; }
 
 info "Menjalankan: ${SERVICES[*]} (pertama kali mengunduh image, bisa beberapa GB) ..."
 dc up -d "${SERVICES[@]}"
