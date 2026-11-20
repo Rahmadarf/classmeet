@@ -46,7 +46,6 @@ export default async function BerandaPreview({
 }) {
   if (process.env.NODE_ENV === "production") notFound();
   const q = await searchParams;
-  const locked = q.locked === "1" ? 300_000 : 0;
   const empty = q.empty === "1";
   return (
     <AppShell
@@ -65,8 +64,7 @@ export default async function BerandaPreview({
           summary={{
             cash: 1_200_000,
             holdingsValue: 4_325_000,
-            netWorth: 5_525_000 + locked,
-            lockedCash: locked,
+            netWorth: 5_525_000,
           }}
         />
         <NewsCard items={empty ? [] : NEWS} now={NOW} />

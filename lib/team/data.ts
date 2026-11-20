@@ -6,24 +6,22 @@ type Db = SupabaseClient<Database>;
 
 /**
  * Ringkasan uang tim dari `get_my_summary()` (docs/04 §3.3).
- * - `cash`        saldo bebas (di luar yang terkunci di order)
- * - `holdingsValue` nilai aset menurut HARGA PERINGKAT (VWAP 10 menit), bukan harga terakhir
- * - `netWorth`    cash + lockedCash + holdingsValue (yang dipakai peringkat)
- * - `lockedCash`  saldo tertahan di order beli yang antre
+ * - `cash`          saldo
+ * - `holdingsValue` nilai aset menurut harga tayang saat ini (docs/17)
+ * - `netWorth`      cash + holdingsValue (yang dipakai peringkat)
  */
 export type Summary = {
   cash: number;
   holdingsValue: number;
   netWorth: number;
-  lockedCash: number;
 };
 
 export async function fetchSummary(supabase: Db): Promise<Summary | null> {
   const { data, error } = await supabase.rpc("get_my_summary");
   if (error || !data) return null;
-  const { cash, holdings_value, net_worth, locked_cash } = data;
-  if (!isMoney(cash) || !isMoney(holdings_value) || !isMoney(net_worth) || !isMoney(locked_cash)) return null;
-  return { cash, holdingsValue: holdings_value, netWorth: net_worth, lockedCash: locked_cash };
+  const { cash, holdings_value, net_worth } = data;
+  if (!isMoney(cash) || !isMoney(holdings_value) || !isMoney(net_worth)) return null;
+  return { cash, holdingsValue: holdings_value, netWorth: net_worth };
 }
 
 /** Berita yang sudah tayang (tabel `news_feed`: judul, isi, waktu tayang; TANPA efek maupun waktu efek). */

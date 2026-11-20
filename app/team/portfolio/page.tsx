@@ -10,7 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Portofolio" };
 
-const SUBTITLE = "Aset yang kamu pegang dan nilainya menurut harga peringkat.";
+const SUBTITLE = "Aset yang kamu pegang dan nilainya menurut harga tayang.";
 
 export default function PortfolioPage() {
   // Membaca sesi memakai cookies() → di dalam <Suspense> (cacheComponents).

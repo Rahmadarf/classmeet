@@ -1,14 +1,14 @@
 import { dayKeyWib, formatDateWib } from "@/lib/money";
 
+/** Satu transaksi beli/jual (`transactions`). `price` = harga satuan yang dibayar/diterima; `listPrice` = harga tayang saat itu. */
 export type TradeIn = {
   id: number;
   assetId: string;
+  side: "buy" | "sell";
   price: number;
+  listPrice: number;
   qty: number;
-  buyerId: string | null;
-  sellerId: string | null;
-  buyerFee: number;
-  sellerFee: number;
+  total: number;
   createdAt: string;
 };
 
@@ -40,11 +40,11 @@ export type TradeItem = {
   symbol: string;
   name: string;
   qty: number;
+  /** Harga satuan yang dibayar (beli) atau diterima (jual). */
   price: number;
-  /** Harga × lot, tanpa biaya. */
-  gross: number;
-  fee: number;
-  /** Pengaruh ke saldo: negatif untuk beli (nilai + biaya), positif untuk jual (nilai − biaya). */
+  /** Harga tayang saat transaksi (untuk jual: selisih dengan harga satuan adalah selisih jual). */
+  listPrice: number;
+  /** Pengaruh ke saldo: negatif untuk beli, positif untuk jual. */
   net: number;
 };
 
@@ -81,37 +81,30 @@ export function postNumber(name: string): string | null {
 }
 
 /**
- * Gabungkan transaksi (`trades`, satu baris per pencocokan) dan hadiah pos (`payouts`) milik tim menjadi satu
- * lini masa, terbaru di atas. `myId` menentukan sisi: pembeli atau penjual. RLS sudah membatasi baris ke milik
- * tim ini; `myId` hanya memilih sisinya. Baris yang aset/posnya tak dikenal tetap tampil dengan nama umum.
+ * Gabungkan transaksi (`transactions`), hadiah pos (`payouts`), dan dividen milik tim menjadi satu lini masa, terbaru
+ * di atas. RLS sudah membatasi baris ke milik tim ini. Baris yang aset/posnya tak dikenal tetap tampil dengan nama umum.
  */
 export function buildHistory(
   trades: TradeIn[],
   payouts: PayoutIn[],
-  myId: string,
   assets: Record<string, AssetName>,
   posts: Record<string, PostInfo>,
   dividends: DividendIn[] = [],
 ): HistoryItem[] {
   const items: HistoryItem[] = [];
   for (const t of trades) {
-    const side = t.buyerId === myId ? "buy" : t.sellerId === myId ? "sell" : null;
-    if (!side) continue;
     const a = assets[t.assetId];
-    const gross = t.price * t.qty;
-    const fee = side === "buy" ? t.buyerFee : t.sellerFee;
     items.push({
       kind: "trade",
       key: `t${t.id}`,
       at: t.createdAt,
-      side,
+      side: t.side,
       symbol: a?.symbol ?? "—",
       name: a?.name ?? "Aset",
       qty: t.qty,
       price: t.price,
-      gross,
-      fee,
-      net: side === "buy" ? -(gross + fee) : gross - fee,
+      listPrice: t.listPrice,
+      net: t.side === "buy" ? -t.total : t.total,
     });
   }
   for (const p of payouts) {

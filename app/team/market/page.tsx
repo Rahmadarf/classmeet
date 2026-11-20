@@ -4,15 +4,7 @@ import { Suspense } from "react";
 import { MarketBoard } from "@/components/market/market-board";
 import { PageHeader } from "@/components/shell/page-header";
 import { Skeleton } from "@/components/states";
-import {
-  fetchBand,
-  fetchBankruptAssets,
-  fetchGame,
-  fetchHoldings,
-  fetchMarket,
-  fetchOpenOrders,
-  fetchOrderBook,
-} from "@/lib/market/data";
+import { fetchBankruptAssets, fetchGame, fetchHoldings, fetchMarket } from "@/lib/market/data";
 import { createClient } from "@/lib/supabase/server";
 import { fetchNews, fetchSummary } from "@/lib/team/data";
 
@@ -24,7 +16,7 @@ function nowMs() {
 export const metadata: Metadata = { title: "Pasar" };
 
 const SUBTITLE =
-  "Pilih aset, lihat antrean beli dan jual, lalu pasang order. Harga tampil adalah harga transaksi terakhir.";
+  "Pilih aset, lalu beli atau jual langsung. Harga beli dan harga jual tampil di panel; harga bergerak karena berita dan stok.";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -43,12 +35,11 @@ async function MarketContent({ searchParams }: { searchParams: SearchParams }) {
   await connection(); // klien Supabase memakai waktu (JWT): render saat permintaan, bukan saat prerender
   const supabase = await createClient();
 
-  const [market, game, summary, holdings, orders, news, bankrupt] = await Promise.all([
-    fetchMarket(supabase),
-    fetchGame(supabase),
+  const game = await fetchGame(supabase);
+  const [market, summary, holdings, news, bankrupt] = await Promise.all([
+    fetchMarket(supabase, game?.sellSpreadBps),
     fetchSummary(supabase),
     fetchHoldings(supabase),
-    fetchOpenOrders(supabase),
     fetchNews(supabase, 1),
     fetchBankruptAssets(supabase),
   ]);
@@ -69,10 +60,6 @@ async function MarketContent({ searchParams }: { searchParams: SearchParams }) {
   const wanted = first(params.asset)?.toUpperCase();
   const selected = market.find((a) => a.symbol === wanted) ?? market[0];
   const initialSide = first(params.side) === "sell" ? "sell" : "buy";
-  const [book, band] = await Promise.all([
-    fetchOrderBook(supabase, selected.id),
-    fetchBand(supabase, selected.id),
-  ]);
 
   return (
     <>
@@ -83,12 +70,9 @@ async function MarketContent({ searchParams }: { searchParams: SearchParams }) {
           game,
           cash: summary?.cash ?? null,
           holdings: holdings ?? {},
-          orders: orders ?? [],
           latestNews: news?.[0] ?? null,
           selectedId: selected.id,
           initialSide,
-          book,
-          band,
           bankrupt: bankrupt ?? [],
           nowMs: nowMs(),
         }}
@@ -108,11 +92,8 @@ function MarketSkeleton() {
       <Skeleton className="mb-6 h-14 w-full" />
       <div className="grid gap-4 xl:grid-cols-[272px_minmax(0,1fr)_312px]">
         <Skeleton className="h-[520px]" />
-        <div className="flex flex-col gap-4">
-          <Skeleton className="h-52" />
-          <Skeleton className="h-80" />
-        </div>
-        <Skeleton className="h-[560px]" />
+        <Skeleton className="h-80" />
+        <Skeleton className="h-[420px]" />
       </div>
       <span className="sr-only">Memuat…</span>
     </div>

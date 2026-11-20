@@ -147,7 +147,7 @@ function Row({ item, open, onToggle }: { item: HistoryItem; open: boolean; onTog
         <span className="text-ink block truncate text-lg font-semibold">{title}</span>
         <span className="tnum text-ink-muted block text-base">
           {item.kind === "trade"
-            ? `${formatNumber(item.qty)} × ${formatRupiah(item.price)} · ${formatTimeWib(item.at)}`
+            ? `${formatNumber(item.qty)} unit × ${formatRupiah(item.price)} · ${formatTimeWib(item.at)}`
             : item.kind === "dividend"
               ? `${formatNumber(item.qty)} unit × ${formatRupiah(item.perUnit)} · ${formatTimeWib(item.at)}`
               : `Dari penjaga pos · ${formatTimeWib(item.at)}`}
@@ -215,10 +215,15 @@ function DetailBody({ item }: { item: HistoryItem }) {
         {item.kind === "trade" ? (
           <>
             <Line label="Aset" value={`${item.name} (${item.symbol})`} />
-            <Line label="Jumlah" value={`${formatNumber(item.qty)} lot`} />
-            <Line label="Harga per lot" value={formatRupiah(item.price)} />
-            <Line label="Nilai" value={formatRupiah(item.gross)} />
-            <Line label="Biaya" value={formatRupiah(item.fee)} />
+            <Line label="Jumlah" value={`${formatNumber(item.qty)} unit`} />
+            {item.side === "sell" ? (
+              <>
+                <Line label="Harga tayang saat itu" value={formatRupiah(item.listPrice)} />
+                <Line label="Harga jual per unit" value={formatRupiah(item.price)} />
+              </>
+            ) : (
+              <Line label="Harga beli per unit" value={formatRupiah(item.price)} />
+            )}
             <Line
               strong
               label={item.side === "buy" ? "Total dibayar" : "Total diterima"}
@@ -243,7 +248,9 @@ function DetailBody({ item }: { item: HistoryItem }) {
       </dl>
       <p className="text-ink-muted mt-3 text-sm">
         {item.kind === "trade"
-          ? "Nilai di sini adalah uang yang benar-benar keluar atau masuk ke saldo, termasuk biaya."
+          ? item.side === "sell"
+            ? "Harga jual adalah harga tayang dikurangi selisih jual. Total ini langsung masuk ke saldo."
+            : "Beli dilakukan pada harga tayang saat itu. Total ini langsung keluar dari saldo."
           : item.kind === "dividend"
             ? "Dividen dibayar ke semua tim yang memegang aset itu saat berita berlaku, langsung ke saldo."
             : "Hadiah langsung masuk ke saldo saat penjaga mengirimnya."}

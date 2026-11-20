@@ -3,8 +3,8 @@ import type { BankruptAsset } from "@/lib/market/data";
 import { formatRupiah } from "@/lib/money";
 
 /**
- * Pemberitahuan aset bangkrut di atas papan Pasar. Aset itu sudah hilang dari daftar dan tidak bisa diorder; order antre
- * dibatalkan dan unit yang dipegang tim dilikuidasi ke saldo (event berita, scripts/sql/event-bankruptcy.sql).
+ * Pemberitahuan aset bangkrut di atas papan Pasar. Aset itu sudah hilang dari daftar dan tidak bisa dibeli atau dijual;
+ * unit yang dipegang tim dilikuidasi ke saldo (event berita, scripts/sql/event-bankruptcy.sql).
  */
 export function BankruptNotice({ assets }: { assets: BankruptAsset[] }) {
   if (assets.length === 0) return null;
@@ -23,8 +23,7 @@ export function BankruptNotice({ assets }: { assets: BankruptAsset[] }) {
             <span className="text-ink-muted font-medium">
               {a.liquidationPrice === null
                 ? "Unit yang dipegang tidak diganti. "
-                : `Unit yang dipegang diganti ${formatRupiah(a.liquidationPrice)} per unit ke saldo. `}
-              Order antre aset ini sudah dibatalkan.
+                : `Unit yang dipegang diganti ${formatRupiah(a.liquidationPrice)} per unit ke saldo.`}
             </span>
           </p>
         </li>

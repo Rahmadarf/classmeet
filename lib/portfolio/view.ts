@@ -1,14 +1,12 @@
 import { percentChange } from "@/lib/money";
 
-/** Satu aset yang dipegang tim. `valuePrice` = harga peringkat (VWAP 10 menit; acuan bila belum ada transaksi). */
+/** Satu aset yang dipegang tim. `valuePrice` = harga tayang (harga beli) saat ini. */
 export type PortfolioRow = {
   assetId: string;
   symbol: string;
   name: string;
   qty: number;
-  /** Bagian `qty` yang terkunci di order jual yang antre. */
-  locked: number;
-  /** Harga beli rata-rata per unit (cost_basis ÷ qty, termasuk biaya beli), dibulatkan. */
+  /** Harga beli rata-rata per unit (cost_basis ÷ qty), dibulatkan. */
   avgCost: number;
   costBasis: number;
   valuePrice: number;
@@ -25,13 +23,13 @@ export type Portfolio = {
   totalPnlPct: number | null;
 };
 
-type HoldingIn = { assetId: string; qty: number; locked: number; costBasis: number };
+type HoldingIn = { assetId: string; qty: number; costBasis: number };
 type AssetIn = { id: string; symbol: string; name: string; rankPrice: number | null; price: number };
 
 /**
  * Susun portofolio dari kepemilikan dan harga aset. Rumus nilai sama dengan `get_my_summary` (docs/03 §4):
- * qty × coalesce(rank_price, price). Untung/rugi = nilai − cost_basis (harga beli total termasuk biaya;
- * saat menjual, cost_basis berkurang menurut rata-rata). Baris diurutkan dari nilai terbesar.
+ * qty × coalesce(rank_price, price); rank_price = harga tayang (docs/17). Untung/rugi = nilai − cost_basis (harga beli
+ * total; saat menjual, cost_basis berkurang menurut rata-rata). Baris diurutkan dari nilai terbesar.
  */
 export function buildPortfolio(holdings: HoldingIn[], assets: AssetIn[]): Portfolio {
   const byId = new Map(assets.map((a) => [a.id, a]));
@@ -49,7 +47,6 @@ export function buildPortfolio(holdings: HoldingIn[], assets: AssetIn[]): Portfo
           symbol: a.symbol,
           name: a.name,
           qty: h.qty,
-          locked: h.locked,
           avgCost: Math.round(h.costBasis / h.qty),
           costBasis: h.costBasis,
           valuePrice,

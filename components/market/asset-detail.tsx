@@ -1,22 +1,33 @@
 "use client";
 
+import { StockBadge } from "@/components/market/stock-badge";
 import { PriceChangeChip } from "@/components/ui/chip";
 import { useChangeFlash } from "@/lib/hooks/use-change-flash";
-import type { Band, MarketAsset } from "@/lib/market/data";
-import { formatCompactRupiah } from "@/lib/market/rules";
+import type { Game, Holding, MarketAsset } from "@/lib/market/data";
+import { formatBps, holdCap, stockLevel } from "@/lib/market/rules";
 import { formatNumber, formatRupiah, formatSignedRupiah, percentChange } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
 /**
- * Detail aset terpilih (Figma `Detail aset`, 1121:778). Harga besar = harga TRANSAKSI TERAKHIR.
- * "Acuan" menggantikan "Prev" di Figma: skema tidak punya penutupan hari sebelumnya; harga acuan
- * (digeser berita) adalah dasar ARA/ARB. Chip perubahan dan "Open" memakai harga open HARI INI (harga acuan saat hari WIB itu
- * dimulai; `get_day_open_prices`), bukan lagi harga acuan sekarang, supaya perubahan tidak selalu 0,0 %.
+ * Detail aset terpilih (model toko, docs/17). Harga besar = HARGA BELI (harga tayang: acuan berita x tekanan stok).
+ * Chip perubahan dan "Open" memakai harga open HARI INI (harga acuan saat hari WIB itu dimulai; `get_day_open_prices`).
+ * "Acuan berita" = harga sebelum tekanan stok. Harga jual = harga beli dikurangi selisih jual.
  */
-export function AssetDetail({ asset, band }: { asset: MarketAsset; band: Band | null }) {
+export function AssetDetail({
+  asset,
+  game,
+  holding,
+}: {
+  asset: MarketAsset;
+  game: Game;
+  holding: Holding | undefined;
+}) {
   const flash = useChangeFlash(asset.lastPrice);
   const diff = asset.lastPrice - asset.dayOpen;
-  const stat = (v: number | null) => (v === null ? "–" : formatNumber(v));
+  const level = stockLevel(asset.stock, asset.initStock, game.stockMidPct, game.stockLowPct);
+  const cap = holdCap(asset.initStock, game.holdCapPct);
+  const held = holding?.qty ?? 0;
+  const pnl = holding && held > 0 ? held * asset.sellPrice - holding.costBasis : null;
 
   return (
     <section
@@ -44,7 +55,7 @@ export function AssetDetail({ asset, band }: { asset: MarketAsset; band: Band | 
               flash > 0 && "price-flash",
             )}
           >
-            <span className="sr-only">Harga terakhir </span>
+            <span className="sr-only">Harga beli </span>
             {formatRupiah(asset.lastPrice)}
           </p>
           <PriceChangeChip
@@ -55,34 +66,62 @@ export function AssetDetail({ asset, band }: { asset: MarketAsset; band: Band | 
         </div>
       </div>
 
-      <dl className="grid grid-cols-5 gap-2">
-        <Stat label="Open" value={formatNumber(asset.dayOpen)} />
-        <Stat label="High" value={stat(asset.high)} />
-        <Stat label="Low" value={stat(asset.low)} />
-        <Stat label="Acuan" value={formatNumber(asset.refPrice)} />
-        <Stat label="Avg" value={stat(asset.avg)} />
-        <Stat label="ARA" value={band ? formatNumber(band.hi) : "–"} tone="ok" />
-        <Stat label="ARB" value={band ? formatNumber(band.lo) : "–"} tone="bad" />
-        <Stat label="Lot" value={formatNumber(asset.lot)} />
-        <Stat label="Val" value={asset.val > 0 ? formatCompactRupiah(asset.val) : "0"} />
-        <Stat label="Freq" value={formatNumber(asset.freq)} />
+      <div className="flex flex-wrap items-center gap-2">
+        <StockBadge level={level} />
+        <span className="tnum text-ink-muted text-[13px]">
+          Sisa {formatNumber(asset.stock)} dari {formatNumber(asset.initStock)} unit
+        </span>
+      </div>
+
+      <dl className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        <Stat label="Harga beli" value={formatRupiah(asset.lastPrice)} />
+        <Stat
+          label={`Harga jual (−${formatBps(game.sellSpreadBps)})`}
+          value={formatRupiah(asset.sellPrice)}
+        />
+        <Stat label="Open hari ini" value={formatRupiah(asset.dayOpen)} />
+        <Stat label="Acuan berita" value={formatRupiah(asset.refPrice)} />
+        <Stat
+          label="Tekanan stok"
+          value={
+            asset.factorBps === 0
+              ? "Netral"
+              : `${asset.factorBps > 0 ? "+" : "−"}${formatBps(Math.abs(asset.factorBps))}`
+          }
+        />
+        <Stat label="Batas pegang" value={`${formatNumber(held)} / ${formatNumber(cap)} unit`} />
       </dl>
+
+      <div className="bg-field rounded-row flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-3.5 py-3">
+        <p className="text-ink-muted text-[13px] font-semibold">Dimiliki</p>
+        {holding && held > 0 ? (
+          <p className="tnum text-ink text-sm font-bold">
+            {formatNumber(held)} unit · rata-rata {formatRupiah(holding.avgCost)}
+            {pnl === null ? null : (
+              <span
+                className={cn(
+                  "ml-2",
+                  pnl > 0 ? "text-cyan-text" : pnl < 0 ? "text-bad-text" : "text-ink-muted",
+                )}
+              >
+                {pnl > 0 ? "▲ " : pnl < 0 ? "▼ " : ""}
+                {formatSignedRupiah(pnl)} bila dijual
+              </span>
+            )}
+          </p>
+        ) : (
+          <p className="text-ink-muted text-sm">Belum punya aset ini.</p>
+        )}
+      </div>
     </section>
   );
 }
 
-function Stat({ label, value, tone }: { label: string; value: string; tone?: "ok" | "bad" }) {
+function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-field rounded-control flex min-w-0 flex-col gap-0.5 px-2.5 py-2">
       <dt className="text-ink-muted text-[11px] font-semibold tracking-[0.06em]">{label}</dt>
-      <dd
-        className={cn(
-          "tnum truncate text-sm font-bold",
-          tone === "ok" ? "text-ok-text" : tone === "bad" ? "text-bad-text" : "text-ink",
-        )}
-      >
-        {value}
-      </dd>
+      <dd className="tnum text-ink truncate text-sm font-bold">{value}</dd>
     </div>
   );
 }

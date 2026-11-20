@@ -79,11 +79,6 @@ export function HeroBalanceCard({
 
         <div>
           <p className="money text-[48px] leading-[1.1] font-bold">{text(summary?.netWorth)}</p>
-          {!hidden && summary && summary.lockedCash > 0 ? (
-            <p className="money mt-2 text-sm font-medium">
-              Termasuk {formatRupiah(summary.lockedCash)} yang tertahan di order
-            </p>
-          ) : null}
           {unavailable ? (
             <p role="status" className="mt-2 text-sm font-medium">
               Data belum bisa dimuat, mencoba lagi…

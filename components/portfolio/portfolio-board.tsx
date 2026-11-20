@@ -13,7 +13,7 @@ import type { Portfolio } from "@/lib/portfolio/view";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
-/** Harga peringkat berubah oleh transaksi dan berita; ambil ulang tiap 10 dtk dan saat tab aktif lagi. */
+/** Harga tayang berubah oleh transaksi, tekanan stok, dan berita; ambil ulang tiap 10 dtk dan saat tab aktif lagi. */
 const POLL_MS = 10_000;
 
 type Tone = "gain" | "loss" | "flat";
@@ -28,7 +28,7 @@ function pnlText(pnl: number, pct: number | null): string {
 /**
  * Halaman Portofolio (Figma `Tim — Portofolio`, 1083:350; docs/07 §2.1): total nilai aset yang dipegang dan
  * untung/rugi terhadap harga beli, lalu satu baris per aset dengan tombol Jual (membuka Pasar pada aset itu).
- * NILAI memakai HARGA PERINGKAT (VWAP 10 menit), sama dengan Beranda dan peringkat; bukan harga terakhir di Pasar.
+ * NILAI memakai HARGA TAYANG saat ini (harga beli), sama dengan Beranda dan peringkat.
  */
 export function PortfolioBoard({ initial }: { initial: Portfolio }) {
   const supabase = useMemo(() => createClient(), []);
@@ -77,9 +77,9 @@ export function PortfolioBoard({ initial }: { initial: Portfolio }) {
           ) : null}
         </div>
         <p className="text-ink-muted text-base">
-          {rows.length > 0 ? <>Harga beli total {formatRupiah(totalCost)} (termasuk biaya). </> : null}
-          Nilai memakai harga peringkat, yaitu rata-rata harga transaksi 10 menit terakhir. Angka ini sama
-          dengan Beranda dan peringkat, jadi bisa sedikit berbeda dari harga terakhir di Pasar.
+          {rows.length > 0 ? <>Harga beli total {formatRupiah(totalCost)}. </> : null}
+          Nilai memakai harga tayang saat ini, sama dengan Beranda dan peringkat. Bila dijual, kamu menerima
+          harga tayang dikurangi selisih jual.
         </p>
       </Card>
 
@@ -118,8 +118,7 @@ export function PortfolioBoard({ initial }: { initial: Portfolio }) {
                   <div className="min-w-0 flex-1">
                     <p className="text-ink truncate text-xl font-semibold">{r.name}</p>
                     <p className="tnum text-ink-muted text-base">
-                      {formatNumber(r.qty)} × {formatRupiah(r.avgCost)}
-                      {r.locked > 0 ? ` · ${formatNumber(r.locked)} terkunci di order jual` : ""}
+                      {formatNumber(r.qty)} unit × {formatRupiah(r.avgCost)}
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-0.5 text-right">

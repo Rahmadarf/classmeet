@@ -12,7 +12,7 @@ type Db = SupabaseClient<Database>;
 /** Nama tim, pos, dan akun (RLS: admin membaca semuanya). Gagal salah satu → null. */
 async function fetchDirectory(supabase: Db) {
   const [teams, posts, profiles] = await Promise.all([
-    supabase.from("teams").select("id,name,cash,locked_cash"),
+    supabase.from("teams").select("id,name,cash"),
     supabase.from("posts").select("id,name,location,guard_id,is_open"),
     supabase.from("profiles").select("id,username,display_name,role"),
   ]);

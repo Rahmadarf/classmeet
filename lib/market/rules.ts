@@ -1,73 +1,43 @@
 /**
- * Aturan order book yang dicerminkan di klien HANYA untuk tampilan dan estimasi (stepper harga, ringkasan,
- * pesan isian). Penentu sebenarnya selalu database (`place_order`, docs/04 §3.1; docs/12): klien tidak
- * pernah menolak atau membatasi order sendiri.
+ * Aturan toko yang dicerminkan di klien HANYA untuk tampilan dan estimasi (label stok, batas pegang, jumlah maksimal).
+ * Penentu sebenarnya selalu database (`buy_asset` / `sell_asset`, docs/17): klien tidak pernah menolak transaksi sendiri.
  */
-import { orderFee, tickFor } from "@/lib/money";
 
-/** Satu fraksi ke atas: harga + tick_for(harga). */
-export function stepUp(price: number): number {
-  return price + tickFor(price);
+export type StockLevel = "out" | "low" | "mid" | "ok";
+
+/** Label stok menurut sisa/stok awal: habis, "Langka" (< stockLowPct), kuning (< stockMidPct), hijau. */
+export function stockLevel(stock: number, initStock: number, midPct: number, lowPct: number): StockLevel {
+  if (stock <= 0) return "out";
+  if (initStock <= 0) return "ok";
+  const pct = (stock * 100) / initStock;
+  if (pct < lowPct) return "low";
+  if (pct < midPct) return "mid";
+  return "ok";
+}
+
+/** Batas pegang per tim per aset: `holdCapPct` % stok awal, minimal 1 unit (sama dengan `buy_asset`). */
+export function holdCap(initStock: number, holdCapPct: number): number {
+  return Math.max(1, Math.floor((initStock * holdCapPct) / 100));
+}
+
+/** Harga jual dari harga tayang: dikurangi `spreadBps`, dibulatkan ke bawah ke kelipatan `step` (sama dengan `shop_sell_price`). */
+export function sellPriceOf(listPrice: number, spreadBps: number, step = 100): number {
+  return Math.max(step, Math.floor((listPrice * (10_000 - spreadBps)) / 10_000 / step) * step);
 }
 
 /**
- * Satu fraksi ke bawah: kelipatan fraksi terbesar di bawah harga (floor_tick(harga − 1)).
- * Perlu begitu karena fraksi berubah di batas rentang (mis. 500.000 → 499.000, bukan 497.500).
- * Tidak pernah turun di bawah satu fraksi.
+ * Jumlah beli maksimal menurut batas yang diketahui klien: saldo, stok pasar, dan sisa batas pegang.
+ * Hanya untuk pesan bantu dan nilai awal stepper; database yang memutuskan.
  */
-export function stepDown(price: number): number {
-  const below = price - 1;
-  const tick = tickFor(below);
-  return Math.max(Math.floor(below / tick) * tick, tickFor(1));
-}
-
-/** Kunci per lot order beli limit: harga + ceil(harga × fee_bps / 10000) (docs/04 §3.1). */
-export function lockPerLot(price: number, feeBps: number): number {
-  return price + orderFee(price, 1, feeBps);
-}
-
-/** Lot beli maksimum yang cukup untuk saldo bebas pada harga limit tertentu (untuk pesan setelah ditolak). */
-export function maxAffordableLots(cash: number, price: number, feeBps: number): number {
-  if (!(price > 0) || cash <= 0) return 0;
-  return Math.floor(cash / lockPerLot(price, feeBps));
-}
-
-export type BookLevel = { price: number; lots: number; freq: number; mine: number };
-
-export type SweepEstimate = {
-  /** Lot yang kira-kira terisi (maks `sweepLevels` level, tanpa order milik sendiri). */
-  filled: number;
-  /** Jumlah uang kotor (Σ harga × lot) dan biaya (dibulatkan ke atas per level). */
-  gross: number;
-  fee: number;
-};
-
-/**
- * Perkiraan order market: menyapu level terbaik berurutan (maks `sweepLevels`), melewati lot milik sendiri
- * (self-trade dilewati di server). Hanya estimasi: antrean berubah sampai order tiba di server.
- * `levels` harus berurut dari terbaik (bid tertinggi / offer terendah).
- */
-export function estimateSweep(
-  levels: BookLevel[],
-  qty: number,
-  sweepLevels: number,
-  feeBps: number,
-): SweepEstimate {
-  let left = qty;
-  let gross = 0;
-  let fee = 0;
-  let filled = 0;
-  for (const level of levels.slice(0, sweepLevels)) {
-    if (left <= 0) break;
-    const available = Math.max(level.lots - level.mine, 0);
-    const take = Math.min(left, available);
-    if (take <= 0) continue;
-    gross += level.price * take;
-    fee += orderFee(level.price, take, feeBps);
-    filled += take;
-    left -= take;
-  }
-  return { filled, gross, fee };
+export function maxBuyQty(opts: {
+  cash: number | null;
+  price: number;
+  stock: number;
+  held: number;
+  cap: number;
+}): number {
+  const byCash = opts.cash === null || opts.price <= 0 ? Infinity : Math.floor(opts.cash / opts.price);
+  return Math.max(0, Math.min(byCash, opts.stock, opts.cap - opts.held));
 }
 
 /** 38_300_000 → "38,3 jt"; 1_250_000_000 → "1,3 M"; di bawah sejuta ditulis penuh dengan pemisah ribuan. */
@@ -79,7 +49,7 @@ export function formatCompactRupiah(value: number): string {
   return new Intl.NumberFormat("id-ID").format(value);
 }
 
-/** 25 → "0,25 %" (basis poin → persen, koma desimal). */
+/** 200 → "2 %"; 25 → "0,25 %" (basis poin → persen, koma desimal, tanpa nol di belakang koma). */
 export function formatBps(bps: number): string {
-  return `${(bps / 100).toFixed(2).replace(".", ",")} %`;
+  return `${(bps / 100).toFixed(2).replace(".", ",").replace(/,?0+$/, "")} %`;
 }

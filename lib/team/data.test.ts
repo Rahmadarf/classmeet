@@ -14,15 +14,14 @@ describe("fetchSummary", () => {
   it("memetakan get_my_summary ke camelCase", async () => {
     const s = await fetchSummary(
       rpcClient({
-        data: { cash: 1_200_000, holdings_value: 4_325_000, net_worth: 5_825_000, locked_cash: 300_000 },
+        data: { cash: 1_200_000, holdings_value: 4_325_000, net_worth: 5_525_000, locked_cash: 0 },
         error: null,
       }),
     );
     expect(s).toEqual({
       cash: 1_200_000,
       holdingsValue: 4_325_000,
-      netWorth: 5_825_000,
-      lockedCash: 300_000,
+      netWorth: 5_525_000,
     });
   });
 

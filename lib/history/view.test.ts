@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildHistory, groupByDay, postNumber } from "./view";
 
-const ME = "me";
 const assets = { a: { symbol: "AP", name: "Apple" } };
 const posts = { p3: { name: "Pos 3 · Estafet Balon", location: "Lapangan" } };
 
@@ -15,7 +14,7 @@ describe("postNumber", () => {
 
 describe("buildHistory: dividen", () => {
   it("dividen masuk sebagai uang positif dan terurut bersama item lain", () => {
-    const items = buildHistory([], [], ME, assets, posts, [
+    const items = buildHistory([], [], assets, posts, [
       { id: 7, assetId: "a", qty: 3, perUnit: 36_170, amount: 108_510, createdAt: "2026-11-18T08:00:00Z" },
     ]);
     expect(items).toEqual([
@@ -37,37 +36,40 @@ describe("buildHistory", () => {
   const trade = (o: object) => ({
     id: 1,
     assetId: "a",
+    side: "buy" as const,
     price: 800_000,
+    listPrice: 800_000,
     qty: 2,
-    buyerId: ME,
-    sellerId: null,
-    buyerFee: 4_000,
-    sellerFee: 0,
+    total: 1_600_000,
     createdAt: "2026-11-18T07:07:00Z",
     ...o,
   });
 
-  it("beli: pengaruh saldo = −(nilai + biaya)", () => {
-    const [t] = buildHistory([trade({})], [], ME, assets, posts);
-    expect(t).toMatchObject({ kind: "trade", side: "buy", gross: 1_600_000, fee: 4_000, net: -1_604_000 });
+  it("beli: pengaruh saldo = −total pada harga tayang", () => {
+    const [t] = buildHistory([trade({})], [], assets, posts);
+    expect(t).toMatchObject({
+      kind: "trade",
+      side: "buy",
+      price: 800_000,
+      listPrice: 800_000,
+      net: -1_600_000,
+    });
   });
 
-  it("jual: pengaruh saldo = nilai − biaya penjual", () => {
+  it("jual: pengaruh saldo = +total pada harga jual (tayang dikurangi selisih)", () => {
     const [t] = buildHistory(
-      [trade({ buyerId: null, sellerId: ME, sellerFee: 722, price: 96_300, qty: 3 })],
+      [trade({ side: "sell", price: 94_300, listPrice: 96_300, qty: 3, total: 282_900 })],
       [],
-      ME,
       assets,
       posts,
     );
-    expect(t).toMatchObject({ side: "sell", gross: 288_900, fee: 722, net: 288_178 });
+    expect(t).toMatchObject({ side: "sell", price: 94_300, listPrice: 96_300, qty: 3, net: 282_900 });
   });
 
   it("menggabungkan hadiah pos dan mengurutkan terbaru di atas", () => {
     const items = buildHistory(
       [trade({ id: 2, createdAt: "2026-11-18T07:07:00Z" })],
       [{ id: 9, postId: "p3", amount: 300_000, note: "juara", createdAt: "2026-11-18T07:05:00Z" }],
-      ME,
       assets,
       posts,
     );
@@ -75,11 +77,10 @@ describe("buildHistory", () => {
     expect(items[1]).toMatchObject({ postNumber: "03", net: 300_000, note: "juara" });
   });
 
-  it("membuang transaksi yang bukan milik tim ini dan memakai nama umum untuk aset/pos tak dikenal", () => {
+  it("memakai nama umum untuk aset/pos tak dikenal", () => {
     const items = buildHistory(
-      [trade({ buyerId: "lain", sellerId: "lain2" }), trade({ id: 3, assetId: "zz" })],
+      [trade({ id: 3, assetId: "zz" })],
       [{ id: 1, postId: "px", amount: 1, note: null, createdAt: "2026-11-18T01:00:00Z" }],
-      ME,
       assets,
       posts,
     );

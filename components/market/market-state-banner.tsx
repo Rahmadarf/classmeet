@@ -4,15 +4,15 @@ import type { GameState } from "@/lib/market/data";
 const COPY: Record<Exclude<GameState, "open">, { label: string; text: string }> = {
   setup: {
     label: "Pasar belum dibuka",
-    text: "Panitia belum membuka pasar. Kamu bisa melihat data, tetapi belum bisa memasang order.",
+    text: "Panitia belum membuka pasar. Kamu bisa melihat data, tetapi belum bisa membeli atau menjual.",
   },
   paused: {
     label: "Pasar dijeda",
-    text: "Panitia menjeda pasar. Order baru dan pembatalan tidak bisa dilakukan; order terbuka tetap antre.",
+    text: "Panitia menjeda pasar. Beli dan jual belum bisa dilakukan sampai pasar dibuka lagi.",
   },
   finished: {
     label: "Permainan selesai",
-    text: "Pasar sudah ditutup. Order terbuka telah dibatalkan dan tidak ada order baru.",
+    text: "Pasar sudah ditutup. Tidak ada transaksi baru.",
   },
 };
 

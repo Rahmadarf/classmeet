@@ -1,5 +1,6 @@
-// Dibuat dari skema staging (project sjqboaqkhykmzconskvn) lewat Supabase MCP generate_typescript_types.
-// Jangan disunting tangan; buat ulang bila migrasi berubah.
+// Dibuat dari database Docker lokal lewat postgres-meta (`/generators/typescript`, skema public), 20 Nov 2026,
+// setelah migrasi trading toko (scripts/sql/trading-shop.sql). `ComputedFields` dan `NonNullable<Json>` dari
+// generator yang lebih baru dihapus agar cocok dengan supabase-js terpasang. Jangan disunting tangan; buat ulang bila skema berubah.
 export type Json =
   | string
   | number
@@ -31,6 +32,7 @@ export type Database = {
           min_price: number
           name: string
           price: number
+          price_factor_bps: number
           rank_price: number | null
           sector: string
           stock: number
@@ -51,6 +53,7 @@ export type Database = {
           min_price: number
           name: string
           price: number
+          price_factor_bps?: number
           rank_price?: number | null
           sector: string
           stock: number
@@ -71,6 +74,7 @@ export type Database = {
           min_price?: number
           name?: string
           price?: number
+          price_factor_bps?: number
           rank_price?: number | null
           sector?: string
           stock?: number
@@ -110,114 +114,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      game_settings: {
-        Row: {
-          band_bps: number
-          fee_bps: number
-          house_cash: number
-          house_levels: number
-          house_refresh_seconds: number
-          house_refreshed_at: string | null
-          id: boolean
-          leaderboard_frozen_at: string | null
-          leaderboard_visible: boolean
-          max_effect_bps: number
-          max_news_assets: number
-          market_opened_at: string | null
-          bankrupt_max_per_day: number
-          bankrupt_max_total: number
-          event_asset_gap_minutes: number
-          event_gap_minutes: number
-          event_intensity_pct: number
-          event_warmup_minutes: number
-          pick_temperature_milli: number
-          min_news_assets: number
-          news_delay_max_minutes: number
-          news_delay_min_minutes: number
-          news_gap_minutes: number
-          news_next_allowed_at: string | null
-          paused_at: string | null
-          price_step: number
-          rank_min_lots: number
-          rank_window_minutes: number
-          sell_fee_bps: number
-          started_at: string | null
-          state: Database["public"]["Enums"]["game_state"]
-          sweep_levels: number
-          updated_at: string
-        }
-        Insert: {
-          band_bps?: number
-          fee_bps?: number
-          house_cash?: number
-          house_levels?: number
-          house_refresh_seconds?: number
-          house_refreshed_at?: string | null
-          id?: boolean
-          leaderboard_frozen_at?: string | null
-          leaderboard_visible?: boolean
-          max_effect_bps?: number
-          max_news_assets?: number
-          market_opened_at?: string | null
-          bankrupt_max_per_day?: number
-          bankrupt_max_total?: number
-          event_asset_gap_minutes?: number
-          event_gap_minutes?: number
-          event_intensity_pct?: number
-          event_warmup_minutes?: number
-          pick_temperature_milli?: number
-          min_news_assets?: number
-          news_delay_max_minutes?: number
-          news_delay_min_minutes?: number
-          news_gap_minutes?: number
-          news_next_allowed_at?: string | null
-          paused_at?: string | null
-          price_step?: number
-          rank_min_lots?: number
-          rank_window_minutes?: number
-          sell_fee_bps?: number
-          started_at?: string | null
-          state?: Database["public"]["Enums"]["game_state"]
-          sweep_levels?: number
-          updated_at?: string
-        }
-        Update: {
-          band_bps?: number
-          fee_bps?: number
-          house_cash?: number
-          house_levels?: number
-          house_refresh_seconds?: number
-          house_refreshed_at?: string | null
-          id?: boolean
-          leaderboard_frozen_at?: string | null
-          leaderboard_visible?: boolean
-          max_effect_bps?: number
-          max_news_assets?: number
-          market_opened_at?: string | null
-          bankrupt_max_per_day?: number
-          bankrupt_max_total?: number
-          event_asset_gap_minutes?: number
-          event_gap_minutes?: number
-          event_intensity_pct?: number
-          event_warmup_minutes?: number
-          pick_temperature_milli?: number
-          min_news_assets?: number
-          news_delay_max_minutes?: number
-          news_delay_min_minutes?: number
-          news_gap_minutes?: number
-          news_next_allowed_at?: string | null
-          paused_at?: string | null
-          price_step?: number
-          rank_min_lots?: number
-          rank_window_minutes?: number
-          sell_fee_bps?: number
-          started_at?: string | null
-          state?: Database["public"]["Enums"]["game_state"]
-          sweep_levels?: number
-          updated_at?: string
-        }
-        Relationships: []
       }
       dividends: {
         Row: {
@@ -272,7 +168,143 @@ export type Database = {
             referencedRelation: "teams"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "dividends_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "v_team_net_worth"
+            referencedColumns: ["team_id"]
+          },
         ]
+      }
+      game_settings: {
+        Row: {
+          band_bps: number
+          bankrupt_max_per_day: number
+          bankrupt_max_total: number
+          event_asset_gap_minutes: number
+          event_gap_minutes: number
+          event_intensity_pct: number
+          event_warmup_minutes: number
+          fee_bps: number
+          hold_cap_pct: number
+          house_cash: number
+          house_levels: number
+          house_refresh_seconds: number
+          house_refreshed_at: string | null
+          id: boolean
+          leaderboard_frozen_at: string | null
+          leaderboard_visible: boolean
+          market_opened_at: string | null
+          max_effect_bps: number
+          max_news_assets: number
+          min_news_assets: number
+          news_delay_max_minutes: number
+          news_delay_min_minutes: number
+          news_gap_minutes: number
+          news_next_allowed_at: string | null
+          paused_at: string | null
+          pick_temperature_milli: number
+          pressure_bps_per_unit: number
+          pressure_cap_bps: number
+          pressure_decay_minutes: number
+          price_step: number
+          rank_min_lots: number
+          rank_window_minutes: number
+          sell_fee_bps: number
+          sell_spread_bps: number
+          started_at: string | null
+          state: Database["public"]["Enums"]["game_state"]
+          stock_low_pct: number
+          stock_mid_pct: number
+          sweep_levels: number
+          updated_at: string
+        }
+        Insert: {
+          band_bps?: number
+          bankrupt_max_per_day?: number
+          bankrupt_max_total?: number
+          event_asset_gap_minutes?: number
+          event_gap_minutes?: number
+          event_intensity_pct?: number
+          event_warmup_minutes?: number
+          fee_bps?: number
+          hold_cap_pct?: number
+          house_cash?: number
+          house_levels?: number
+          house_refresh_seconds?: number
+          house_refreshed_at?: string | null
+          id?: boolean
+          leaderboard_frozen_at?: string | null
+          leaderboard_visible?: boolean
+          market_opened_at?: string | null
+          max_effect_bps?: number
+          max_news_assets?: number
+          min_news_assets?: number
+          news_delay_max_minutes?: number
+          news_delay_min_minutes?: number
+          news_gap_minutes?: number
+          news_next_allowed_at?: string | null
+          paused_at?: string | null
+          pick_temperature_milli?: number
+          pressure_bps_per_unit?: number
+          pressure_cap_bps?: number
+          pressure_decay_minutes?: number
+          price_step?: number
+          rank_min_lots?: number
+          rank_window_minutes?: number
+          sell_fee_bps?: number
+          sell_spread_bps?: number
+          started_at?: string | null
+          state?: Database["public"]["Enums"]["game_state"]
+          stock_low_pct?: number
+          stock_mid_pct?: number
+          sweep_levels?: number
+          updated_at?: string
+        }
+        Update: {
+          band_bps?: number
+          bankrupt_max_per_day?: number
+          bankrupt_max_total?: number
+          event_asset_gap_minutes?: number
+          event_gap_minutes?: number
+          event_intensity_pct?: number
+          event_warmup_minutes?: number
+          fee_bps?: number
+          hold_cap_pct?: number
+          house_cash?: number
+          house_levels?: number
+          house_refresh_seconds?: number
+          house_refreshed_at?: string | null
+          id?: boolean
+          leaderboard_frozen_at?: string | null
+          leaderboard_visible?: boolean
+          market_opened_at?: string | null
+          max_effect_bps?: number
+          max_news_assets?: number
+          min_news_assets?: number
+          news_delay_max_minutes?: number
+          news_delay_min_minutes?: number
+          news_gap_minutes?: number
+          news_next_allowed_at?: string | null
+          paused_at?: string | null
+          pick_temperature_milli?: number
+          pressure_bps_per_unit?: number
+          pressure_cap_bps?: number
+          pressure_decay_minutes?: number
+          price_step?: number
+          rank_min_lots?: number
+          rank_window_minutes?: number
+          sell_fee_bps?: number
+          sell_spread_bps?: number
+          started_at?: string | null
+          state?: Database["public"]["Enums"]["game_state"]
+          stock_low_pct?: number
+          stock_mid_pct?: number
+          sweep_levels?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       holdings: {
         Row: {
@@ -320,6 +352,24 @@ export type Database = {
           },
         ]
       }
+      index_history: {
+        Row: {
+          at: string
+          id: number
+          value: number
+        }
+        Insert: {
+          at?: string
+          id?: never
+          value: number
+        }
+        Update: {
+          at?: string
+          id?: never
+          value?: number
+        }
+        Relationships: []
+      }
       leaderboard_snapshot: {
         Row: {
           cash: number
@@ -359,6 +409,45 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "v_team_net_worth"
             referencedColumns: ["team_id"]
+          },
+        ]
+      }
+      market_event_log: {
+        Row: {
+          asset_id: string
+          at: string
+          id: number
+          kind: string
+          news_id: string | null
+        }
+        Insert: {
+          asset_id: string
+          at?: string
+          id?: never
+          kind: string
+          news_id?: string | null
+        }
+        Update: {
+          asset_id?: string
+          at?: string
+          id?: never
+          kind?: string
+          news_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "market_event_log_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "market_event_log_news_id_fkey"
+            columns: ["news_id"]
+            isOneToOne: false
+            referencedRelation: "news"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -439,6 +528,39 @@ export type Database = {
           },
         ]
       }
+      news_effects: {
+        Row: {
+          asset_id: string
+          news_id: string
+          pct_bps: number
+        }
+        Insert: {
+          asset_id: string
+          news_id: string
+          pct_bps: number
+        }
+        Update: {
+          asset_id?: string
+          news_id?: string
+          pct_bps?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "news_effects_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "news_effects_news_id_fkey"
+            columns: ["news_id"]
+            isOneToOne: false
+            referencedRelation: "news"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       news_events: {
         Row: {
           amount: number
@@ -475,39 +597,6 @@ export type Database = {
           },
         ]
       }
-      news_effects: {
-        Row: {
-          asset_id: string
-          news_id: string
-          pct_bps: number
-        }
-        Insert: {
-          asset_id: string
-          news_id: string
-          pct_bps: number
-        }
-        Update: {
-          asset_id?: string
-          news_id?: string
-          pct_bps?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "news_effects_asset_id_fkey"
-            columns: ["asset_id"]
-            isOneToOne: false
-            referencedRelation: "assets"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "news_effects_news_id_fkey"
-            columns: ["news_id"]
-            isOneToOne: false
-            referencedRelation: "news"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       news_feed: {
         Row: {
           body: string
@@ -534,79 +623,6 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "news"
             referencedColumns: ["id"]
-          },
-        ]
-      }
-      orders: {
-        Row: {
-          asset_id: string
-          closed_at: string | null
-          created_at: string
-          id: number
-          is_house: boolean
-          kind: string
-          lock_per_lot: number
-          price: number | null
-          qty: number
-          remaining: number
-          request_id: string | null
-          side: string
-          status: string
-          team_id: string | null
-        }
-        Insert: {
-          asset_id: string
-          closed_at?: string | null
-          created_at?: string
-          id?: never
-          is_house?: boolean
-          kind: string
-          lock_per_lot?: number
-          price?: number | null
-          qty: number
-          remaining: number
-          request_id?: string | null
-          side: string
-          status?: string
-          team_id?: string | null
-        }
-        Update: {
-          asset_id?: string
-          closed_at?: string | null
-          created_at?: string
-          id?: never
-          is_house?: boolean
-          kind?: string
-          lock_per_lot?: number
-          price?: number | null
-          qty?: number
-          remaining?: number
-          request_id?: string | null
-          side?: string
-          status?: string
-          team_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "orders_asset_id_fkey"
-            columns: ["asset_id"]
-            isOneToOne: false
-            referencedRelation: "assets"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orders_team_id_fkey"
-            columns: ["team_id"]
-            isOneToOne: false
-            referencedRelation: "teams"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "orders_team_id_fkey"
-            columns: ["team_id"]
-            isOneToOne: false
-            referencedRelation: "v_team_net_worth"
-            referencedColumns: ["team_id"]
           },
         ]
       }
@@ -783,6 +799,21 @@ export type Database = {
         }
         Relationships: []
       }
+      shop_clock: {
+        Row: {
+          id: boolean
+          pressure_at: string
+        }
+        Insert: {
+          id?: boolean
+          pressure_at?: string
+        }
+        Update: {
+          id?: boolean
+          pressure_at?: string
+        }
+        Relationships: []
+      }
       teams: {
         Row: {
           cash: number
@@ -821,95 +852,61 @@ export type Database = {
           },
         ]
       }
-      trades: {
+      transactions: {
         Row: {
           asset_id: string
-          buy_order_id: number
-          buyer_fee: number
-          buyer_id: string | null
           created_at: string
           id: number
-          price: number
+          list_price: number
           qty: number
-          sell_order_id: number
-          seller_fee: number
-          seller_id: string | null
-          taker_side: string
+          request_id: string
+          side: string
+          team_id: string
+          total: number
+          unit_price: number
         }
         Insert: {
           asset_id: string
-          buy_order_id: number
-          buyer_fee?: number
-          buyer_id?: string | null
           created_at?: string
           id?: never
-          price: number
+          list_price: number
           qty: number
-          sell_order_id: number
-          seller_fee?: number
-          seller_id?: string | null
-          taker_side: string
+          request_id: string
+          side: string
+          team_id: string
+          total: number
+          unit_price: number
         }
         Update: {
           asset_id?: string
-          buy_order_id?: number
-          buyer_fee?: number
-          buyer_id?: string | null
           created_at?: string
           id?: never
-          price?: number
+          list_price?: number
           qty?: number
-          sell_order_id?: number
-          seller_fee?: number
-          seller_id?: string | null
-          taker_side?: string
+          request_id?: string
+          side?: string
+          team_id?: string
+          total?: number
+          unit_price?: number
         }
         Relationships: [
           {
-            foreignKeyName: "trades_asset_id_fkey"
+            foreignKeyName: "transactions_asset_id_fkey"
             columns: ["asset_id"]
             isOneToOne: false
             referencedRelation: "assets"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "trades_buy_order_id_fkey"
-            columns: ["buy_order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "trades_buyer_id_fkey"
-            columns: ["buyer_id"]
+            foreignKeyName: "transactions_team_id_fkey"
+            columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "teams"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "trades_buyer_id_fkey"
-            columns: ["buyer_id"]
-            isOneToOne: false
-            referencedRelation: "v_team_net_worth"
-            referencedColumns: ["team_id"]
-          },
-          {
-            foreignKeyName: "trades_sell_order_id_fkey"
-            columns: ["sell_order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "trades_seller_id_fkey"
-            columns: ["seller_id"]
-            isOneToOne: false
-            referencedRelation: "teams"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "trades_seller_id_fkey"
-            columns: ["seller_id"]
+            foreignKeyName: "transactions_team_id_fkey"
+            columns: ["team_id"]
             isOneToOne: false
             referencedRelation: "v_team_net_worth"
             referencedColumns: ["team_id"]
@@ -944,7 +941,45 @@ export type Database = {
         Args: { p_delta: number; p_reason: string; p_team_id: string }
         Returns: number
       }
-      admin_freeze_leaderboard: { Args: never; Returns: undefined }
+      admin_applied_news: {
+        Args: { p_limit?: number }
+        Returns: {
+          applied_at: string
+          event_kind: string
+          event_symbol: string
+          n_assets: number
+          news_id: string
+          published_at: string
+          title: string
+        }[]
+      }
+      admin_current_news_effects: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          kind: string
+          name: string
+          news_id: string
+          status: string
+          symbol: string
+          value: number
+        }[]
+      }
+      admin_freeze_leaderboard: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      admin_news_effects: {
+        Args: { p_news_id: string }
+        Returns: {
+          kind: string
+          name: string
+          news_id: string
+          status: string
+          symbol: string
+          value: number
+        }[]
+      }
+      admin_restart_news: { Args: Record<PropertyKey, never>; Returns: number }
       admin_rotate_team_qr: { Args: { p_team_id: string }; Returns: string }
       admin_save_news: {
         Args: {
@@ -963,8 +998,25 @@ export type Database = {
         Args: { p_visible: boolean }
         Returns: undefined
       }
+      admin_set_news_bankruptcy: {
+        Args: {
+          p_asset_id: string
+          p_liquidation_bps?: number
+          p_news_id: string
+        }
+        Returns: number
+      }
       admin_set_news_event: {
-        Args: { p_amount: number; p_asset_id: string; p_kind: string; p_news_id: string }
+        Args: {
+          p_amount: number
+          p_asset_id: string
+          p_kind: string
+          p_news_id: string
+        }
+        Returns: undefined
+      }
+      admin_set_news_ready: {
+        Args: { p_news_id: string; p_ready: boolean }
         Returns: undefined
       }
       admin_set_news_settings: {
@@ -978,10 +1030,6 @@ export type Database = {
         }
         Returns: undefined
       }
-      admin_set_news_bankruptcy: {
-        Args: { p_asset_id: string; p_liquidation_bps?: number; p_news_id: string }
-        Returns: number
-      }
       admin_set_post_open: {
         Args: { p_open: boolean; p_post_id: string }
         Returns: boolean
@@ -989,6 +1037,20 @@ export type Database = {
       admin_set_stock: {
         Args: { p_asset_id: string; p_reason: string; p_stock: number }
         Returns: number
+      }
+      admin_set_trade_settings: {
+        Args: {
+          p_hold_cap_pct: number
+          p_pressure_bps_per_unit: number
+          p_pressure_cap_bps: number
+          p_pressure_decay_minutes: number
+          p_sell_spread_bps: number
+        }
+        Returns: undefined
+      }
+      admin_unfreeze_leaderboard: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       admin_upsert_asset: {
         Args: {
@@ -1013,13 +1075,8 @@ export type Database = {
         }
         Returns: string
       }
-      admin_set_news_ready: {
-        Args: { p_news_id: string; p_ready: boolean }
-        Returns: undefined
-      }
-      admin_unfreeze_leaderboard: { Args: never; Returns: undefined }
       app_role: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: Database["public"]["Enums"]["app_role"]
       }
       award_payout: {
@@ -1046,38 +1103,62 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      cancel_order: {
-        Args: { p_order_id: number }
+      bankrupt_asset: {
+        Args: { p_asset_id: string; p_bps: number; p_news_id: string }
+        Returns: undefined
+      }
+      buy_asset: {
+        Args: { p_asset_id: string; p_qty: number; p_request_id: string }
         Returns: {
           asset_id: string
-          closed_at: string | null
           created_at: string
           id: number
-          is_house: boolean
-          kind: string
-          lock_per_lot: number
-          price: number | null
+          list_price: number
           qty: number
-          remaining: number
-          request_id: string | null
+          request_id: string
           side: string
-          status: string
-          team_id: string | null
+          team_id: string
+          total: number
+          unit_price: number
         }
         SetofOptions: {
           from: "*"
-          to: "orders"
+          to: "transactions"
           isOneToOne: true
           isSetofReturn: false
         }
       }
-      ceil_tick: { Args: { p: number }; Returns: number }
       check_news_effects: { Args: { p_news_id: string }; Returns: undefined }
-      floor_tick: { Args: { p: number }; Returns: number }
-      freeze_leaderboard_internal: { Args: never; Returns: undefined }
-      game_is_locked: { Args: never; Returns: boolean }
+      cm_now: { Args: Record<PropertyKey, never>; Returns: string }
+      event_chances: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          asset_id: string
+          kind: string
+          p: number
+        }[]
+      }
+      freeze_leaderboard_internal: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      game_is_locked: { Args: Record<PropertyKey, never>; Returns: boolean }
+      get_day_open_prices: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          asset_id: string
+          open_price: number
+        }[]
+      }
+      get_index_history: {
+        Args: { p_max?: number }
+        Returns: {
+          at: string
+          value: number
+        }[]
+      }
       get_leaderboard: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: Database["public"]["CompositeTypes"]["leaderboard_row"][]
         SetofOptions: {
           from: "*"
@@ -1087,30 +1168,34 @@ export type Database = {
         }
       }
       get_market_index: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: {
           scope: string
           value: number
         }[]
       }
       get_market_summary: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: {
           asset_id: string
           avg_price: number
           freq: number
           high_price: number
+          init_stock: number
           last_price: number
           lot: number
           low_price: number
           open_price: number
+          price_factor_bps: number
           ref_price: number
+          sell_price: number
+          stock: number
           symbol: string
           val: number
         }[]
       }
       get_my_summary: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: Database["public"]["CompositeTypes"]["my_summary"]
         SetofOptions: {
           from: "*"
@@ -1119,77 +1204,15 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      admin_applied_news: {
-        Args: { p_limit?: number }
-        Returns: {
-          applied_at: string | null
-          event_kind: string | null
-          event_symbol: string | null
-          n_assets: number
-          news_id: string
-          published_at: string | null
-          title: string
-        }[]
-      }
-      admin_news_effects: {
-        Args: { p_news_id: string }
-        Returns: {
-          kind: string
-          name: string
-          news_id: string
-          status: string
-          symbol: string
-          value: number
-        }[]
-      }
-      admin_current_news_effects: {
-        Args: never
-        Returns: {
-          kind: string
-          name: string
-          news_id: string
-          status: string
-          symbol: string
-          value: number
-        }[]
-      }
-      admin_restart_news: {
-        Args: never
-        Returns: number
-      }
-      get_index_history: {
-        Args: { p_max?: number }
-        Returns: {
-          at: string
-          value: number
-        }[]
-      }
-      get_day_open_prices: {
-        Args: never
-        Returns: {
-          asset_id: string
-          open_price: number
-        }[]
-      }
       get_news_pool_kinds: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: {
           kind: string
           ready_count: number
         }[]
       }
-      news_pool_coverage: {
-        Args: never
-        Returns: {
-          asset_id: string
-          bankrupt: number
-          dividend: number
-          suspend: number
-          symbol: string
-        }[]
-      }
       get_news_pool_status: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: {
           applied_count: number
           draft_count: number
@@ -1198,18 +1221,8 @@ export type Database = {
           ready_count: number
         }[]
       }
-      get_order_book: {
-        Args: { p_asset_id: string }
-        Returns: {
-          freq: number
-          lots: number
-          mine: number
-          price: number
-          side: string
-        }[]
-      }
       get_post_list: {
-        Args: never
+        Args: Record<PropertyKey, never>
         Returns: {
           id: string
           is_open: boolean
@@ -1232,57 +1245,63 @@ export type Database = {
         Args: { p_device?: string; p_event: string }
         Returns: undefined
       }
-      news_would_hit_bounds: { Args: { p_news_id: string }; Returns: boolean }
-      ob_cancel: { Args: { p_order: number }; Returns: undefined }
-      ob_cancel_all: { Args: never; Returns: undefined }
-      ob_fee: {
-        Args: { p_bps: number; p_price: number; p_qty: number }
-        Returns: number
-      }
-      ob_lock: { Args: never; Returns: undefined }
-      ob_match: { Args: { p_order: number }; Returns: undefined }
-      order_band: {
-        Args: { p_asset: string }
-        Returns: {
-          hi: number
-          lo: number
-        }[]
-      }
-      place_order: {
-        Args: {
-          p_asset_id: string
-          p_kind: string
-          p_price: number
-          p_qty: number
-          p_request_id: string
-          p_side: string
-        }
+      market_state: {
+        Args: Record<PropertyKey, never>
         Returns: {
           asset_id: string
-          closed_at: string | null
-          created_at: string
-          id: number
-          is_house: boolean
-          kind: string
-          lock_per_lot: number
-          price: number | null
-          qty: number
-          remaining: number
-          request_id: string | null
-          side: string
-          status: string
-          team_id: string | null
-        }
-        SetofOptions: {
-          from: "*"
-          to: "orders"
-          isOneToOne: true
-          isSetofReturn: false
-        }
+          base_price: number
+          cum: number
+          last_dividend_at: string
+          last_event_at: string
+          price: number
+          sector: string
+          suspended: boolean
+          symbol: string
+          trades_10m: number
+          up_streak: number
+          vol: number
+        }[]
       }
-      process_house_quotes: { Args: { p_asset?: string }; Returns: undefined }
-      process_market_cycle: { Args: never; Returns: string }
-      process_news_cycle: { Args: never; Returns: string }
+      news_pool: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          amount: number
+          asset_id: string
+          kind: string
+          n_active: number
+          n_effects: number
+          news_id: string
+          status: Database["public"]["Enums"]["news_status"]
+          usable: boolean
+        }[]
+      }
+      news_pool_coverage: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          asset_id: string
+          bankrupt: number
+          dividend: number
+          suspend: number
+          symbol: string
+        }[]
+      }
+      news_would_hit_bounds: { Args: { p_news_id: string }; Returns: boolean }
+      ob_lock: { Args: Record<PropertyKey, never>; Returns: undefined }
+      pay_dividend: {
+        Args: { p_asset_id: string; p_bps: number; p_news_id: string }
+        Returns: undefined
+      }
+      pick_next_news: { Args: Record<PropertyKey, never>; Returns: string }
+      process_market_cycle: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      process_news_cycle: { Args: Record<PropertyKey, never>; Returns: string }
+      process_suspensions: { Args: Record<PropertyKey, never>; Returns: number }
+      record_index_sample: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       resolve_team_code: {
         Args: { p_code: string }
         Returns: Database["public"]["CompositeTypes"]["team_ref"]
@@ -1303,8 +1322,37 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      round_tick: { Args: { p: number }; Returns: number }
-      tick_for: { Args: { p: number }; Returns: number }
+      sell_asset: {
+        Args: { p_asset_id: string; p_qty: number; p_request_id: string }
+        Returns: {
+          asset_id: string
+          created_at: string
+          id: number
+          list_price: number
+          qty: number
+          request_id: string
+          side: string
+          team_id: string
+          total: number
+          unit_price: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "transactions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      shop_init_assets: { Args: Record<PropertyKey, never>; Returns: undefined }
+      shop_price: {
+        Args: { p_factor: number; p_max: number; p_min: number; p_ref: number }
+        Returns: number
+      }
+      shop_sell_price: { Args: { p_price: number }; Returns: number }
+      suspend_asset: {
+        Args: { p_asset_id: string; p_minutes: number; p_news_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "guard" | "team" | "display"
@@ -1346,15 +1394,117 @@ type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
-  TableName extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"]),
-> = (DefaultSchema["Tables"] & DefaultSchema["Views"])[TableName] extends {
-  Row: infer R
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
 }
-  ? R
-  : never
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
-export type Enums<EnumName extends keyof DefaultSchema["Enums"]> =
-  DefaultSchema["Enums"][EnumName]
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never) = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never) = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
 
 export const Constants = {
   public: {

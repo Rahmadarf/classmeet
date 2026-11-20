@@ -1,68 +1,55 @@
 import { describe, expect, it } from "vitest";
-import {
-  estimateSweep,
-  formatBps,
-  formatCompactRupiah,
-  lockPerLot,
-  maxAffordableLots,
-  stepDown,
-  stepUp,
-} from "./rules";
+import { formatBps, formatCompactRupiah, holdCap, maxBuyQty, sellPriceOf, stockLevel } from "./rules";
 
-describe("stepUp / stepDown", () => {
-  it("melompat satu fraksi menurut rentang", () => {
-    expect(stepUp(120_000)).toBe(120_500);
-    expect(stepUp(250_000)).toBe(251_000);
-    expect(stepUp(800_000)).toBe(802_500);
-    expect(stepDown(800_000)).toBe(797_500);
+describe("stockLevel", () => {
+  it("habis, langka (< 20 %), menipis (< 50 %), aman", () => {
+    expect(stockLevel(0, 10, 50, 20)).toBe("out");
+    expect(stockLevel(1, 10, 50, 20)).toBe("low"); // 10 %
+    expect(stockLevel(2, 10, 50, 20)).toBe("mid"); // tepat 20 % bukan langka
+    expect(stockLevel(4, 10, 50, 20)).toBe("mid");
+    expect(stockLevel(5, 10, 50, 20)).toBe("ok"); // tepat 50 % aman
+    expect(stockLevel(10, 10, 50, 20)).toBe("ok");
   });
 
-  it("tetap kelipatan fraksi di batas rentang", () => {
-    expect(stepUp(199_500)).toBe(200_000);
-    expect(stepDown(200_000)).toBe(199_500);
-    expect(stepUp(499_000)).toBe(500_000);
-    expect(stepDown(500_000)).toBe(499_000); // bukan 497.500
-    expect(stepDown(502_500)).toBe(500_000);
-  });
-
-  it("tidak turun di bawah satu fraksi", () => {
-    expect(stepDown(500)).toBe(500);
+  it("stok awal 0 dianggap aman bila ada sisa", () => {
+    expect(stockLevel(3, 0, 50, 20)).toBe("ok");
   });
 });
 
-describe("kunci dan biaya", () => {
-  it("lockPerLot = harga + biaya dibulatkan ke atas (contoh Figma: 802.500 → 804.507)", () => {
-    expect(lockPerLot(802_500, 25)).toBe(804_507);
-  });
-
-  it("maxAffordableLots", () => {
-    expect(maxAffordableLots(1_200_000, 802_500, 25)).toBe(1);
-    expect(maxAffordableLots(0, 802_500, 25)).toBe(0);
-    expect(maxAffordableLots(10_000_000, 0, 25)).toBe(0);
+describe("holdCap", () => {
+  it("30 % stok awal, minimal 1 unit (sama dengan buy_asset)", () => {
+    expect(holdCap(10, 30)).toBe(3);
+    expect(holdCap(36, 30)).toBe(10);
+    expect(holdCap(5, 30)).toBe(1);
+    expect(holdCap(1, 30)).toBe(1);
   });
 });
 
-describe("estimateSweep", () => {
-  const offers = [
-    { price: 802_500, lots: 4, freq: 2, mine: 0 },
-    { price: 805_000, lots: 6, freq: 3, mine: 2 },
-    { price: 807_500, lots: 2, freq: 1, mine: 0 },
-  ];
-
-  it("menyapu level terbaik berurutan dan melewati lot milik sendiri", () => {
-    const e = estimateSweep(offers, 6, 5, 25);
-    // 4 @ 802.500 + 2 @ 805.000 (6 − 2 milik sendiri = 4 tersedia, ambil 2)
-    expect(e.filled).toBe(6);
-    expect(e.gross).toBe(4 * 802_500 + 2 * 805_000);
-    expect(e.fee).toBe(Math.ceil((802_500 * 4 * 25) / 10_000) + Math.ceil((805_000 * 2 * 25) / 10_000));
+describe("sellPriceOf", () => {
+  it("harga tayang dikurangi selisih, dibulatkan ke bawah ke kelipatan 100", () => {
+    expect(sellPriceOf(156_400, 200)).toBe(153_200); // 153.272 → 153.200
+    expect(sellPriceOf(737_800, 200)).toBe(723_000); // 723.044 → 723.000
+    expect(sellPriceOf(110_000, 200)).toBe(107_800);
   });
 
-  it("dibatasi jumlah level sapuan", () => {
-    expect(estimateSweep(offers, 100, 2, 25).filled).toBe(4 + 4);
+  it("selisih 0 mengembalikan harga yang sama; tidak di bawah satu kelipatan", () => {
+    expect(sellPriceOf(110_000, 0)).toBe(110_000);
+    expect(sellPriceOf(50, 200)).toBe(100);
+  });
+});
+
+describe("maxBuyQty", () => {
+  it("dibatasi saldo, stok, dan sisa batas pegang (yang terkecil)", () => {
+    expect(maxBuyQty({ cash: 1_000_000, price: 100_000, stock: 50, held: 0, cap: 10 })).toBe(10);
+    expect(maxBuyQty({ cash: 350_000, price: 100_000, stock: 50, held: 0, cap: 10 })).toBe(3);
+    expect(maxBuyQty({ cash: 1_000_000, price: 100_000, stock: 2, held: 0, cap: 10 })).toBe(2);
+    expect(maxBuyQty({ cash: 1_000_000, price: 100_000, stock: 50, held: 8, cap: 10 })).toBe(2);
   });
 
-  it("antrean kosong → tidak ada yang terisi", () => {
-    expect(estimateSweep([], 3, 5, 25)).toEqual({ filled: 0, gross: 0, fee: 0 });
+  it("tidak pernah negatif; saldo belum termuat tidak membatasi", () => {
+    expect(maxBuyQty({ cash: 0, price: 100_000, stock: 5, held: 0, cap: 3 })).toBe(0);
+    expect(maxBuyQty({ cash: 1_000_000, price: 100_000, stock: 5, held: 4, cap: 3 })).toBe(0);
+    expect(maxBuyQty({ cash: null, price: 100_000, stock: 5, held: 0, cap: 3 })).toBe(3);
   });
 });
 
@@ -74,8 +61,11 @@ describe("format", () => {
     expect(formatCompactRupiah(0)).toBe("0");
   });
 
-  it("formatBps", () => {
+  it("formatBps tanpa nol di belakang koma", () => {
+    expect(formatBps(200)).toBe("2 %");
     expect(formatBps(25)).toBe("0,25 %");
-    expect(formatBps(1500)).toBe("15,00 %");
+    expect(formatBps(20)).toBe("0,2 %");
+    expect(formatBps(1500)).toBe("15 %");
+    expect(formatBps(0)).toBe("0 %");
   });
 });

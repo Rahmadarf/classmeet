@@ -9,8 +9,8 @@ function remaining(ms: number): string {
 }
 
 /**
- * Pemberitahuan aset yang sedang disuspensi (event berita, scripts/sql/event-dividend-suspend.sql): order BARU ditolak
- * sampai waktunya habis; order antre tetap bisa dibatalkan. `now` berjalan tiap detik dari papan.
+ * Pemberitahuan aset yang sedang disuspensi (event berita, scripts/sql/event-dividend-suspend.sql): beli dan jual ditolak
+ * sampai waktunya habis. `now` berjalan tiap detik dari papan.
  */
 export function SuspendNotice({ assets, now }: { assets: MarketAsset[]; now: number }) {
   const list = assets.filter((a) => isSuspended(a, now));
@@ -30,9 +30,8 @@ export function SuspendNotice({ assets, now }: { assets: MarketAsset[]; now: num
             </span>
             {a.name} ({a.symbol}) dihentikan sementara.{" "}
             <span className="text-ink-muted font-medium">
-              Order baru belum bisa dipasang sampai {formatTimeWib(a.suspendedUntil as string)} WIB (
+              Beli dan jual belum bisa dilakukan sampai {formatTimeWib(a.suspendedUntil as string)} WIB (
               <span className="tnum">{remaining(Date.parse(a.suspendedUntil as string) - now)}</span> lagi).
-              Order antre masih bisa dibatalkan.
             </span>
           </p>
         </li>
