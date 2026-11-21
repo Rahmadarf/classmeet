@@ -43,7 +43,9 @@ export function DisplayGate({
                 <p className="text-ink text-[36px] font-bold">CLASSMEET MARKET</p>
               </header>
               <div className="grid flex-1 place-items-center">
-                <p className="text-ink text-[104px] leading-tight font-bold">Game belum di mulai</p>
+                <p className="text-ink max-w-[1500px] text-center text-[240px] leading-[1.02] font-extrabold text-balance">
+                  Game belum di mulai
+                </p>
               </div>
             </div>
           </ScaledStage>
