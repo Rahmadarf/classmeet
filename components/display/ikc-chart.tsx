@@ -6,7 +6,7 @@ import { formatNumber } from "@/lib/money";
 
 /**
  * Grafik IKC memakai Recharts (menggantikan SVG buatan sendiri). Ukuran tetap (panggung 1920×1080 sudah diskalakan oleh
- * `ScaledStage`), garis berundak (`stepAfter`: IKC berubah mendadak saat berita berlaku lalu tetap), tanpa animasi dan tanpa tooltip (layar publik tanpa interaksi). Sumbu Y mengikuti data (`valueDomain`);
+ * `ScaledStage`), kurva halus antar titik (`monotone`: halus tanpa melampaui nilai asli; `stepAfter` dulu membuat grafik berkotak-kotak karena titik hanya dicatat saat IKC berubah), tanpa animasi dan tanpa tooltip (layar publik tanpa interaksi). Sumbu Y mengikuti data (`valueDomain`);
  * garis dasar 1.000 hanya digambar bila berada dalam rentang. Warna memakai token yang sama dengan sebelumnya.
  */
 export function IkcChart({
@@ -82,7 +82,8 @@ export function IkcChart({
           <ReferenceLine y={1000} stroke="var(--border-strong)" strokeWidth={1.5} />
         ) : null}
         <Area
-          type="stepAfter"
+          type="monotone"
+          strokeLinejoin="round"
           dataKey="v"
           stroke="var(--primary)"
           strokeWidth={3}
