@@ -33,7 +33,7 @@ export const FILTERS: { key: "semua" | AuditCategory; label: string }[] = [
 export function categoryOf(action: string): AuditCategory {
   if (action === "payout_awarded") return "hadiah";
   if (action === "adjust_cash" || action === "rotate_qr" || action === "create_team") return "koreksi";
-  if (["set_state", "leaderboard_visible", "freeze_leaderboard", "unfreeze_leaderboard"].includes(action))
+  if (["set_state", "reset_game", "leaderboard_visible", "freeze_leaderboard", "unfreeze_leaderboard"].includes(action))
     return "status";
   if (["guard_set_post_open", "set_post_open", "upsert_post", "create_guard"].includes(action)) return "pos";
   if (
@@ -127,6 +127,8 @@ export function summarize(row: AuditRaw, lookup: Lookup): string {
       return `Pengaturan toko diubah: selisih jual ${pctText(num(p.sell_spread_bps))} %, tekanan ${pctText(num(p.pressure_bps_per_unit))} % per unit, batas pegang ${num(p.hold_cap_pct)} %`;
     case "set_news_settings":
       return "Pengaturan berita diubah";
+    case "reset_game":
+      return `Game di-reset: saldo ${num(p.teams)} tim jadi Rp 0, ${num(p.transactions)} transaksi dan ${num(p.payouts)} hadiah pos dihapus, ${num(p.news_ready)} berita kembali ke kumpulan`;
     case "restart_news":
       return `Berita dimulai ulang: ${num(p.restored)} berita kembali ke kumpulan`;
     case "set_news_bankruptcy":

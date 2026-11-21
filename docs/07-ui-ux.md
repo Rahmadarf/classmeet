@@ -344,6 +344,8 @@ Admin membuka pasar tiap pagi (08.00) dan menutupnya tiap malam (19.00) dengan *
 
 > **Tambahan 19 Nov (2):** kartu "Kumpulan berita terkunci" punya tombol **Mulai ulang berita** (dengan konfirmasi) yang mengembalikan berita terpakai ke kumpulan; ini mengubah aturan §3.7 bahwa admin tidak punya tombol untuk berita.
 
+> **Tambahan 21 Nov:** halaman Status Game punya kartu **Reset game** (konfirmasi dengan mengetik `RESET`) yang mengembalikan game ke keadaan sebelum dimulai: saldo semua tim Rp 0; transaksi, kepemilikan, hadiah pos, dividen, riwayat harga, grafik IKC, dan daftar berita dihapus; harga dan stok aset kembali ke awal (aset bangkrut aktif lagi); berita kembali ke kumpulan; status `setup`. Tim, pos, aset, isi berita, pengaturan, dan log audit tidak diubah (`scripts/sql/game-reset.sql`).
+
 > **Tambahan 19 Nov (3):** kartu "Berita saat ini" menampilkan **aset yang berubah dan persennya** (kolom Naik / Turun) plus event bila ada, dengan status "Belum berlaku" / "Sudah berlaku" (`admin_current_news_effects`, `scripts/sql/news-effects-admin.sql`). Waktu berlakunya tetap tidak ditampilkan. Ini mengubah aturan §3.7 (admin tidak tahu apa yang akan berubah). Sebelum game dibuka, tiap berita draf punya ringkasan "Lihat aset dan persen perubahannya".
 
 Berita **tidak dipilih dan tidak dijadwalkan admin**. Halaman ini punya dua wajah, tergantung `game_settings.started_at`:

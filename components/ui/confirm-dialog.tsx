@@ -17,6 +17,8 @@ export function ConfirmDialog({
   tone = "primary",
   loading = false,
   error,
+  confirmDisabled = false,
+  children,
   onConfirm,
 }: {
   open: boolean;
@@ -27,6 +29,10 @@ export function ConfirmDialog({
   tone?: "primary" | "danger";
   loading?: boolean;
   error?: string | null;
+  /** Tombol aksi mati (mis. sampai kata konfirmasi diketik). */
+  confirmDisabled?: boolean;
+  /** Isi tambahan di bawah deskripsi (mis. kolom ketik konfirmasi). */
+  children?: React.ReactNode;
   onConfirm: () => void;
 }) {
   return (
@@ -42,6 +48,7 @@ export function ConfirmDialog({
         <DialogDescription asChild>
           <div className="text-ink-muted mt-3 text-lg leading-[1.5]">{description}</div>
         </DialogDescription>
+        {children}
         {error ? (
           <p role="alert" className="text-bad-text mt-4 text-base font-semibold">
             {error}
@@ -51,7 +58,7 @@ export function ConfirmDialog({
           <Button data-cancel variant="ghost" onClick={() => onOpenChange(false)} disabled={loading}>
             Batal
           </Button>
-          <Button variant={tone === "danger" ? "danger" : "primary"} loading={loading} onClick={onConfirm}>
+          <Button variant={tone === "danger" ? "danger" : "primary"} loading={loading} disabled={confirmDisabled} onClick={onConfirm}>
             {confirmLabel}
           </Button>
         </div>

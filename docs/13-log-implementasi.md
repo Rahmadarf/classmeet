@@ -1087,3 +1087,11 @@ Sebelumnya kotak "Bangkrut" di Pasar tim tampil selamanya untuk semua aset bangk
 ## Grafik IKC display: garis lurus, bukan berundak (21 Nov)
 
 Grafik IKC di display tampak berkotak-kotak. Sebabnya `stepAfter` (sejak grafik dibangun ulang dengan Recharts) dipadukan dengan titik riwayat yang hanya dicatat saat nilai IKC berubah (`index-sample`), sehingga pada model toko (IKC bergerak per transaksi dan berita, bukan per order) tiap perubahan tampil sebagai anak tangga. Diganti `type="monotone"` (kurva halus yang tidak melampaui nilai asli; sempat `linear`) di `components/display/ikc-chart.tsx`. Diperiksa di 1920×1080: garis kini menyambung halus antar titik; lint dan tes display lolos.
+
+## Tombol Reset game (21 Nov)
+
+Permintaan: satu tombol untuk memulai ulang game dan mereset semua uang, riwayat, berita, dan grafik IKC. Dibuat `admin_reset_game()` (`scripts/sql/game-reset.sql`; hanya admin, boleh di status apa pun, satu transaksi, penguncian `classmeet.system` hanya di dalam fungsi):
+- **Dikosongkan:** `transactions`, `holdings`, `payouts`, `dividends`, `price_history`, `index_history`, `leaderboard_snapshot`, `news_feed`, `market_event_log`.
+- **Dikembalikan:** saldo tim Rp 0; aset ke `base_price`, `init_stock`, tekanan stok 0, aktif lagi (bangkrut/suspensi dicabut); berita `live`/`applied` kembali `ready` (efek 10-15 aset) atau `draft`; `game_settings.state = setup` dengan `started_at`, `paused_at`, `market_opened_at`, pembekuan, dan jeda berita dikosongkan; `shop_clock` diulang. Karena `started_at` kosong, harga, berita, dan pengaturan bisa diedit lagi.
+- **Tidak diubah:** akun, tim (nama, QR), pos, daftar aset, isi berita, pengaturan, log audit (ditambah `reset_game`).
+UI: kartu "Reset game" di Status Game (`components/admin/state-board.tsx`) dengan dialog konfirmasi yang meminta mengetik `RESET` (`ConfirmDialog` kini punya `children` dan `confirmDisabled`); aksi server `resetGame`; log audit menampilkan ringkasannya (kategori status). Uji: SQL dalam transaksi yang di-ROLLBACK (tim ditolak `forbidden`; sesudah reset saldo 0, semua tabel riwayat 0, tidak ada aset dengan harga/stok menyimpang, 1000 berita `ready`, status `setup`, tim dan pos utuh, audit tercatat); di peramban dialog: tombol mati sampai `RESET` diketik, Batal menutup. Reset sungguhan lewat tombol tidak dijalankan pada data uji supaya data tidak hilang.

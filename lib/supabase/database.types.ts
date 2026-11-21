@@ -941,6 +941,10 @@ export type Database = {
           value: number
         }[]
       }
+      admin_reset_game: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       admin_restart_news: { Args: Record<PropertyKey, never>; Returns: number }
       admin_rotate_team_qr: { Args: { p_team_id: string }; Returns: string }
       admin_save_news: {

@@ -3,7 +3,7 @@
 import { AlertTriangle, Check } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { setGameState, setLeaderboardFrozen, setLeaderboardVisible } from "@/app/admin/state/actions";
+import { resetGame, setGameState, setLeaderboardFrozen, setLeaderboardVisible } from "@/app/admin/state/actions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -32,7 +32,10 @@ const STATE_BADGE: Record<GameState, { label: string; box: string; dot: string }
   finished: { label: "FINISHED", box: "border-line-strong bg-soft text-ink-muted", dot: "bg-ink-dim" },
 };
 
-type Pending = "open-first" | "resume" | "pause" | "finish" | null;
+type Pending = "open-first" | "resume" | "pause" | "finish" | "reset" | null;
+
+/** Kata yang harus diketik untuk mengonfirmasi reset game. */
+const RESET_WORD = "RESET";
 
 /**
  * Status Game (Figma `Admin — Status game`, 1085:324; docs/07 §3.7): pusat kendali harian. Hanya memuat yang harus
@@ -50,6 +53,7 @@ export function StateBoard({ initial }: { initial: { game: AdminGame; pool: News
   const [busy, setBusy] = useState(false);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [lbBusy, setLbBusy] = useState(false);
+  const [resetText, setResetText] = useState("");
   const dropped = useRef(false);
 
   const refreshGame = useCallback(async () => {
@@ -123,6 +127,23 @@ export function StateBoard({ initial }: { initial: { game: AdminGame; pool: News
       setDialogError(res.message);
       void refreshAll();
     }
+  };
+
+  const runReset = async () => {
+    setBusy(true);
+    setDialogError(null);
+    const res = await resetGame().catch((): ActionResult => ({
+      ok: false,
+      message: "Koneksi bermasalah. Coba lagi.",
+      code: null,
+      retryable: true,
+    }));
+    setBusy(false);
+    if (res.ok) {
+      setPending(null);
+      toast.success("Game di-reset. Status kembali ke setup.");
+    } else setDialogError(res.message);
+    void refreshAll();
   };
 
   const toggleVisible = async () => {
@@ -264,6 +285,28 @@ export function StateBoard({ initial }: { initial: { game: AdminGame; pool: News
             </p>
           ) : null}
         </Card>
+
+        <Card aria-labelledby="reset-judul" className="border-bad-text/50 flex flex-col gap-4">
+          <h2 id="reset-judul" className="text-bad-text text-[13px] font-semibold tracking-[0.12em] uppercase">
+            Reset game
+          </h2>
+          <p className="text-ink-muted text-base">
+            Mulai ulang dari nol: semua saldo jadi Rp 0, transaksi, kepemilikan, hadiah pos, riwayat harga, dan
+            grafik IKC dihapus; harga dan stok aset kembali ke awal; berita kembali ke kumpulan. Tim, pos, aset,
+            dan isi berita tetap. Status kembali ke setup.
+          </p>
+          <Button
+            variant="danger"
+            size="lg"
+            onClick={() => {
+              setResetText("");
+              setDialogError(null);
+              setPending("reset");
+            }}
+          >
+            Reset game
+          </Button>
+        </Card>
       </div>
 
       <Card aria-labelledby="berita-judul" className="flex flex-col gap-4">
@@ -325,6 +368,32 @@ export function StateBoard({ initial }: { initial: { game: AdminGame; pool: News
         error={dialogError}
         onConfirm={() => void runState("paused", "Pasar ditutup.")}
       />
+      <ConfirmDialog
+        open={pending === "reset"}
+        onOpenChange={(o) => !o && setPending(null)}
+        title="Reset game dari awal?"
+        description="Semua saldo tim jadi Rp 0, dan transaksi, kepemilikan, hadiah pos, dividen, riwayat harga, grafik IKC, serta daftar berita dihapus. Harga dan stok aset kembali ke awal. Ini tidak bisa dibatalkan."
+        confirmLabel="Reset game"
+        tone="danger"
+        loading={busy}
+        error={dialogError}
+        confirmDisabled={resetText.trim().toUpperCase() !== RESET_WORD}
+        onConfirm={() => void runReset()}
+      >
+        <label className="mt-4 flex flex-col gap-2">
+          <span className="text-ink text-base font-semibold">
+            Ketik <span className="tnum">{RESET_WORD}</span> untuk melanjutkan
+          </span>
+          <input
+            value={resetText}
+            onChange={(e) => setResetText(e.target.value)}
+            autoComplete="off"
+            spellCheck={false}
+            disabled={busy}
+            className="rounded-control border-line-strong bg-card text-ink focus-visible:outline-primary min-h-11 border-2 px-3 text-lg focus-visible:outline-2"
+          />
+        </label>
+      </ConfirmDialog>
       <ConfirmDialog
         open={pending === "finish"}
         onOpenChange={(o) => !o && setPending(null)}

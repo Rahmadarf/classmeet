@@ -59,3 +59,13 @@ export async function setLeaderboardFrozen(input: unknown): Promise<ActionResult
     ? run("admin_freeze_leaderboard", () => supabase.rpc("admin_freeze_leaderboard"))
     : run("admin_unfreeze_leaderboard", () => supabase.rpc("admin_unfreeze_leaderboard"));
 }
+
+/**
+ * Reset game (`admin_reset_game`): kembalikan game ke keadaan sebelum dimulai. Saldo, transaksi, kepemilikan, hadiah pos,
+ * dividen, riwayat harga, grafik IKC, dan daftar berita dikosongkan; harga dan stok aset kembali ke awal; berita kembali ke
+ * kumpulan; status `setup`. Tim, pos, aset, dan isi berita tetap. Tidak bisa dibatalkan.
+ */
+export async function resetGame(): Promise<ActionResult> {
+  const supabase = await createClient();
+  return run("admin_reset_game", () => supabase.rpc("admin_reset_game"));
+}
