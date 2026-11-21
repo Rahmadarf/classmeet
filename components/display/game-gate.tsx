@@ -1,0 +1,54 @@
+"use client";
+
+import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { ScaledStage } from "@/components/display/scaled-stage";
+import { usePolling } from "@/lib/hooks/use-polling";
+import { fetchGame, type Game } from "@/lib/market/data";
+import { createClient } from "@/lib/supabase/client";
+
+/** Status game dicek tiap 5 detik; saat `setup` semua layar publik tertutup tulisan "Game belum di mulai". */
+const POLL_MS = 5_000;
+
+/**
+ * Pembungkus semua layar publik (peringkat, pasar, berita, pos, dan layar bergilir). Selama status game `setup`
+ * (sebelum dimulai atau sesudah reset) isi layar ditutup satu tulisan besar; layar di bawahnya tetap terpasang
+ * sehingga langsung tampil begitu game dimulai. `initialState` dari server supaya tidak ada kedipan.
+ */
+export function DisplayGate({
+  initialState,
+  children,
+}: {
+  initialState: Game["state"] | null;
+  children: ReactNode;
+}) {
+  const supabase = useMemo(() => createClient(), []);
+  const [state, setState] = useState(initialState);
+  const refresh = useCallback(async () => {
+    const g = await fetchGame(supabase);
+    if (g) setState(g.state);
+  }, [supabase]);
+  usePolling(refresh, POLL_MS);
+
+  return (
+    <>
+      {children}
+      {state === "setup" ? (
+        <div role="status" className="bg-page fixed inset-0 z-50" aria-label="Game belum dimulai">
+          <ScaledStage>
+            <div className="flex h-full flex-col px-[80px] py-[56px]">
+              <header className="flex shrink-0 items-center gap-4">
+                <div className="bg-accent text-ink-on-accent grid size-14 place-items-center rounded-full text-[30px] font-bold">
+                  C
+                </div>
+                <p className="text-ink text-[36px] font-bold">CLASSMEET MARKET</p>
+              </header>
+              <div className="grid flex-1 place-items-center">
+                <p className="text-ink text-[104px] leading-tight font-bold">Game belum di mulai</p>
+              </div>
+            </div>
+          </ScaledStage>
+        </div>
+      ) : null}
+    </>
+  );
+}

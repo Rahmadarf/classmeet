@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { DisplayGate } from "@/components/display/game-gate";
 import { DisplayRotator } from "@/components/display/display-rotator";
 import { fetchLeaderboard, fetchMarketBoard, fetchNewsBoard } from "@/lib/display/data";
+import { fetchGame } from "@/lib/market/data";
 import { fetchPosts } from "@/lib/posts/data";
 import { createClient } from "@/lib/supabase/server";
 
@@ -39,6 +41,8 @@ async function DisplayContent({ searchParams }: { searchParams: SearchParams }) 
     fetchPosts(supabase),
   ]);
   return (
-    <DisplayRotator leaderboard={leaderboard} market={market} news={news} posts={posts ?? []} pin={pin} />
+    <DisplayGate initialState={market?.game.state ?? (await fetchGame(supabase))?.state ?? null}>
+      <DisplayRotator leaderboard={leaderboard} market={market} news={news} posts={posts ?? []} pin={pin} />
+    </DisplayGate>
   );
 }

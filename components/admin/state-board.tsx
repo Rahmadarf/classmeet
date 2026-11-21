@@ -3,7 +3,12 @@
 import { AlertTriangle, Check } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { resetGame, setGameState, setLeaderboardFrozen, setLeaderboardVisible } from "@/app/admin/state/actions";
+import {
+  resetGame,
+  setGameState,
+  setLeaderboardFrozen,
+  setLeaderboardVisible,
+} from "@/app/admin/state/actions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -213,32 +218,53 @@ export function StateBoard({ initial }: { initial: { game: AdminGame; pool: News
             </p>
           ) : (
             <>
-              <div className="flex gap-3">
-                {canOpen ? (
+              {game.state === "setup" ? (
+                <>
                   <Button
                     size="lg"
-                    className="flex-1"
-                    onClick={() => {
-                      if (game.state === "setup") setPending("open-first");
-                      else void runState("open", "Pasar dibuka kembali.");
-                    }}
+                    className="w-full"
+                    onClick={() => setPending("open-first")}
                     loading={busy && pending === null}
                   >
-                    Buka pasar
+                    Mulai game
                   </Button>
-                ) : (
-                  <Button size="lg" className="flex-1" onClick={() => setPending("pause")}>
-                    Tutup pasar
-                  </Button>
-                )}
-                <Button variant="danger" size="lg" className="flex-1" onClick={() => setPending("finish")}>
-                  Akhiri game
-                </Button>
-              </div>
-              <p className="text-ink-muted text-base">
-                Buka pasar muncul bila status paused atau setup. Pasar dibuka 08.00 dan ditutup 19.00 secara
-                manual; jangan lupa menutup.
-              </p>
+                  <p className="text-ink-muted text-base">
+                    Mulai game membuka pasar dan memulai berita dari awal. Layar publik menampilkan &ldquo;Game
+                    belum di mulai&rdquo; sampai tombol ini ditekan.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="flex gap-3">
+                    {canOpen ? (
+                      <Button
+                        size="lg"
+                        className="flex-1"
+                        onClick={() => void runState("open", "Pasar dibuka kembali.")}
+                        loading={busy && pending === null}
+                      >
+                        Buka pasar
+                      </Button>
+                    ) : (
+                      <Button size="lg" className="flex-1" onClick={() => setPending("pause")}>
+                        Tutup pasar
+                      </Button>
+                    )}
+                    <Button
+                      variant="danger"
+                      size="lg"
+                      className="flex-1"
+                      onClick={() => setPending("finish")}
+                    >
+                      Akhiri game
+                    </Button>
+                  </div>
+                  <p className="text-ink-muted text-base">
+                    Buka pasar muncul bila status paused. Pasar dibuka 08.00 dan ditutup 19.00 secara manual;
+                    jangan lupa menutup.
+                  </p>
+                </>
+              )}
             </>
           )}
         </Card>
@@ -287,13 +313,16 @@ export function StateBoard({ initial }: { initial: { game: AdminGame; pool: News
         </Card>
 
         <Card aria-labelledby="reset-judul" className="border-bad-text/50 flex flex-col gap-4">
-          <h2 id="reset-judul" className="text-bad-text text-[13px] font-semibold tracking-[0.12em] uppercase">
+          <h2
+            id="reset-judul"
+            className="text-bad-text text-[13px] font-semibold tracking-[0.12em] uppercase"
+          >
             Reset game
           </h2>
           <p className="text-ink-muted text-base">
-            Mulai ulang dari nol: semua saldo jadi Rp 0, transaksi, kepemilikan, hadiah pos, riwayat harga, dan
-            grafik IKC dihapus; harga dan stok aset kembali ke awal; berita kembali ke kumpulan. Tim, pos, aset,
-            dan isi berita tetap. Status kembali ke setup.
+            Mulai ulang dari nol: semua saldo jadi Rp 0, transaksi, kepemilikan, hadiah pos, riwayat harga,
+            dan grafik IKC dihapus; harga dan stok aset kembali ke awal; berita kembali ke kumpulan. Tim, pos,
+            aset, dan isi berita tetap. Status kembali ke setup.
           </p>
           <Button
             variant="danger"
@@ -351,12 +380,12 @@ export function StateBoard({ initial }: { initial: { game: AdminGame; pool: News
       <ConfirmDialog
         open={pending === "open-first"}
         onOpenChange={(o) => !o && setPending(null)}
-        title="Buka pasar untuk pertama kali?"
-        description="Setelah dibuka, harga aset, kumpulan berita, dan pengaturan berita terkunci dan tidak bisa diubah siapa pun sampai game selesai."
-        confirmLabel="Buka pasar"
+        title="Mulai game sekarang?"
+        description="Pasar dibuka dan berita mulai dari awal. Setelah dimulai, harga aset, kumpulan berita, dan pengaturan berita terkunci dan tidak bisa diubah siapa pun sampai game direset atau selesai."
+        confirmLabel="Mulai game"
         loading={busy}
         error={dialogError}
-        onConfirm={() => void runState("open", "Pasar dibuka.")}
+        onConfirm={() => void runState("open", "Game dimulai.")}
       />
       <ConfirmDialog
         open={pending === "pause"}

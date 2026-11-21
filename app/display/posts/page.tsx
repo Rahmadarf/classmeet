@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { DisplayGate } from "@/components/display/game-gate";
 import { PostsScreen } from "@/components/display/posts-screen";
 import { Skeleton } from "@/components/states";
 import { fetchPosts } from "@/lib/posts/data";
+import { fetchGame } from "@/lib/market/data";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Daftar Pos" };
@@ -31,9 +33,11 @@ async function PostsContent() {
     );
   }
   return (
-    <div className="fixed inset-0">
-      <PostsScreen initial={posts} />
-    </div>
+    <DisplayGate initialState={(await fetchGame(supabase))?.state ?? null}>
+      <div className="fixed inset-0">
+        <PostsScreen initial={posts} />
+      </div>
+    </DisplayGate>
   );
 }
 

@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { DisplayGate } from "@/components/display/game-gate";
 import { LeaderboardScreen } from "@/components/display/leaderboard-screen";
 import { fetchLeaderboard } from "@/lib/display/data";
+import { fetchGame } from "@/lib/market/data";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "5 tim teratas" };
@@ -19,8 +21,10 @@ async function Content() {
   await connection();
   const supabase = await createClient();
   return (
-    <div className="fixed inset-0">
-      <LeaderboardScreen initial={await fetchLeaderboard(supabase)} />
-    </div>
+    <DisplayGate initialState={(await fetchGame(supabase))?.state ?? null}>
+      <div className="fixed inset-0">
+        <LeaderboardScreen initial={await fetchLeaderboard(supabase)} />
+      </div>
+    </DisplayGate>
   );
 }
