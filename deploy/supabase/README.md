@@ -190,6 +190,12 @@ Salin tiga baris dari `55-tunnel-env.sh` ke `.env.local` (`NEXT_PUBLIC_SUPABASE_
 jadi `NODE_EXTRA_CA_CERTS` tidak perlu). Buka **`https://app.<domain>`**. Akun yang sudah ada tetap berlaku.
 `CLASSMEET_PUBLIC_HOSTS` memberi izin Next dev untuk host itu (tanpa ini JS halaman 403).
 
+**Alamat internal (disarankan bila Next dan Supabase satu mesin):** tambahkan `SUPABASE_INTERNAL_URL=http://localhost:8000` ke `.env.local`.
+Tanpanya, kode server Next memanggil Supabase lewat alamat publik (keluar ke Cloudflare lalu kembali ke mesin yang sama, ±134 ms per
+query); dengan alamat internal ±15 ms (9x lebih cepat) dan tidak bergantung pada internet atau DNS. Browser tetap memakai alamat
+publik, dan nama cookie sesi dihitung dari alamat publik (`lib/supabase/cookie-name.ts`) sehingga login tidak putus. Mulai ulang
+`npm run dev`/`npm start` setelah mengubahnya.
+
 Keamanan: API Supabase kini terbuka ke internet; yang menjaganya RLS dan kunci. `SERVICE_ROLE_KEY` tidak pernah masuk
 `.env.local` klien (hanya server). Studio tidak ikut terbuka. Pertimbangkan Cloudflare Access bila ingin membatasi
 `app.<domain>`.

@@ -18,9 +18,10 @@ import { displayCredentials, supabaseEnv } from "./env";
  */
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
-  const { url, anonKey } = supabaseEnv();
+  const { serverUrl, anonKey, cookieName } = supabaseEnv();
 
-  const supabase = createServerClient<Database>(url, anonKey, {
+  const supabase = createServerClient<Database>(serverUrl, anonKey, {
+    cookieOptions: { name: cookieName },
     cookies: {
       getAll() {
         return request.cookies.getAll();

@@ -17,6 +17,6 @@ export class ServiceKeyMissing extends Error {
 export function createServiceClient() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!key) throw new ServiceKeyMissing();
-  const { url } = supabaseEnv();
-  return createClient<Database>(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { serverUrl } = supabaseEnv();
+  return createClient<Database>(serverUrl, key, { auth: { persistSession: false, autoRefreshToken: false } });
 }

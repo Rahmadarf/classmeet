@@ -1,3 +1,5 @@
+import { authCookieName } from "./cookie-name";
+
 /**
  * Hanya kunci publik. `SUPABASE_SERVICE_ROLE_KEY` TIDAK BOLEH dibaca di sini atau di kode aplikasi mana pun
  * (hanya `scripts/*.ts` di laptop panitia).
@@ -10,7 +12,19 @@ export function supabaseEnv() {
       "NEXT_PUBLIC_SUPABASE_URL dan NEXT_PUBLIC_SUPABASE_ANON_KEY belum diisi (lihat .env.example).",
     );
   }
-  return { url, anonKey };
+  return {
+    /** Alamat PUBLIK Supabase (dipakai browser; sama dengan NEXT_PUBLIC_SUPABASE_URL). */
+    url,
+    /**
+     * Alamat yang dipakai kode SERVER (proxy, server action, komponen server). Bila `SUPABASE_INTERNAL_URL` diisi
+     * (mis. http://localhost:8000 saat Next dan Supabase satu mesin), panggilan server tidak lagi memutar lewat internet
+     * dan Cloudflare. Kosong: memakai alamat publik. Tidak pernah dikirim ke browser.
+     */
+    serverUrl: process.env.SUPABASE_INTERNAL_URL?.trim() || url,
+    anonKey,
+    /** Nama cookie sesi, selalu dari alamat PUBLIK supaya browser dan server memakai cookie yang sama. */
+    cookieName: authCookieName(url),
+  };
 }
 
 /**

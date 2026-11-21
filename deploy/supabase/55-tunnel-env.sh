@@ -16,5 +16,6 @@ info "stack/.env diperbarui. Salin ke .env.local aplikasi:"
 echo "NEXT_PUBLIC_SUPABASE_URL=https://$API"
 echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$(get_env ANON_KEY)"
 echo "CLASSMEET_PUBLIC_HOSTS=$APP"
+echo "SUPABASE_INTERNAL_URL=http://localhost:8000   # opsional: server Next memanggil Supabase lewat localhost, tanpa memutar lewat internet"
 echo
 echo "Berikutnya: isi TUNNEL_TOKEN di stack/.env, lalu ./10-up.sh --tunnel, lalu jalankan aplikasi dengan: npm run dev"

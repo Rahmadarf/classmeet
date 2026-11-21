@@ -12,9 +12,10 @@ import { supabaseEnv } from "./env";
  */
 export async function createClient() {
   const cookieStore = await cookies();
-  const { url, anonKey } = supabaseEnv();
+  const { serverUrl, anonKey, cookieName } = supabaseEnv();
 
-  return createServerClient<Database>(url, anonKey, {
+  return createServerClient<Database>(serverUrl, anonKey, {
+    cookieOptions: { name: cookieName },
     cookies: {
       getAll() {
         return cookieStore.getAll();

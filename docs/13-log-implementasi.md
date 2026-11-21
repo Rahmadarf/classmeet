@@ -1075,3 +1075,7 @@ Keputusan: di server sekolah hanya skema dan akun admin yang dipindah; data game
 ## Pemulihan setelah sinkron remote ke lokal (20 Nov)
 
 Sinkron "remote -> lokal" lewat SFTP membuat 32 berkas menjadi 0 byte (`.gitignore`, `.env.example`, `README.md`, `lib/supabase/*`, `deploy/supabase/10-up.sh`, README deploy, docs, generator berita, dan `stack/.env`). Dipulihkan dari git (HEAD) lalu perubahan hari ini diterapkan ulang; daftar berkas 0 byte disimpan di `~/classmeet-recovery/zero-files.txt`.
+
+## Alamat internal Supabase untuk kode server (21 Nov)
+
+Pengamatan guru: jalur "muter-muter". Kode server Next memanggil Supabase lewat alamat publik (Cloudflare) padahal satu mesin. Ditambah `SUPABASE_INTERNAL_URL` (opsional, server saja): `supabaseEnv()` kini mengembalikan `serverUrl` (internal bila diisi, selain itu publik) yang dipakai `lib/supabase/{server,proxy,service}.ts`; browser tetap memakai alamat publik. Nama cookie sesi dihitung dari alamat publik (`lib/supabase/cookie-name.ts`) dan diberikan eksplisit ke klien browser, server, dan proxy, jadi login tidak putus. Ukur (Node, 15 panggilan `rest/v1/assets`): publik median 134 ms (maks 2.108 ms) lawan internal median 15 ms (maks 36 ms). Uji lewat domain tunnel: login QR dua kali, Pasar memuat data server-side, display masuk otomatis; tes vitest 146 lolos. Catatan: satu percobaan login tepat setelah env dan kode berubah gagal (dev server belum selesai memuat ulang); sesudah dipanaskan berjalan normal.
