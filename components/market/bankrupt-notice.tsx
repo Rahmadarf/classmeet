@@ -5,6 +5,7 @@ import { formatRupiah } from "@/lib/money";
 /**
  * Pemberitahuan aset bangkrut di atas papan Pasar. Aset itu sudah hilang dari daftar dan tidak bisa dibeli atau dijual;
  * unit yang dipegang tim dilikuidasi ke saldo (event berita, scripts/sql/event-bankruptcy.sql).
+ * Daftar sudah disaring server: notif hilang begitu efek berita berikutnya diterapkan (scripts/sql/bankrupt-notice.sql).
  */
 export function BankruptNotice({ assets }: { assets: BankruptAsset[] }) {
   if (assets.length === 0) return null;

@@ -153,7 +153,7 @@ export async function fetchAssetNames(
   return Object.fromEntries(data.map((a) => [a.id, { symbol: a.symbol, name: a.name }]));
 }
 
-/** Aset yang sudah bangkrut (event berita): tidak bisa dibeli atau dijual lagi; unit tim sudah dilikuidasi ke uang. */
+/** Notif aset bangkrut (event berita): aset tidak bisa dibeli/dijual lagi, unit tim sudah dilikuidasi ke uang. Notif hilang setelah efek berita berikutnya diterapkan. */
 export type BankruptAsset = {
   id: string;
   symbol: string;
@@ -164,25 +164,16 @@ export type BankruptAsset = {
 };
 
 export async function fetchBankruptAssets(supabase: Db): Promise<BankruptAsset[] | null> {
-  const { data, error } = await supabase
-    .from("assets")
-    .select("id,symbol,name,liquidation_price,bankrupt_at")
-    .not("bankrupt_at", "is", null)
-    .order("bankrupt_at", { ascending: false });
+  // RPC, bukan tabel `assets`: notif hanya tampil sampai efek berita berikutnya diterapkan (scripts/sql/bankrupt-notice.sql).
+  const { data, error } = await supabase.rpc("get_bankrupt_notices");
   if (error || !data) return null;
-  return data.flatMap((a) =>
-    a.bankrupt_at
-      ? [
-          {
-            id: a.id,
-            symbol: a.symbol,
-            name: a.name,
-            liquidationPrice: a.liquidation_price,
-            bankruptAt: a.bankrupt_at,
-          },
-        ]
-      : [],
-  );
+  return data.map((a) => ({
+    id: a.asset_id,
+    symbol: a.symbol,
+    name: a.name,
+    liquidationPrice: a.liquidation_price,
+    bankruptAt: a.bankrupt_at,
+  }));
 }
 
 /** Aset sedang disuspensi pada saat `nowMs` (`suspended_until` di masa depan). */

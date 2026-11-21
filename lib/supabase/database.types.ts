@@ -1156,6 +1156,16 @@ export type Database = {
           value: number
         }[]
       }
+      get_bankrupt_notices: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          asset_id: string
+          bankrupt_at: string
+          liquidation_price: number
+          name: string
+          symbol: string
+        }[]
+      }
       get_market_summary: {
         Args: Record<PropertyKey, never>
         Returns: {
