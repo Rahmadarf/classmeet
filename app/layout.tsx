@@ -1,12 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 // Inter hanya cadangan untuk SF Pro (lisensi Apple melarang memuat SF Pro sebagai berkas web).
-const inter = Inter({
+// Dihosting sendiri (subset latin, variabel 100-900, lisensi OFL di app/fonts/INTER-LICENSE.txt) supaya `npm run build`
+// dan aplikasi tidak butuh internet ke fonts.googleapis.com (build gagal di jaringan sekolah/tanpa internet).
+const inter = localFont({
+  src: "./fonts/inter-latin-wght-normal.woff2",
   variable: "--font-inter",
-  subsets: ["latin"],
+  weight: "100 900",
   display: "swap",
 });
 

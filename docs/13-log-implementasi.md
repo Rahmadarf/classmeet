@@ -1105,3 +1105,7 @@ UI: kartu "Reset game" di Status Game (`components/admin/state-board.tsx`) denga
 ## Layar "Game belum di mulai": penanda hidup dan baris keterangan (22 Nov)
 
 Referensi Refero (Teams "Waiting for others to join...", Rivian, Intercom, Pedestal): layar tunggu memakai satu pesan di tengah dengan sedikit elemen. Dipakai dua hal saja, latar tetap terang: **penanda hidup** (cincin putar halus 56 px, `animate-spin`, mati bila pengguna memilih kurangi gerak) dan **satu baris kecil** "Menunggu panitia memulai" (56 px) di bawah judul 240 px. `components/display/game-gate.tsx`. Diperiksa lewat halaman uji sementara (dihapus); lint dan tsc bersih.
+
+## `npm run build` gagal: font Inter dari Google Fonts (22 Nov)
+
+Galat: `Failed to fetch Inter from Google Fonts` saat `npm run build` (tidak ada akses ke fonts.googleapis.com; `next/font/google` mengunduh font saat build). Diganti `next/font/local`: berkas `app/fonts/inter-latin-wght-normal.woff2` (Inter variabel 100-900, subset latin, 48 KB, dari paket `@fontsource-variable/inter` 5.3.0, lisensi OFL disertakan di `app/fonts/INTER-LICENSE.txt`) dan `app/layout.tsx` memakai `localFont` dengan variabel `--font-inter` yang sama, jadi tampilan tidak berubah. Efek lain: aplikasi dan build tidak lagi butuh internet untuk font (penting di jaringan sekolah). Hasil: `npm run build` selesai (±17 detik), semua rute terbentuk; halaman `/login` memuat font dari `/_next/static/media/...woff2` (lokal).
