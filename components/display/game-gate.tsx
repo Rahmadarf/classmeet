@@ -42,10 +42,17 @@ export function DisplayGate({
                 </div>
                 <p className="text-ink text-[36px] font-bold">CLASSMEET MARKET</p>
               </header>
-              <div className="grid flex-1 place-items-center">
+              <div className="flex flex-1 flex-col items-center justify-center gap-[56px]">
                 <p className="text-ink max-w-[1500px] text-center text-[240px] leading-[1.02] font-extrabold text-balance">
                   Game belum di mulai
                 </p>
+                <div className="text-ink-muted flex items-center gap-[28px]">
+                  <span
+                    aria-hidden
+                    className="border-line-strong border-t-primary size-[56px] animate-spin rounded-full border-[7px] motion-reduce:animate-none"
+                  />
+                  <p className="text-[56px] font-medium">Menunggu panitia memulai</p>
+                </div>
               </div>
             </div>
           </ScaledStage>
