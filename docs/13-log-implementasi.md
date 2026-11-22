@@ -1122,3 +1122,7 @@ Hasil (Supabase lokal, lewat `localhost:8000`, 30 klien tim + 2 display, ±40 pa
 - Lewat tunnel Cloudflare (`https://api.rahmadarifin.my.id`, 15 klien + 1 display, 90 dtk): median ±140 ms, p95 ±700 ms, maks ±2 detik, tidak ada galat teknis, 15 dari 15 Realtime tersambung. Angka ini termasuk perjalanan keluar-masuk jaringan dari laptop sendiri; di perangkat lain bergantung pada WiFi acara.
 - Tidak tercakup: render halaman oleh server Next (hanya saat halaman dibuka/diganti, bukan polling) dan 6 penjaga yang memindai QR.
 Kesimpulan: kapasitas jauh melebihi kebutuhan (≈15 klien); risiko acara ada di kondisi laptop dan jaringan (tidur, daya, WiFi), bukan di kode.
+
+## Panduan gladi resik (22 Nov)
+
+Dibuat `PANDUAN-GLADI-RESIK.md` (akar repo): persiapan H-2/H-1 (laptop server tidak tidur, tunnel, `npm run build && npm start`, cadangan, 17 tim + kartu QR dua set, kumpulan berita, perangkat), skenario gladi berurutan (cek awal, kartu QR dan sesi kiosk, Mulai game, simulasi permainan, uji gangguan, penutup dengan Reset game), pemantauan, urutan hari H, larangan (Reset/Akhiri game), dan kriteria lulus. Temuan saat menulis: menu **Ekspor** di sidebar admin mengarah ke `/admin/export` yang tidak ada (404); dicatat di panduan sebagai hal yang perlu diketahui.
