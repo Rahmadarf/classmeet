@@ -11,6 +11,7 @@
     "test": "vitest run",
     "format": "prettier --write .",
     "seed": "tsx --env-file=.env.local scripts/seed-dev.ts",
+    "load-test": "node --env-file=.env.local scripts/load-test.mjs",
     "print-qr": "tsx scripts/print-qr.ts",
     "predev": "node scripts/copy-zxing-wasm.mjs",
     "prebuild": "node scripts/copy-zxing-wasm.mjs",

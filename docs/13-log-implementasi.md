@@ -1109,3 +1109,16 @@ Referensi Refero (Teams "Waiting for others to join...", Rivian, Intercom, Pedes
 ## `npm run build` gagal: font Inter dari Google Fonts (22 Nov)
 
 Galat: `Failed to fetch Inter from Google Fonts` saat `npm run build` (tidak ada akses ke fonts.googleapis.com; `next/font/google` mengunduh font saat build). Diganti `next/font/local`: berkas `app/fonts/inter-latin-wght-normal.woff2` (Inter variabel 100-900, subset latin, 48 KB, dari paket `@fontsource-variable/inter` 5.3.0, lisensi OFL disertakan di `app/fonts/INTER-LICENSE.txt`) dan `app/layout.tsx` memakai `localFont` dengan variabel `--font-inter` yang sama, jadi tampilan tidak berubah. Efek lain: aplikasi dan build tidak lagi butuh internet untuk font (penting di jaringan sekolah). Hasil: `npm run build` selesai (±17 detik), semua rute terbentuk; halaman `/login` memuat font dari `/_next/static/media/...woff2` (lokal).
+
+## Uji beban ringan di laptop (22 Nov)
+
+Konteks: 17 tim bermain, tetapi hanya 4–5 perangkat tim (ditambah 1–2 display, 1 admin, 6 penjaga) yang aktif bersamaan, sehingga beban nyata jauh di bawah 30 klien. Skrip `scripts/load-test.mjs` (`npm run load-test -- --clients 30 --seconds 150 --displays 2 --spike [--url ...]`) meniru aplikasi: login 5 akun tim + display (akun seed), lalu tiap klien mem-polling pasar 5 dtk (6 panggilan), saldo 10 dtk, berita 30 dtk, membuka satu koneksi Realtime, dan beli/jual acak 1 unit tiap ±20 dtk; display mem-polling 5 panggilan tiap 5 dtk; opsi `--spike` membuat semua klien membeli aset yang sama bersamaan. Persiapan: cadangan `~/classmeet-recovery/db-pre-loadtest-*.dump`, game dibuka lewat `admin_set_game_state`, saldo tim Rp 200 juta; sesudahnya game di-reset (`setup`, saldo 0, 686 transaksi uji dihapus).
+
+Hasil (Supabase lokal, lewat `localhost:8000`, 30 klien tim + 2 display, ±40 panggilan/detik, 150 dtk dengan lonjakan):
+- Median 6–13 ms, p95 13–23 ms, **tidak ada galat teknis**; 30 dari 30 koneksi Realtime tersambung. Lonjakan 30 pembelian serentak pada satu aset: median 36 ms, maks 49 ms, semua berhasil.
+- Galat yang muncul hanya penolakan aturan yang benar: `insufficient_holdings` (menjual yang tidak dimiliki) dan `insufficient_stock` (stok habis sesudah lonjakan).
+- Beban server rendah: Postgres 2–20 % CPU, PostgREST ≤ 34 %, cloudflared < 2 %; tugas cron rata-rata 16 ms (maks 0,29 dtk), tidak ada yang gagal.
+- Temuan: sesekali ada **jeda 1–2 detik yang mengenai semua panggilan sekaligus** (dua dari empat putaran; tampak juga pada penguji terpisah yang memanggil PostgREST tiap 0,2 dtk, jadi bukan dari skrip). Tidak ada log Postgres yang menjelaskannya (kemungkinan penjadwalan macOS/Docker Desktop). Dampaknya hanya satu siklus polling terlambat.
+- Lewat tunnel Cloudflare (`https://api.rahmadarifin.my.id`, 15 klien + 1 display, 90 dtk): median ±140 ms, p95 ±700 ms, maks ±2 detik, tidak ada galat teknis, 15 dari 15 Realtime tersambung. Angka ini termasuk perjalanan keluar-masuk jaringan dari laptop sendiri; di perangkat lain bergantung pada WiFi acara.
+- Tidak tercakup: render halaman oleh server Next (hanya saat halaman dibuka/diganti, bukan polling) dan 6 penjaga yang memindai QR.
+Kesimpulan: kapasitas jauh melebihi kebutuhan (≈15 klien); risiko acara ada di kondisi laptop dan jaringan (tidur, daya, WiFi), bukan di kode.
