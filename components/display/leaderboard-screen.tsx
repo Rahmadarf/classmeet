@@ -1,5 +1,6 @@
 "use client";
 
+import { BrandMark } from "@/components/shell/brand-mark";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ScaledStage } from "@/components/display/scaled-stage";
 import { usePolling } from "@/lib/hooks/use-polling";
@@ -59,9 +60,7 @@ export function LeaderboardScreen({
     <ScaledStage>
       <div className="flex h-full flex-col gap-4 px-[80px] py-[56px]">
         <header className="flex shrink-0 items-center gap-4 pb-4">
-          <div className="bg-accent text-ink-on-accent grid size-14 place-items-center rounded-full text-[30px] font-bold">
-            C
-          </div>
+          <BrandMark className="h-14" />
           <p className="text-ink text-[36px] font-bold">CLASSMEET MARKET</p>
         </header>
 

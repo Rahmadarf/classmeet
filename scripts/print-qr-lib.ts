@@ -8,6 +8,7 @@
  * (docs/08 §2 langkah 6).
  */
 import { writeBarcode } from "zxing-wasm/writer";
+import { addCenterLogo } from "../lib/qr-logo";
 import { formatTeamQr, parseTeamQr } from "../lib/qr";
 
 export type TeamInput = { name: string; username: string; qr_token: string };
@@ -27,16 +28,19 @@ export function buildCards(teams: TeamInput[]): Card[] {
   });
 }
 
-/** QR dalam bentuk PNG. Koreksi galat M, zona tenang disertakan, tiap modul 12 px (jelas saat dicetak). */
+/**
+ * QR dalam bentuk PNG. Koreksi galat H (30 %) karena logo ISSC berwarna ditempel di tengahnya (`addCenterLogo`); modul QR tetap
+ * hitam di atas putih. Zona tenang disertakan, tiap modul 12 px (jelas saat dicetak).
+ */
 export async function renderQrPng(payload: string): Promise<Uint8Array> {
   const result = await writeBarcode(payload, {
     format: "QRCode",
-    ecLevel: "M",
+    ecLevel: "H",
     scale: 12,
     withQuietZones: true,
   });
   if (result.error || !result.image) throw new Error(`Gagal membuat QR: ${result.error || "tanpa gambar"}`);
-  return new Uint8Array(await result.image.arrayBuffer());
+  return addCenterLogo(new Uint8Array(await result.image.arrayBuffer()));
 }
 
 export function escapeHtml(text: string): string {

@@ -1,3 +1,4 @@
+import { BrandMark } from "@/components/shell/brand-mark";
 import { formatTimeWib } from "@/lib/money";
 import type { Game } from "@/lib/market/data";
 import { cn } from "@/lib/utils";
@@ -26,9 +27,7 @@ export function DisplayHeader({
   return (
     <header className="flex shrink-0 items-center gap-4">
       <div className="flex items-center gap-3">
-        <div className="bg-accent text-ink-on-accent grid size-10 place-items-center rounded-full text-[20px] font-bold">
-          C
-        </div>
+        <BrandMark className="h-10" />
         <p className="text-ink text-[24px] font-bold">CLASSMEET MARKET</p>
       </div>
       <div className="flex-1" />
