@@ -79,6 +79,7 @@ Isi jumlah unit (maksimal yang kamu miliki), lihat total yang akan diterima, lal
 - **Daftar aset (kiri):** cari, filter sektor, dan pilih aset. Tiap baris memuat harga beli dan perubahan (▲/▼ persen) dari harga open hari ini. "Suspensi" menandai aset yang dihentikan sementara.
 - **Detail aset (tengah):** harga beli dan harga jual, open hari ini, **acuan berita** (harga sebelum tekanan stok), tekanan stok, batas pegang, label stok (Stok aman, Stok menipis, **Langka**, Stok habis), dan aset yang kamu pegang beserta perkiraan untung/rugi bila dijual.
 - **Panel Beli/Jual (kanan):** tempat bertransaksi.
+- **Kartu Analisa Pasar** (di atas panel Beli/Jual): beli laporan analisa berita yang sedang tayang ([bagian 8](#8-analisa-pasar-bantuan-berbayar)).
 - Di atas papan ada **berita terbaru** dan banner status pasar, suspensi, atau bangkrut.
 
 ### Halaman Portofolio
@@ -89,7 +90,7 @@ Isi jumlah unit (maksimal yang kamu miliki), lihat total yang akan diterima, lal
 
 ### Halaman Riwayat
 
-Semua pembelian, penjualan, hadiah pos, dan dividen timmu, terbaru di atas. Ketuk satu baris untuk rincian (harga satuan; untuk jual juga harga tayang saat itu).
+Semua pembelian, penjualan, hadiah pos, dividen, dan pembelian analisa timmu, terbaru di atas. Ketuk satu baris untuk rincian (harga satuan; untuk jual juga harga tayang saat itu; untuk analisa, laporannya).
 
 ## 7. Event khusus (datang bersama berita)
 
@@ -103,11 +104,28 @@ Selain menggeser harga, sebuah berita bisa membawa **event** pada satu aset. Eve
 
 Karena unit yang dilikuidasi atau dividen langsung masuk ke saldo, cek **Beranda** dan **Riwayat** setelah event.
 
-## 8. Urutan main yang disarankan
+## 8. Analisa Pasar (bantuan berbayar)
+
+Di halaman **Pasar** ada kartu **Analisa Pasar**. Dengan membayar sejumlah uang (harganya tampil di tombol dan bisa diubah panitia), timmu mendapat **laporan 4 paragraf** tentang berita yang **sedang tayang**:
+
+1. **Ringkasan:** arah pasar secara umum dan perkiraan waktu harga mulai bergerak.
+2. **Ciri yang naik:** ciri perusahaan yang akan naik, urut dari yang terbesar, dengan kekuatan: **kuat** (di atas 4 %), **sedang** (2 sampai 4 %), atau **ringan** (1 sampai 2 %).
+3. **Ciri yang turun:** sama, untuk yang akan turun.
+4. **Catatan:** yang bergerak tipis tidak perlu dikejar, kalimat pengecoh tidak berpengaruh, dan pengingat biaya (selisih jual, tekanan stok, batas pegang).
+
+Hal yang perlu kamu tahu:
+
+- Laporan **tidak menyebut nama atau kode aset**, hanya ciri perusahaan. Kamu tetap harus mencocokkannya dengan aset di Pasar (lihat kamus sifat dari panitia).
+- Hanya bisa dibeli **selama berita tayang**, yaitu sebelum harga bergerak. Tombol mati bila pasar tutup, belum ada berita, atau waktunya sudah habis (30 detik sebelum harga bergerak).
+- **Sekali per berita.** Membeli lagi untuk berita yang sama tidak memotong saldo; laporannya tampil lagi. Semua laporan yang kamu beli tersimpan di **Riwayat**.
+- Uangnya **keluar dari saldo** dan tidak kembali. Jangan membeli kalau kamu tidak akan memakainya untuk membeli aset sebelum harga bergerak.
+- Laporan itu benar menurut berita, tetapi bukan jaminan untung: tekanan stok dan batas pegang tetap berlaku.
+
+## 9. Urutan main yang disarankan
 
 1. Dapat hadiah di pos, lalu cek saldo di Beranda.
 2. Baca berita, cari **ciri perusahaan** yang disebut di paragraf kedua, dan cocokkan dengan aset di Pasar.
-3. Beli di **Pasar** secepatnya, sebelum efek berita berlaku.
+3. Beli di **Pasar** secepatnya, sebelum efek berita berlaku. Kalau saldomu cukup, pertimbangkan **Analisa Pasar** untuk berita itu.
 4. Setelah harga bergerak, cek untung di **Portofolio**, lalu **jual** bila sudah cukup (ingat selisih jual 2 %).
 5. Ulangi sampai game selesai. Peringkat dihitung dari net worth akhir.
 
@@ -122,23 +140,24 @@ Tips untuk pemula:
 
 ### Istilah dasar
 
-| Istilah          | Arti                                                                                                                  | Untuk apa                                            |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| **Aset**         | Barang yang diperdagangkan; di game ini mewakili sebuah perusahaan.                                                   | Yang kamu beli dan jual.                             |
-| **Trading**      | Membeli dan menjual aset untuk mencari untung dari selisih harga.                                                     | Tujuan utama permainan.                              |
-| **Unit**         | Satu satuan aset.                                                                                                     | Yang kamu miliki di Portofolio.                      |
-| **Harga beli**   | Harga per unit yang kamu bayar (harga tayang).                                                                        | Harga yang tampil di Pasar.                          |
-| **Harga jual**   | Harga per unit yang kamu terima: harga beli dikurangi selisih jual (2 %).                                             | Menghitung hasil penjualan.                          |
-| **Selisih jual** | Potongan 2 % dari harga beli saat menjual. Satu-satunya biaya.                                                        | Mencegah beli-jual bolak-balik tanpa risiko.         |
-| **Harga acuan**  | Harga dasar yang hanya digeser oleh berita.                                                                           | Dasar harga beli sebelum tekanan stok.               |
-| **Tekanan stok** | Kenaikan harga kecil (±0,2 % per unit) setelah dibeli, atau penurunan setelah dijual. Hilang sendiri dalam ±10 menit. | Membuat pasar terasa hidup saat banyak yang membeli. |
-| **Stok**         | Sisa unit aset di pasar yang bisa dibeli. Label: aman, menipis, **Langka** (< 20 %), habis.                           | Menunjukkan seberapa rebutan sebuah aset.            |
-| **Batas pegang** | Maksimal unit satu aset yang boleh dipegang satu tim (30 % stok awal, minimal 1).                                     | Mencegah memborong satu aset.                        |
-| **Transaksi**    | Satu pembelian atau penjualan.                                                                                        | Tercatat di Riwayat.                                 |
-| **Net worth**    | Total kekayaan = saldo + nilai aset yang dipegang (harga beli saat ini).                                              | **Penentu juara.**                                   |
-| **Saldo**        | Uang yang kamu miliki dan bisa langsung dipakai.                                                                      | Modal untuk membeli.                                 |
-| **Untung/rugi**  | Selisih nilai sekarang dengan harga belimu. Di tampilan: ▲ untung, ▼ rugi.                                            | Menilai apakah sebuah aset sebaiknya dijual.         |
-| **Impas**        | Tidak untung dan tidak rugi. Karena ada selisih jual, harga harus naik lebih dari 2 % dari harga beli.                | Batas minimal agar penjualan tidak rugi.             |
+| Istilah           | Arti                                                                                                                     | Untuk apa                                            |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
+| **Aset**          | Barang yang diperdagangkan; di game ini mewakili sebuah perusahaan.                                                      | Yang kamu beli dan jual.                             |
+| **Trading**       | Membeli dan menjual aset untuk mencari untung dari selisih harga.                                                        | Tujuan utama permainan.                              |
+| **Unit**          | Satu satuan aset.                                                                                                        | Yang kamu miliki di Portofolio.                      |
+| **Harga beli**    | Harga per unit yang kamu bayar (harga tayang).                                                                           | Harga yang tampil di Pasar.                          |
+| **Harga jual**    | Harga per unit yang kamu terima: harga beli dikurangi selisih jual (2 %).                                                | Menghitung hasil penjualan.                          |
+| **Selisih jual**  | Potongan 2 % dari harga beli saat menjual. Satu-satunya biaya.                                                           | Mencegah beli-jual bolak-balik tanpa risiko.         |
+| **Harga acuan**   | Harga dasar yang hanya digeser oleh berita.                                                                              | Dasar harga beli sebelum tekanan stok.               |
+| **Tekanan stok**  | Kenaikan harga kecil (±0,2 % per unit) setelah dibeli, atau penurunan setelah dijual. Hilang sendiri dalam ±10 menit.    | Membuat pasar terasa hidup saat banyak yang membeli. |
+| **Analisa Pasar** | Laporan berbayar tentang berita yang sedang tayang: ciri perusahaan yang akan naik/turun, kekuatan, dan perkiraan waktu. | Keunggulan informasi sebelum harga bergerak.         |
+| **Stok**          | Sisa unit aset di pasar yang bisa dibeli. Label: aman, menipis, **Langka** (< 20 %), habis.                              | Menunjukkan seberapa rebutan sebuah aset.            |
+| **Batas pegang**  | Maksimal unit satu aset yang boleh dipegang satu tim (30 % stok awal, minimal 1).                                        | Mencegah memborong satu aset.                        |
+| **Transaksi**     | Satu pembelian atau penjualan.                                                                                           | Tercatat di Riwayat.                                 |
+| **Net worth**     | Total kekayaan = saldo + nilai aset yang dipegang (harga beli saat ini).                                                 | **Penentu juara.**                                   |
+| **Saldo**         | Uang yang kamu miliki dan bisa langsung dipakai.                                                                         | Modal untuk membeli.                                 |
+| **Untung/rugi**   | Selisih nilai sekarang dengan harga belimu. Di tampilan: ▲ untung, ▼ rugi.                                               | Menilai apakah sebuah aset sebaiknya dijual.         |
+| **Impas**         | Tidak untung dan tidak rugi. Karena ada selisih jual, harga harus naik lebih dari 2 % dari harga beli.                   | Batas minimal agar penjualan tidak rugi.             |
 
 ### Singkatan pada nominal
 

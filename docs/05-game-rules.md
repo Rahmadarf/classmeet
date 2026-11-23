@@ -57,6 +57,7 @@ Ringkasan; rincian, parameter, dan contoh di [`17-trading-toko.md`](17-trading-t
 8. **Transaksi adalah keputusan tim.** Kesalahan sistem dikoreksi panitia lewat `admin_adjust_cash` dan tercatat di audit. Panitia tidak bisa mengubah harga acuan atau pengaturan toko sejak game dibuka.
 9. **Aset yang dinonaktifkan** (bangkrut) tidak bisa dibeli atau dijual; unit yang dipegang tim dilikuidasi ke saldo. Aset yang disuspensi tidak bisa diperdagangkan sementara.
 10. **Hanya di perangkat trading panitia.** Tim tidak membawa ponsel. Mereka membawa **kartu QR** yang punya dua fungsi: dipindai penjaga untuk menerima hadiah, dan dipindai di laptop trading untuk masuk ke akun tim. Sesi keluar otomatis setelah **5 menit tanpa gerakan**, atau saat tim menekan *Selesai*. Pemindai di laptop memakai kamera.
+11. **Analisa Pasar (opsional, berbayar).** Selama sebuah berita tayang (efek harga belum berlaku), tim boleh membeli satu laporan 4 paragraf tentang berita itu: ciri perusahaan yang akan naik dan turun, kekuatannya, dan perkiraan waktunya. Sekali beli per berita per tim; harga ditetapkan admin dan bisa diubah kapan saja (awal Rp 200.000); uangnya keluar dari saldo. Rincian di [`18-analisa-pasar.md`](18-analisa-pasar.md).
 
 ## 4. Harga: berita dan waktunya diatur sistem
 

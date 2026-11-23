@@ -7,7 +7,7 @@
  * Tiap klien tim meniru aplikasi: polling pasar 5 dtk (ringkasan pasar, aset, game_settings, kepemilikan, aset bangkrut,
  * harga pembuka), saldo 10 dtk, berita 30 dtk, satu koneksi Realtime, dan beli/jual acak 1 unit tiap ±20 dtk.
  * Klien display: peringkat, indeks, aset, transaksi terakhir tiap 5 dtk. `--spike`: di tengah uji semua klien tim membeli
- * aset yang sama bersamaan. Hasil: median / p95 / maks (ms) dan jumlah galat per jenis panggilan.
+ * aset yang sama dan membeli Analisa Pasar bersamaan (hanya satu pembelian per tim yang boleh terjadi). Hasil: median / p95 / maks (ms) dan jumlah galat per jenis panggilan.
  */
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
@@ -86,6 +86,7 @@ const every = (ms, fn) => {
 let channelsOk = 0;
 let channelsBad = 0;
 const spikeFns = [];
+const analysisSpikeFns = [];
 
 function teamClient(token, idx) {
   const c = clientWith(token);
@@ -112,6 +113,7 @@ function teamClient(token, idx) {
       timed("pasar: holdings", c.from("holdings").select("asset_id,qty,cost_basis").gt("qty", 0)),
       timed("pasar: get_bankrupt_notices", c.rpc("get_bankrupt_notices")),
       timed("pasar: get_day_open_prices", c.rpc("get_day_open_prices")),
+      timed("pasar: get_analysis_offer", c.rpc("get_analysis_offer")),
     ]).then((rs) => {
       if (rs[1]?.data) assets = rs[1].data;
     });
@@ -141,6 +143,9 @@ function teamClient(token, idx) {
       "lonjakan: buy_asset",
       c.rpc("buy_asset", { p_request_id: randomUUID(), p_asset_id: assetId, p_qty: 1 }),
     );
+  });
+  analysisSpikeFns.push(async () => {
+    await timed("lonjakan: buy_analysis", c.rpc("buy_analysis", { p_request_id: randomUUID() }));
   });
   c.channel(`lt-${idx}`)
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "news_feed" }, () => {})
@@ -196,6 +201,9 @@ async function main() {
       console.log("Lonjakan: semua klien membeli 1 unit aset yang sama sekarang");
       await Promise.all(spikeFns.map((f) => f(data[0].id)));
     }
+    // Analisa Pasar: semua klien membeli analisa berita yang tayang bersamaan; hanya satu pembelian per tim yang boleh terjadi
+    console.log("Lonjakan: semua klien membeli analisa berita yang tayang sekarang");
+    await Promise.all(analysisSpikeFns.map((f) => f()));
     await sleep((SECONDS * 1000) / 2);
   } else {
     await sleep(SECONDS * 1000);

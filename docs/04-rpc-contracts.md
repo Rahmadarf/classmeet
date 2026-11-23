@@ -25,6 +25,11 @@ Urutan blok `sql` pada dokumen ini adalah urutan eksekusi migrasi, setelah semua
 |--------|-------|--------|--------|
 | `buy_asset(request_id, asset_id, qty)` | team | SQL + uji | Beli langsung pada harga tayang; batas pegang, stok, saldo |
 | `sell_asset(request_id, asset_id, qty)` | team | SQL + uji | Jual langsung pada harga jual (tayang − selisih jual) |
+| `get_analysis_offer()` | team | SQL + uji | Tawaran Analisa Pasar: harga, bisa beli, alasan, sudah dimiliki (tanpa waktu efek) |
+| `buy_analysis(request_id)` | team | SQL + uji | Beli laporan analisa 4 paragraf untuk berita yang sedang tayang; sekali per berita per tim; idempoten ([18](18-analisa-pasar.md)) |
+| `get_my_analyses(limit?)` | team | SQL + uji | Laporan yang sudah dibeli tim |
+| `admin_set_analysis_settings(price, enabled)` | admin | SQL + uji | Harga dan saklar analisa; boleh kapan saja (tidak terkunci) |
+| `admin_analysis_log(limit?)`, `admin_analysis_summary()` | admin | SQL + uji | Log pembelian dan ringkasan pendapatan, TANPA isi laporan |
 | `get_market_summary()` | team, admin, display | SQL + uji | Acuan, harga tayang, harga jual, stok, tekanan, statistik transaksi per aset |
 | `get_last_transactions(limit?)` | admin, display | SQL + uji | Transaksi terbaru tanpa nama tim |
 | `admin_transaction_summary()` | admin | SQL + uji | Arus unit dan nilai per aset |
@@ -939,6 +944,10 @@ Pemeriksaan peran di dalam setiap fungsi tetap wajib; hak `execute` hanya lapisa
 | `news_pending` | Menutup game saat ada berita live | "Masih ada berita yang belum selesai berjalan." |
 | `invalid_state_transition` | Perpindahan status tidak sah | "Perpindahan status tidak diizinkan." |
 | `leaderboard_hidden` | Leaderboard disembunyikan | "Leaderboard belum dibuka." |
+| `feature_disabled` | Analisa Pasar dimatikan admin | "Analisa Pasar sedang dimatikan panitia." |
+| `no_live_news` | Tidak ada berita tayang untuk dianalisa | "Belum ada berita yang tayang untuk dianalisa." |
+| `window_closed` | Sisa waktu efek berita < 30 detik | "Waktu membeli analisa untuk berita ini sudah habis." |
+| `analysis_unavailable` | Berita belum punya laporan | "Laporan analisa untuk berita ini belum tersedia." |
 
 Kode yang **dihapus**: `qty_exceeds_limit`, `visit_limit_reached`, `news_already_published`. Batas per transaksi dan batas kepemilikan (`hold_limit_exceeded`) juga dihapus; pembatasnya hanya stok dan saldo.
 

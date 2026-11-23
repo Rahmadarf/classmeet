@@ -348,6 +348,8 @@ Admin membuka pasar tiap pagi (08.00) dan menutupnya tiap malam (19.00) dengan *
 
 > **Tambahan 21 Nov (2):** saat status `setup`, Status Game hanya menampilkan satu tombol **Mulai game** (menggantikan Buka pasar dan Akhiri game; memulai game dan berita dari awal), dan semua layar publik menampilkan "Game belum di mulai" (`DisplayGate`).
 
+> **Tambahan 23 Nov (Analisa Pasar):** Pasar punya kartu **Analisa Pasar** (kolom kanan, di atas panel Beli/Jual; tombol `secondary`) untuk membeli laporan analisa berita yang sedang tayang, dengan konfirmasi dan dialog laporan 4 bagian; Riwayat memuat baris "Analisa Pasar"; Aset (admin) punya kartu harga dan saklar yang tidak terkunci; Transaksi (admin) punya panel log pembelian tanpa isi laporan. Lihat [18](18-analisa-pasar.md).
+
 > **Tambahan 19 Nov (3):** kartu "Berita saat ini" menampilkan **aset yang berubah dan persennya** (kolom Naik / Turun) plus event bila ada, dengan status "Belum berlaku" / "Sudah berlaku" (`admin_current_news_effects`, `scripts/sql/news-effects-admin.sql`). Waktu berlakunya tetap tidak ditampilkan. Ini mengubah aturan §3.7 (admin tidak tahu apa yang akan berubah). Sebelum game dibuka, tiap berita draf punya ringkasan "Lihat aset dan persen perubahannya".
 
 Berita **tidak dipilih dan tidak dijadwalkan admin**. Halaman ini punya dua wajah, tergantung `game_settings.started_at`:

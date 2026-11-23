@@ -57,6 +57,8 @@ cd deploy/supabase && ./70-backup.sh
 - [ ] Aset dan harga awal final (Admin > Aset). Setelah game dimulai, harga, berita, dan pengaturan **terkunci**.
 - [ ] Kumpulan berita cukup: halaman Status Game menampilkan angka **Siap** dan **Boleh terbit** (butuh ±220 untuk 3 hari penuh, atau lebih sedikit bila jeda antarberita diperbesar).
 - [ ] Pengaturan toko (Admin > Aset > Pengaturan toko: selisih jual, tekanan stok, batas pegang) sudah final.
+- [ ] **Analisa Pasar:** harga dan saklar (Admin > Aset > kartu Analisa Pasar) sudah diputuskan. Awal Rp 200.000; boleh diubah kapan saja, juga saat game berjalan.
+- [ ] Kumpulan berita dimuat dengan laporan analisa (`npm run load-news -- --replace`, game `setup`); jumlah laporan sama dengan jumlah berita siap.
 - [ ] Akun `display` login di layar TV.
 
 ### Perangkat
@@ -104,7 +106,8 @@ Jalankan seperti hari sungguhan, dengan 4–5 laptop sekaligus.
 4. Tunggu berita berikutnya. Periksa: berita tayang, harga bergerak setelah 3–15 menit, notif bangkrut atau suspensi (bila ada) muncul lalu hilang setelah berita berikutnya diterapkan.
 5. Periksa **peringkat** di TV (5 tim teratas), **grafik IKC**, dan **Transaksi terakhir**: bergerak sesuai transaksi.
 6. Admin memeriksa halaman **Hadiah**, **Transaksi**, dan **Audit**: semua tindakan tadi tercatat.
-7. Tombol **Tutup pasar**, lalu **Buka pasar**: tim tidak bisa beli/jual saat tutup, dan berita berhenti. Buka lagi dan pastikan kembali normal.
+7. **Analisa Pasar:** saat satu berita tayang, satu tim membeli analisa di Pasar. Periksa: saldo turun sebesar harga, laporan 4 paragraf tampil dan tersimpan di Riwayat, tombol berubah menjadi "Lihat laporan", dan tim lain tidak melihat laporan itu. Admin melihat pembelian di Transaksi (tanpa isi laporan). Bandingkan isi laporan dengan pergerakan harga sesudahnya: ciri yang disebut naik harus benar naik. Coba juga mengubah harga di Admin > Aset saat game berjalan dan beli dengan tim lain (harga baru dipakai), serta mematikan saklar (tombol tim mati, laporan lama tetap bisa dibuka).
+8. Tombol **Tutup pasar**, lalu **Buka pasar**: tim tidak bisa beli/jual saat tutup, dan berita berhenti. Buka lagi dan pastikan kembali normal.
 
 ### E. Uji gangguan (15–20 menit)
 
