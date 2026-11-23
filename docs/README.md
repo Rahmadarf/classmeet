@@ -33,6 +33,7 @@ Web simulasi bursa saham + game pos untuk lomba classmeet. Tim **mulai dari Rp 0
 | 12 | [`12-order-book.md`](12-order-book.md) | Arsip: mekanisme order book (bandar + antar-tim, limit/market, ARA/ARB, biaya 0,25 %). **Digantikan oleh 17** | Arsip |
 | 17 | [`17-trading-toko.md`](17-trading-toko.md) | **Mekanisme trading model toko** (harga tayang, selisih jual, tekanan stok, batas pegang), keputusan, SQL, UI, catatan tahap | Panitia + developer |
 | 18 | [`18-analisa-pasar.md`](18-analisa-pasar.md) | **Analisa Pasar (pay to win)**: tim membeli laporan 4 paragraf tentang berita yang sedang tayang; harga diatur admin; keputusan, isi laporan, SQL, UI, uji | Panitia + developer |
+| 19 | [`19-kalibrasi-ekonomi.md`](19-kalibrasi-ekonomi.md) | **Kalibrasi ekonomi**: besar efek berita vs selisih jual, simulator strategi, keputusan `effectScale` 2, patokan harga analisa | Panitia + developer |
 | 15 | [`15-mesin-berita-v2.md`](15-mesin-berita-v2.md) | Mesin berita: 10–15 aset, event berbasis peluang, pemilihan menurut kondisi pasar, format berita baru (§3a) | Developer |
 | 16 | [`16-sifat-aset.md`](16-sifat-aset.md) | Kamus sifat 30 aset (petunjuk di berita) | Panitia |
 | 8 | [`08-operations.md`](08-operations.md) | Setup, deployment, backup, runbook hari-H, rencana darurat | Panitia + developer |

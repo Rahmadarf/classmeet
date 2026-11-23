@@ -42,6 +42,11 @@ export type PoolConfig = {
   minAssets: number;
   maxAssets: number;
   capBps: number;
+  /**
+   * Pengali besar efek bertema dan efek event (bukan efek pengisi <= 0,9 %). Dikalibrasi dengan `scripts/sim-strategy.ts`
+   * (docs/19): pada 1,0 efek rata-rata terlalu kecil dibanding selisih jual 2 %, sehingga pembaca berita nyaris tidak untung.
+   */
+  effectScale: number;
   perAsset: { bankrupt: number; suspend: number; dividend: number };
 };
 
@@ -50,6 +55,7 @@ export const DEFAULT_CONFIG: PoolConfig = {
   minAssets: 10,
   maxAssets: 15,
   capBps: 1500,
+  effectScale: 2,
   perAsset: { bankrupt: 1, suspend: 5, dividend: 10 },
 };
 
@@ -215,13 +221,13 @@ function secondParagraph(
 }
 
 /**
- * Kekuatan efek untuk laporan analisa. Efek bertema umumnya 1-4 %; di atas 4 % jarang. Batas tampil memakai persen bulat
- * supaya mudah dibaca pemain.
+ * Kekuatan efek untuk laporan analisa (kalibrasi 23 Nov, `effectScale` 2: efek berarti umumnya 1-15 %, sepertiga terbawah
+ * di bawah 4 %, sepertiga tengah 4-6 %, sisanya lebih besar). Batas tampil memakai persen bulat supaya mudah dibaca pemain.
  */
 export const STRENGTH_BANDS = [
-  { min: 400, label: "kuat", range: "di atas 4 %" },
-  { min: 200, label: "sedang", range: "2 sampai 4 %" },
-  { min: 100, label: "ringan", range: "1 sampai 2 %" },
+  { min: 800, label: "kuat", range: "di atas 8 %" },
+  { min: 400, label: "sedang", range: "4 sampai 8 %" },
+  { min: 100, label: "ringan", range: "1 sampai 4 %" },
 ] as const;
 const strengthOf = (bps: number) => STRENGTH_BANDS.find((b) => Math.abs(bps) >= b.min);
 
@@ -305,7 +311,7 @@ export function analysisParagraphs(
   else if (kind === "dividend")
     parts.push("Berita ini membawa pembagian dividen kepada pemegang perusahaan yang disebut.");
   parts.push(
-    "Perhitungkan juga selisih harga jual, tekanan stok dari pembelian tim lain, dan batas kepemilikan per tim sebelum bertindak.",
+    "Perhitungkan juga selisih harga jual (efek ringan sering habis olehnya), tekanan stok dari pembelian tim lain, dan batas kepemilikan per tim sebelum bertindak.",
   );
 
   return [p1, side(ups, "naik", 1), side(downs, "turun", 2), parts.join(" ")];
@@ -380,7 +386,7 @@ function priceNews(assets: PoolAsset[], cfg: PoolConfig, rng: Rng): PoolNews[] {
         for (const { a, w } of ranked) {
           if (chosen.size >= target) break;
           if (rng.next() < (Math.abs(w) >= 2 ? 0.97 : 0.85)) {
-            const mag = Math.abs(w) * rng.int(130, 330) * (0.75 + rng.next() * 0.5);
+            const mag = Math.abs(w) * rng.int(130, 330) * (0.75 + rng.next() * 0.5) * cfg.effectScale;
             chosen.set(a.symbol, clampBps(Math.sign(w) * dirSign * mag, cfg.capBps));
           }
         }
@@ -441,15 +447,19 @@ function eventNews(assets: PoolAsset[], cfg: PoolConfig, rng: Rng): PoolNews[] {
           // pesaing sejenis ikut tertekan, satu pesaing diuntungkan; aset yang bangkrut TIDAK boleh punya efek harga.
           shufPeers
             .slice(0, 3)
-            .forEach((p) => chosen.set(p.symbol, clampBps(-rng.int(150, 400), cfg.capBps)));
-          if (shufPeers[3]) chosen.set(shufPeers[3].symbol, clampBps(rng.int(100, 250), cfg.capBps));
+            .forEach((p) => chosen.set(p.symbol, clampBps(-rng.int(150, 400) * cfg.effectScale, cfg.capBps)));
+          if (shufPeers[3])
+            chosen.set(shufPeers[3].symbol, clampBps(rng.int(100, 250) * cfg.effectScale, cfg.capBps));
         } else {
-          const own = kind === "dividend" ? rng.int(100, 300) : -rng.int(100, 300);
+          const own = (kind === "dividend" ? rng.int(100, 300) : -rng.int(100, 300)) * cfg.effectScale;
           chosen.set(asset.symbol, clampBps(own, cfg.capBps));
           shufPeers
             .slice(0, 2)
             .forEach((p) =>
-              chosen.set(p.symbol, clampBps((kind === "dividend" ? 1 : -1) * rng.int(100, 180), cfg.capBps)),
+              chosen.set(
+                p.symbol,
+                clampBps((kind === "dividend" ? 1 : -1) * rng.int(100, 180) * cfg.effectScale, cfg.capBps),
+              ),
             );
         }
         const universe = kind === "bankrupt" ? assets.filter((a) => a.symbol !== asset.symbol) : assets;

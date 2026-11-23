@@ -2,7 +2,7 @@
  * Membangkitkan kumpulan berita (harga + event) dari `scripts/data/news-themes.ts`.
  *   npm run generate-news            -> scripts/data/news-pool.json + docs/14-kumpulan-berita.md
  *   npm run generate-news -- --sql /tmp/pool.sql [--replace]   (juga tulis SQL; --replace mengganti berita ready/draft)
- *   opsi: --seed teks  --min 10  --max 15  --cap 1500
+ *   opsi: --seed teks  --min 10  --max 15  --cap 1500  --scale 1 (pengali besar efek, docs/19)
  * Tidak menyentuh database. Berkas JSON dibaca `npm run seed` (seed-dev.ts).
  */
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -31,6 +31,7 @@ const cfg = {
   minAssets: Number(opt("min") ?? DEFAULT_CONFIG.minAssets),
   maxAssets: Number(opt("max") ?? DEFAULT_CONFIG.maxAssets),
   capBps: Number(opt("cap") ?? DEFAULT_CONFIG.capBps),
+  effectScale: Number(opt("scale") ?? DEFAULT_CONFIG.effectScale),
 };
 const assets = (assetsFile.assets as { symbol: string; name: string; sector: string }[]).map(
   (a): PoolAsset => ({ symbol: a.symbol, name: a.name, sector: a.sector }),

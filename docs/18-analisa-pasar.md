@@ -9,7 +9,7 @@ Fitur tambahan (23 Nov): tim boleh **membeli laporan analisa** tentang berita ya
 | Cakupan | Hanya berita yang **sedang tayang** (sudah terbit, efek harga belum berlaku). Tidak ada berita tayang = tidak bisa beli. Tidak membocorkan berita yang belum terbit. |
 | Isi hint | **Frasa ciri tanpa nama aset** (Kamus sifat, [16](16-sifat-aset.md)), bukan nama atau kode aset. Pembeli tetap mencocokkan ciri ke aset sendiri. |
 | Batas beli | **Sekali per berita per tim.** Membeli lagi untuk berita yang sama mengembalikan laporan lama tanpa memotong saldo. |
-| Harga | Awal **Rp 200.000**, bebas diubah admin 0 sampai Rp 100 juta, kapan saja (juga saat game berjalan). Berlaku untuk pembelian berikutnya. |
+| Harga | Patokan **Rp 75.000 sampai Rp 100.000** (kalibrasi [19](19-kalibrasi-ekonomi.md); awal basis data Rp 100.000), bebas diubah admin 0 sampai Rp 100 juta, kapan saja (juga saat game berjalan). Berlaku untuk pembelian berikutnya. |
 | Uang | Keluar dari saldo tim, tidak ada penerima (kas beredar berkurang). Net worth dan peringkat menyesuaikan sendiri. |
 | Kerahasiaan | Laporan hanya terbaca oleh tim pembeli. **Admin tidak bisa membaca isinya** (membocorkan efek berita); admin hanya punya log pembelian. Tim bisa saja menceritakannya ke tim lain; yang menahan hanya harga. |
 
@@ -27,7 +27,7 @@ Dibuat saat kumpulan berita dibuat (`scripts/news-pool-lib.ts`, `analysisParagra
 | # | Bagian | Isi |
 | --- | --- | --- |
 | 1 | Ringkasan | Judul berita, arah pasar (condong naik / condong turun / campuran), jumlah ciri naik dan turun yang berarti (efek ≥ 1 %), dan perkiraan waktu: rentang selebar 2 menit yang pasti memuat sisa waktu sebenarnya ("dalam sekitar 6 sampai 8 menit ke depan"; di bawah 1 menit: "kurang dari 2 menit"). |
-| 2 | Ciri yang naik | Sampai 3 ciri, urut dari terbesar, masing-masing dengan kekuatan: **kuat** (di atas 4 %), **sedang** (2 sampai 4 %), **ringan** (1 sampai 2 %). Sisanya disebut jumlahnya. Bila tidak ada: dinyatakan terus terang. |
+| 2 | Ciri yang naik | Sampai 3 ciri, urut dari terbesar, masing-masing dengan kekuatan: **kuat** (di atas 8 %), **sedang** (4 sampai 8 %), **ringan** (1 sampai 4 %; sering habis oleh selisih jual). Sisanya disebut jumlahnya. Bila tidak ada: dinyatakan terus terang. |
 | 3 | Ciri yang turun | Sama dengan paragraf 2. |
 | 4 | Catatan | Jumlah perusahaan yang bergerak tipis (< 1 %, tidak layak dikejar), ciri pengecoh yang disebut berita dinyatakan sebagai pengecoh, kalimat pengecoh lain tidak memengaruhi harga, catatan event (kebangkrutan, penghentian sementara, atau dividen), dan pengingat selisih jual, tekanan stok, serta batas pegang. |
 
@@ -72,7 +72,7 @@ Laporan ikut dimuat bersama kumpulan berita: `npm run load-news -- --replace` (g
 
 ## 7. Menyetel harga (catatan panitia)
 
-- Terlalu murah: semua tim membeli tiap berita dan keunggulan hilang. Terlalu mahal: tidak ada yang membeli. Patokan: hadiah pos sekitar Rp 300.000 per kunjungan; harga aset Rp 130.000 sampai Rp 2.000.000 per unit.
+- Terlalu murah: semua tim membeli tiap berita dan keunggulan hilang. Terlalu mahal: tidak ada yang membeli. Patokan: hadiah pos sekitar Rp 300.000 per kunjungan; harga aset Rp 130.000 sampai Rp 2.000.000 per unit; simulasi strategi ([19](19-kalibrasi-ekonomi.md) §4) menunjukkan Rp 75.000 sampai Rp 100.000 menguntungkan bagi pembeli rasional dan Rp 200.000 tidak dibeli siapa pun.
 - Uji di gladi resik ([PANDUAN-GLADI-RESIK](../PANDUAN-GLADI-RESIK.md)): lihat berapa tim yang membeli dan apakah pembelinya benar-benar lebih untung.
 - Harga bisa diubah di tengah game bila terlalu timpang; pembeli sebelumnya tidak terpengaruh.
 - Saklar "Analisa aktif" mematikan pembelian seketika (laporan yang sudah dibeli tetap bisa dibuka).

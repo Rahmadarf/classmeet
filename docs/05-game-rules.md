@@ -30,7 +30,7 @@ Setiap tim **mulai dari Rp 0**. Satu-satunya sumber uang adalah **hadiah pos** (
 | Jeda setelah harga berubah sebelum berita berikutnya | **0** (berita berikutnya langsung terbit); boleh diisi sebelum game dibuka | `game_settings.news_gap_minutes` |
 | Urutan berita dan waktu perubahan harga | **Sepenuhnya sistem.** Panitia tidak bisa memilih, mengantre, mempercepat, menunda, atau mengubah harga sejak game dibuka sampai selesai | `game_is_locked()`, pemicu `guard_game_lock()` |
 | Jumlah aset yang terpengaruh per berita | **10–15**: efek tematis (≥ 1 %) plus efek pengisi kecil (≤ 0,9 %), eksplisit per aset | `game_settings.min_news_assets` (10), `max_news_assets` (15) |
-| Besar efek per aset | Efek tematis **1–15 %** (umumnya 1–6 %; rata-rata efek berarti ±3 %), pengisi ≤ 0,9 %; **maksimum 15 %** ditegakkan database | `game_settings.max_effect_bps` (1500) |
+| Besar efek per aset | Efek tematis **1–15 %** (dikalibrasi 23 Nov, `effectScale` 2: rata-rata efek berarti ±5,7 %, terbesar per berita ±8 %; [19](19-kalibrasi-ekonomi.md)), pengisi ≤ 0,9 %; **maksimum 15 %** ditegakkan database | `game_settings.max_effect_bps` (1500) |
 | Perubahan harga acak | **Tidak ada**. Yang acak hanya **pemilihan berita**, bukan besar harga | — |
 | Pemilihan berita | **Otomatis, acak berbatas** dari kumpulan berita siap; admin tidak memilih | `news.status = 'ready'`, `process_news_cycle()` |
 | Jumlah berita yang disiapkan | **±220** bila `news_gap_minutes = 0` dan pasar tak pernah ditutup; lihat §4.4 | `news` |
@@ -57,7 +57,7 @@ Ringkasan; rincian, parameter, dan contoh di [`17-trading-toko.md`](17-trading-t
 8. **Transaksi adalah keputusan tim.** Kesalahan sistem dikoreksi panitia lewat `admin_adjust_cash` dan tercatat di audit. Panitia tidak bisa mengubah harga acuan atau pengaturan toko sejak game dibuka.
 9. **Aset yang dinonaktifkan** (bangkrut) tidak bisa dibeli atau dijual; unit yang dipegang tim dilikuidasi ke saldo. Aset yang disuspensi tidak bisa diperdagangkan sementara.
 10. **Hanya di perangkat trading panitia.** Tim tidak membawa ponsel. Mereka membawa **kartu QR** yang punya dua fungsi: dipindai penjaga untuk menerima hadiah, dan dipindai di laptop trading untuk masuk ke akun tim. Sesi keluar otomatis setelah **5 menit tanpa gerakan**, atau saat tim menekan *Selesai*. Pemindai di laptop memakai kamera.
-11. **Analisa Pasar (opsional, berbayar).** Selama sebuah berita tayang (efek harga belum berlaku), tim boleh membeli satu laporan 4 paragraf tentang berita itu: ciri perusahaan yang akan naik dan turun, kekuatannya, dan perkiraan waktunya. Sekali beli per berita per tim; harga ditetapkan admin dan bisa diubah kapan saja (awal Rp 200.000); uangnya keluar dari saldo. Rincian di [`18-analisa-pasar.md`](18-analisa-pasar.md).
+11. **Analisa Pasar (opsional, berbayar).** Selama sebuah berita tayang (efek harga belum berlaku), tim boleh membeli satu laporan 4 paragraf tentang berita itu: ciri perusahaan yang akan naik dan turun, kekuatannya, dan perkiraan waktunya. Sekali beli per berita per tim; harga ditetapkan admin dan bisa diubah kapan saja (patokan Rp 75.000 sampai Rp 100.000); uangnya keluar dari saldo. Rincian di [`18-analisa-pasar.md`](18-analisa-pasar.md).
 
 ## 4. Harga: berita dan waktunya diatur sistem
 

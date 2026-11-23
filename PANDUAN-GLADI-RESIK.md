@@ -57,7 +57,7 @@ cd deploy/supabase && ./70-backup.sh
 - [ ] Aset dan harga awal final (Admin > Aset). Setelah game dimulai, harga, berita, dan pengaturan **terkunci**.
 - [ ] Kumpulan berita cukup: halaman Status Game menampilkan angka **Siap** dan **Boleh terbit** (butuh ±220 untuk 3 hari penuh, atau lebih sedikit bila jeda antarberita diperbesar).
 - [ ] Pengaturan toko (Admin > Aset > Pengaturan toko: selisih jual, tekanan stok, batas pegang) sudah final.
-- [ ] **Analisa Pasar:** harga dan saklar (Admin > Aset > kartu Analisa Pasar) sudah diputuskan. Awal Rp 200.000; boleh diubah kapan saja, juga saat game berjalan.
+- [ ] **Analisa Pasar:** harga dan saklar (Admin > Aset > kartu Analisa Pasar) sudah diputuskan. Patokan Rp 75.000 sampai Rp 100.000 (docs/19); boleh diubah kapan saja, juga saat game berjalan.
 - [ ] Kumpulan berita dimuat dengan laporan analisa (`npm run load-news -- --replace`, game `setup`); jumlah laporan sama dengan jumlah berita siap.
 - [ ] Akun `display` login di layar TV.
 

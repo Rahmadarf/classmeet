@@ -9,6 +9,9 @@ select setseed(:'sim_seed'::float);
 create temp table sim_log (t timestamptz, day int, kind text, asset text, fit numeric, n_eff int);
 create temp table sim_px (t timestamptz, asset text, cum numeric);
 
+-- berita yang sedang tayang/terpakai pada data asli dikembalikan ke `ready` DI DALAM transaksi ini (di-ROLLBACK), supaya siklus tidak menunggu berita itu
+update news set status = 'ready', published_at = null, effect_at = null, effect_applied_at = null where status in ('live', 'applied');
+
 do $sim$
 declare
   t0   timestamptz := '2026-11-20 08:00+07';

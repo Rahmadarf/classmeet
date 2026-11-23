@@ -16,7 +16,7 @@ select set_config('classmeet.system', 'on', false);
 -- 1. Pengaturan
 -- ---------------------------------------------------------------------------------------------------------------------
 alter table public.game_settings
-  add column if not exists analysis_price   bigint  not null default 200000,
+  add column if not exists analysis_price   bigint  not null default 100000,
   add column if not exists analysis_enabled boolean not null default true;
 alter table public.game_settings drop constraint if exists game_settings_analysis_price_check;
 alter table public.game_settings add constraint game_settings_analysis_price_check

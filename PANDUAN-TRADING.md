@@ -109,7 +109,7 @@ Karena unit yang dilikuidasi atau dividen langsung masuk ke saldo, cek **Beranda
 Di halaman **Pasar** ada kartu **Analisa Pasar**. Dengan membayar sejumlah uang (harganya tampil di tombol dan bisa diubah panitia), timmu mendapat **laporan 4 paragraf** tentang berita yang **sedang tayang**:
 
 1. **Ringkasan:** arah pasar secara umum dan perkiraan waktu harga mulai bergerak.
-2. **Ciri yang naik:** ciri perusahaan yang akan naik, urut dari yang terbesar, dengan kekuatan: **kuat** (di atas 4 %), **sedang** (2 sampai 4 %), atau **ringan** (1 sampai 2 %).
+2. **Ciri yang naik:** ciri perusahaan yang akan naik, urut dari yang terbesar, dengan kekuatan: **kuat** (di atas 8 %), **sedang** (4 sampai 8 %), atau **ringan** (1 sampai 4 %, sering habis oleh selisih jual 2 %).
 3. **Ciri yang turun:** sama, untuk yang akan turun.
 4. **Catatan:** yang bergerak tipis tidak perlu dikejar, kalimat pengecoh tidak berpengaruh, dan pengingat biaya (selisih jual, tekanan stok, batas pegang).
 

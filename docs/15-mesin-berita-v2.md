@@ -91,6 +91,8 @@ Karena tim kini bisa membeli analisa ([18](18-analisa-pasar.md)), berita dipersu
 
 Pembeli analisa mendapat 3 ciri naik + 3 turun beserta kekuatannya, perkiraan waktu, dan pengecoh yang disebut berita dibuka sebagai pengecoh (paragraf 4). `news_pool()` tetap menolak berita yang petunjuk 2+2-nya menyebut aset nonaktif (lebih ketat dari 1+1 yang tampil sekarang, jadi aman). Simulasi 3 hari tetap sehat: tidak ada aset di batas harga, perubahan akhir −29 % sampai +31 %.
 
+Besar efek dikalibrasi 23 Nov (`effectScale` 2; [19](19-kalibrasi-ekonomi.md)): efek berarti rata-rata ±5,7 %, jauh di atas selisih jual 2 %. Simulasi 3 hari pada skala ini tetap sehat (tidak ada aset di batas harga).
+
 ## 4. Simulasi dan hasil
 `scripts/sim-news-engine.sh [hari] [suhu] [benih] [intensitas]` menjalankan 3 hari permainan (jam simulasi via
 `classmeet.now`) di dalam transaksi yang di-ROLLBACK, memakai kumpulan berita yang sama. Jangan dijalankan saat acara
