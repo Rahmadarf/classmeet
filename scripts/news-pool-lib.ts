@@ -30,6 +30,11 @@ export type PoolNews = {
   effects: PoolEffect[];
   /** Event yang dibawa (kecuali berita harga). `amount`: bangkrut = bps likuidasi, suspensi = menit, dividen = bps. */
   event: { symbol: string; amount: number } | null;
+  /**
+   * Laporan Analisa Pasar (pay to win, docs/18): 4 paragraf yang dijual ke tim selama berita tayang. Paragraf 1 memuat
+   * `{waktu}` yang diganti `buy_analysis` dengan perkiraan sisa waktu. Isinya benar menurut `effects`; tanpa nama aset.
+   */
+  analysis: string[];
 };
 export type PoolAsset = { symbol: string; name: string; sector: string };
 export type PoolConfig = {
@@ -179,6 +184,98 @@ function secondParagraph(
   return `${hintSentence(title, effects, exclude)} Di sisi lain, ${adjacent}. ${link}, ${generic}.`;
 }
 
+/**
+ * Kekuatan efek untuk laporan analisa. Efek bertema umumnya 1-4 %; di atas 4 % jarang. Batas tampil memakai persen bulat
+ * supaya mudah dibaca pemain.
+ */
+export const STRENGTH_BANDS = [
+  { min: 400, label: "kuat", range: "di atas 4 %" },
+  { min: 200, label: "sedang", range: "2 sampai 4 %" },
+  { min: 100, label: "ringan", range: "1 sampai 2 %" },
+] as const;
+const strengthOf = (bps: number) => STRENGTH_BANDS.find((b) => Math.abs(bps) >= b.min);
+
+/** Frasa sifat ALTERNATIF untuk laporan: aset yang sama, tetapi bukan frasa yang dipakai berita (jika aset punya >1 frasa). */
+export function traitPhraseAlt(symbol: string, title: string): string | null {
+  const t = ASSET_TRAITS[symbol];
+  if (!t) return null;
+  return t.phrases[(hashOf(`${title}|${symbol}`) + 1) % t.phrases.length];
+}
+
+/**
+ * Laporan 4 paragraf untuk satu berita, DIBUAT DARI efek yang sebenarnya (tidak memakai RNG utama; deterministik menurut
+ * judul, jadi tidak menggeser efek atau judul yang sudah ada). Tanpa nama atau kode aset: hanya frasa sifat (kamus docs/16).
+ *  1. ringkasan arah + perkiraan waktu (`{waktu}` diisi saat dibeli); 2. ciri yang naik; 3. ciri yang turun; 4. catatan.
+ */
+export function analysisParagraphs(
+  title: string,
+  kind: PoolKind,
+  effects: PoolEffect[],
+  event: { symbol: string; amount: number } | null,
+): string[] {
+  const h = hashOf(`analisa|${title}`);
+  const meaningful = effects.filter((e) => Math.abs(e.pct_bps) >= HINT_MIN_BPS);
+  const ups = meaningful.filter((e) => e.pct_bps > 0).sort((a, b) => b.pct_bps - a.pct_bps);
+  const downs = meaningful.filter((e) => e.pct_bps < 0).sort((a, b) => a.pct_bps - b.pct_bps);
+  const sum = (xs: PoolEffect[]) => xs.reduce((n, e) => n + Math.abs(e.pct_bps), 0);
+  const mood =
+    sum(ups) > sum(downs) * 1.5 ? "condong naik" : sum(downs) > sum(ups) * 1.5 ? "condong turun" : "campuran";
+
+  const p1 =
+    meaningful.length === 0
+      ? `Analisa untuk berita "${title}": dampaknya pada harga kecil dan tersebar. Harga mulai bergerak dalam {waktu} ke depan.`
+      : [
+          `Analisa untuk berita "${title}": pasar diperkirakan ${mood}, dengan ${ups.length} ciri perusahaan yang naik dan ${downs.length} yang turun secara berarti. Harga mulai bergerak dalam {waktu} ke depan.`,
+          `Ringkasan analisa untuk berita "${title}": arah pasar ${mood}; ${ups.length} ciri perusahaan naik dan ${downs.length} turun cukup berarti. Perubahan harga diperkirakan mulai terlihat dalam {waktu} ke depan.`,
+          `Hasil analisa berita "${title}": tekanan pasar ${mood}, dengan ${ups.length} ciri perusahaan menguat dan ${downs.length} melemah secara berarti. Harga mulai bergerak dalam {waktu} ke depan.`,
+        ][h % 3];
+
+  const item = (e: PoolEffect): string => {
+    const band = strengthOf(e.pct_bps)!;
+    const who =
+      event && e.symbol === event.symbol
+        ? "perusahaan yang disebut di berita"
+        : `perusahaan yang ${traitPhraseAlt(e.symbol, title) ?? "tidak dikenali"}`;
+    return `${who} (${band.label}, ${band.range})`;
+  };
+  const side = (xs: PoolEffect[], dir: "naik" | "turun", salt: number): string => {
+    if (!xs.length)
+      return `Tidak ada ciri perusahaan yang diperkirakan ${dir} secara berarti pada berita ini.`;
+    const top = xs.slice(0, 3);
+    const rest = xs.length - top.length;
+    const more = rest > 0 ? ` Masih ada ${rest} ciri lain yang ${dir} di atas 1 %, tetapi lebih kecil.` : "";
+    const list = listSerta(top.map(item));
+    return [
+      `Ciri yang diperkirakan ${dir}, urut dari yang terbesar: ${list}.${more}`,
+      `Yang berpeluang ${dir} paling besar adalah ${list}; urutannya dari yang terbesar.${more}`,
+      `Perkiraan ${dir}, dari yang terbesar: ${list}.${more}`,
+    ][(h + salt) % 3];
+  };
+
+  const tiny = effects.length - meaningful.length;
+  const parts: string[] = [];
+  if (tiny > 0)
+    parts.push(
+      `Sebanyak ${tiny} perusahaan lain hanya bergerak tipis (di bawah 1 %), jadi tidak layak dikejar.`,
+    );
+  parts.push("Kalimat pengecoh di akhir berita tidak memengaruhi harga sama sekali.");
+  if (kind === "bankrupt")
+    parts.push(
+      "Berita ini membawa kebangkrutan: perusahaan yang disebut dilikuidasi dan tidak bisa diperdagangkan lagi, jadi tidak ada efek harga untuknya.",
+    );
+  else if (kind === "suspend")
+    parts.push(
+      "Berita ini membawa penghentian sementara pada perusahaan yang disebut: selama itu ia tidak bisa dibeli atau dijual.",
+    );
+  else if (kind === "dividend")
+    parts.push("Berita ini membawa pembagian dividen kepada pemegang perusahaan yang disebut.");
+  parts.push(
+    "Perhitungkan juga selisih harga jual, tekanan stok dari pembelian tim lain, dan batas kepemilikan per tim sebelum bertindak.",
+  );
+
+  return [p1, side(ups, "naik", 1), side(downs, "turun", 2), parts.join(" ")];
+}
+
 /** Efek berarti (tematis) bermagnitudo >= ini dan layak jadi petunjuk; efek pengisi selalu di bawahnya (<= 90 bps). */
 export const HINT_MIN_BPS = 100;
 const HINT_PER_SIDE = 2;
@@ -250,6 +347,7 @@ function priceNews(assets: PoolAsset[], cfg: PoolConfig, rng: Rng): PoolNews[] {
           body: `${base}${second}\n\n${secondParagraph(rng, title, effects, sectorOf)}`,
           effects,
           event: null,
+          analysis: analysisParagraphs(title, "price", effects, null),
         });
       }
     }
@@ -313,6 +411,7 @@ function eventNews(assets: PoolAsset[], cfg: PoolConfig, rng: Rng): PoolNews[] {
           body: `${body}\n\n${secondParagraph(rng, title, effects, sectorOf, [asset.symbol])}`,
           effects,
           event: { symbol: asset.symbol, amount },
+          analysis: analysisParagraphs(title, kind, effects, { symbol: asset.symbol, amount }),
         });
       }
     }
@@ -367,6 +466,37 @@ export function validatePool(
           const phrase = traitPhrase(top.symbol, n.title);
           if (phrase && !second.includes(phrase))
             problems.push(`${tag}: petunjuk ${top.symbol} tidak ada di paragraf kedua`);
+        }
+      }
+    }
+    // laporan analisa: 4 paragraf, {waktu} sekali di paragraf 1, tanpa nama perusahaan, dan arahnya benar menurut efek
+    {
+      const an = n.analysis ?? [];
+      if (an.length !== 4) problems.push(`${tag}: laporan analisa harus 4 paragraf (ada ${an.length})`);
+      else {
+        if ((an[0].match(/\{waktu\}/g) ?? []).length !== 1)
+          problems.push(`${tag}: paragraf 1 analisa harus memuat {waktu} tepat sekali`);
+        if (an.slice(1).some((p) => p.includes("{waktu}")))
+          problems.push(`${tag}: {waktu} hanya boleh di paragraf 1 analisa`);
+        if (an.some((p) => !p.trim())) problems.push(`${tag}: paragraf analisa kosong`);
+        // seperti berita: hanya subjek event yang boleh disebut (lewat judul di paragraf 1)
+        for (const a of assets)
+          if (a.symbol !== n.event?.symbol && an.some((p) => nameRe.get(a.symbol)!.test(p)))
+            problems.push(`${tag}: analisa menyebut nama ${a.name}`);
+        for (const [idx, sign] of [
+          [1, 1],
+          [2, -1],
+        ] as const) {
+          for (const [sym, tr] of Object.entries(ASSET_TRAITS)) {
+            for (const ph of tr.phrases) {
+              if (!an[idx].includes(`perusahaan yang ${ph} (`)) continue;
+              const e = n.effects.find((x) => x.symbol === sym);
+              if (!e || Math.sign(e.pct_bps) !== sign || Math.abs(e.pct_bps) < HINT_MIN_BPS)
+                problems.push(
+                  `${tag}: analisa paragraf ${idx + 1} menyebut ${sym} tetapi efeknya ${e ? e.pct_bps : "tidak ada"}`,
+                );
+            }
+          }
         }
       }
     }
@@ -445,8 +575,14 @@ export function poolToSql(pool: PoolNews[], opts: { replace?: boolean } = {}): s
           `insert into news_events (news_id, asset_id, kind, amount) select v, id, ${q(n.kind)}, ${n.event.amount} from assets where symbol = ${q(n.event.symbol)};`,
         );
     }
+    const arr = `array[${n.analysis.map(q).join(", ")}]::text[]`;
+    lines.push(`insert into news_analysis (news_id, paragraphs) values (v, ${arr});`);
     lines.push(
       `else update news set body = ${q(n.body)} where title = ${q(n.title)} and status in ('ready', 'draft') and body <> ${q(n.body)};`,
+    );
+    // berita yang sudah ada (belum dipakai): laporan diperbarui/dilengkapi tanpa mengubah efeknya
+    lines.push(
+      `insert into news_analysis (news_id, paragraphs) select id, ${arr} from news where title = ${q(n.title)} and status in ('ready', 'draft') on conflict (news_id) do update set paragraphs = excluded.paragraphs;`,
     );
     lines.push("end if;");
   }

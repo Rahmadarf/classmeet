@@ -151,6 +151,7 @@ describe("poolToSql", () => {
         body: "b",
         effects: [{ symbol: "LO", pct_bps: 100 }],
         event: { symbol: "LO", amount: 50 },
+        analysis: ["Efek {waktu}.", "Naik.", "Turun.", "Catatan."],
       },
     ]);
     expect(sql).toContain("'L''Oréal bagi dividen'");
@@ -158,6 +159,67 @@ describe("poolToSql", () => {
     expect(sql).toContain("insert into news_events");
     expect(sql).toContain("if not exists (select 1 from news where title");
     expect(sql).toContain("else update news set body");
+    expect(sql).toContain("insert into news_analysis");
+    expect(sql).toContain("on conflict (news_id) do update set paragraphs");
+  });
+});
+
+describe("analisa pay to win (laporan 4 paragraf)", () => {
+  const phraseOwner = new Map<string, string>();
+  for (const [sym, t] of Object.entries(ASSET_TRAITS)) for (const p of t.phrases) phraseOwner.set(p, sym);
+
+  it("setiap berita punya 4 paragraf, {waktu} hanya sekali di paragraf 1, tanpa nama perusahaan (lewat validatePool)", () => {
+    for (const n of pool) {
+      expect(n.analysis).toHaveLength(4);
+      expect((n.analysis[0].match(/\{waktu\}/g) ?? []).length).toBe(1);
+    }
+    expect(validatePool(pool, assets)).toEqual([]);
+  });
+
+  it("frasa sifat unik per aset (satu frasa menunjuk tepat satu aset)", () => {
+    const total = Object.values(ASSET_TRAITS).reduce((n, t) => n + t.phrases.length, 0);
+    expect(phraseOwner.size).toBe(total);
+  });
+
+  it("isi benar menurut efek: ciri di paragraf 2 naik berarti, di paragraf 3 turun berarti, urut dari terbesar", () => {
+    for (const n of pool) {
+      for (const [idx, sign] of [
+        [1, 1],
+        [2, -1],
+      ] as const) {
+        const found: { at: number; mag: number }[] = [];
+        for (const [phrase, sym] of phraseOwner) {
+          const at = n.analysis[idx].indexOf(`perusahaan yang ${phrase} (`);
+          if (at < 0) continue;
+          const e = n.effects.find((x) => x.symbol === sym)!;
+          expect(e, `${n.title}: ${sym} tidak punya efek`).toBeDefined();
+          expect(Math.sign(e.pct_bps)).toBe(sign);
+          expect(Math.abs(e.pct_bps)).toBeGreaterThanOrEqual(100);
+          found.push({ at, mag: Math.abs(e.pct_bps) });
+        }
+        expect(found.length).toBeLessThanOrEqual(3);
+        const ordered = found.sort((x, y) => x.at - y.at).map((f) => f.mag);
+        expect(ordered, `${n.title}: urutan harus dari yang terbesar`).toEqual(
+          [...ordered].sort((x, y) => y - x),
+        );
+      }
+    }
+  });
+
+  it("paragraf naik/turun tanpa ciri menyatakannya, dan berita event mencatat jenisnya di paragraf 4", () => {
+    const none = pool.filter((n) => n.effects.every((e) => e.pct_bps < 100));
+    for (const n of none) expect(n.analysis[1]).toContain("Tidak ada ciri");
+    for (const kind of ["bankrupt", "suspend", "dividend"] as const)
+      for (const n of pool.filter((x) => x.kind === kind))
+        expect(n.analysis[3]).toContain(
+          { bankrupt: "kebangkrutan", suspend: "penghentian sementara", dividend: "dividen" }[kind],
+        );
+  });
+
+  it("tidak mengubah judul, isi, atau efek berita yang sudah ada (deterministik, tanpa RNG utama)", () => {
+    const a = buildPool(assets);
+    expect(a.map((n) => [n.title, n.body, n.effects])).toEqual(pool.map((n) => [n.title, n.body, n.effects]));
+    expect(a.map((n) => n.analysis)).toEqual(pool.map((n) => n.analysis));
   });
 });
 
