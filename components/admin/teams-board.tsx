@@ -4,10 +4,10 @@ import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { CorrectionDialog } from "@/components/admin/correction-dialog";
 import { TeamCreateDialog } from "@/components/admin/team-create-dialog";
+import { TeamQrDialog } from "@/components/admin/team-qr-dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { fetchTeamsPage, type TeamRow } from "@/lib/admin/data";
 import { usePolling } from "@/lib/hooks/use-polling";
 import { formatRupiah } from "@/lib/money";
@@ -21,10 +21,8 @@ const RANK = ["bg-accent-2", "bg-brand-light", "bg-accent"] as const;
 
 /**
  * Tim (Figma `Admin — Tim`, 1104:660): peringkat langsung semua tim (`get_leaderboard()` untuk admin selalu data
- * langsung, bukan snapshot), saldo, nilai aset (harga peringkat), total; Koreksi saldo (dialog) dan Ganti QR.
- * "Ganti QR" TIDAK memanggil `admin_rotate_team_qr` langsung: fungsi itu hanya mengganti `qr_token`, sedangkan
- * kata sandi akun tim (= qr_token) hanya bisa diganti dengan service role lewat skrip lokal; dipanggil sendiri,
- * kartu baru tidak bisa masuk. Maka tombol hanya menjelaskan langkahnya.
+ * langsung, bukan snapshot), saldo, nilai aset (harga peringkat), total; Koreksi saldo (dialog) dan Lihat QR (dialog
+ * kartu QR + unduh PNG, tampilan sama dengan dialog "Tambah tim"; menggantikan tombol "Ganti QR" lama).
  */
 export function TeamsBoard({ initial }: { initial: TeamRow[] }) {
   const supabase = useMemo(() => createClient(), []);
@@ -97,9 +95,9 @@ export function TeamsBoard({ initial }: { initial: TeamRow[] }) {
                     variant="secondary"
                     size="sm"
                     onClick={() => setQrTeam(r)}
-                    aria-label={`Ganti QR ${r.name}`}
+                    aria-label={`Lihat QR ${r.name}`}
                   >
-                    Ganti QR
+                    Lihat QR
                   </Button>
                 </div>
               </td>
@@ -108,7 +106,8 @@ export function TeamsBoard({ initial }: { initial: TeamRow[] }) {
         </DataTable>
         <p className="text-ink-muted text-sm">
           Total = saldo + nilai aset menurut harga tayang saat ini. Koreksi saldo mengubah saldo bebas, wajib
-          beralasan, dan tercatat di audit. Ganti QR dijalankan lewat skrip lokal; kartu lama langsung mati.
+          beralasan, dan tercatat di audit. Lihat QR menampilkan kartu tim untuk diunduh ulang; setiap
+          pembukaan tercatat di audit.
         </p>
       </Card>
 
@@ -131,32 +130,10 @@ export function TeamsBoard({ initial }: { initial: TeamRow[] }) {
         }}
       />
 
-      <Dialog open={qrTeam !== null} onOpenChange={(o) => !o && setQrTeam(null)}>
-        <DialogContent>
-          <p className="text-brand-text text-[13px] font-semibold tracking-[0.12em] uppercase">Ganti QR</p>
-          <DialogTitle className="text-ink mt-1 pr-12 text-2xl font-semibold">{qrTeam?.name}</DialogTitle>
-          <DialogDescription asChild>
-            <div className="text-ink-muted mt-3 flex flex-col gap-3 text-lg leading-[1.5]">
-              <p>
-                Mengganti kartu QR berarti mengubah{" "}
-                <strong>rahasia QR dan kata sandi akun tim sekaligus</strong>. Itu hanya bisa dilakukan skrip
-                lokal panitia (<code>rotate-team-qr</code>, memakai service role, lalu cetak ulang dengan{" "}
-                <code>npm run print-qr</code>). Kartu lama langsung tidak berlaku.
-              </p>
-              <p>
-                Jangan memanggil fungsi <code>admin_rotate_team_qr</code> langsung: ia tidak mengganti kata
-                sandi, sehingga kartu baru tidak bisa dipakai masuk.
-              </p>
-              <p className="text-bad-text text-base font-semibold">
-                Skrip rotate-team-qr belum dibuat di repositori ini.
-              </p>
-            </div>
-          </DialogDescription>
-          <div className="mt-5 flex justify-end">
-            <Button onClick={() => setQrTeam(null)}>Mengerti</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <TeamQrDialog
+        team={qrTeam ? { id: qrTeam.teamId, name: qrTeam.name } : null}
+        onOpenChange={(o) => !o && setQrTeam(null)}
+      />
     </>
   );
 }

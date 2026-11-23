@@ -14,6 +14,9 @@ export const adjustCashSchema = z.object({
 
 export type AdjustCashInput = z.infer<typeof adjustCashSchema>;
 
+/** Lihat kartu QR tim (server action `getTeamQr`). */
+export const viewTeamQrSchema = z.object({ teamId: uuidSchema });
+
 /** Stok pasar (`admin_set_stock`): bilangan bulat ≥ 0 + alasan wajib. */
 export const setStockSchema = z.object({
   assetId: uuidSchema,

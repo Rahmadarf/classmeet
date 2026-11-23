@@ -88,6 +88,12 @@ describe("aksi dari fungsi admin baru (scripts/sql/admin-functions-missing.sql)"
     ]);
   });
 
+  it("lihat QR tim: kategori koreksi dan ringkasan", () => {
+    expect(categoryOf("view_team_qr")).toBe("koreksi");
+    const [a] = buildAuditRows([row("view_team_qr", { team_id: "t1" }, "ad")], lookup);
+    expect(a.summary).toMatch(/kartu QR dilihat$/);
+  });
+
   it("pengaturan Analisa Pasar: kategori aset dan ringkasan", () => {
     expect(categoryOf("set_analysis_settings")).toBe("aset");
     const [a, b] = buildAuditRows(

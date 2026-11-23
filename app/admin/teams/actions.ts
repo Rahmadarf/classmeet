@@ -7,7 +7,7 @@ import { qrDataUrl } from "@/lib/admin/qr-png";
 import { mapRpcError } from "@/lib/errors";
 import { authEmail, formatTeamQr } from "@/lib/qr";
 import type { ActionResult } from "@/lib/schemas/common";
-import { adjustCashSchema, createTeamSchema } from "@/lib/schemas/admin";
+import { adjustCashSchema, createTeamSchema, viewTeamQrSchema } from "@/lib/schemas/admin";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient, ServiceKeyMissing } from "@/lib/supabase/service";
 
@@ -124,4 +124,50 @@ export async function createTeam(input: unknown): Promise<ActionResult<NewTeam>>
   });
   const qr = await qrDataUrl(formatTeamQr({ username, token }));
   return { ok: true, data: { teamId: id, name, username, qr } };
+}
+
+export type TeamQrView = { teamId: string; name: string; username: string; qr: string | null };
+
+/**
+ * Lihat kartu QR tim yang sudah ada (menggantikan "Ganti QR"). Hanya admin. Rahasia dibaca dengan service role, diubah jadi
+ * GAMBAR (data URI) lalu dibuang: token tidak dikembalikan sebagai teks dan tidak dicatat. Tiap permintaan tercatat di audit
+ * (`view_team_qr`) karena QR adalah kredensial tim.
+ */
+export async function getTeamQr(input: unknown): Promise<ActionResult<TeamQrView>> {
+  const parsed = viewTeamQrSchema.safeParse(input);
+  if (!parsed.success)
+    return { ok: false, message: "Tim tidak valid.", code: "invalid_input", retryable: false };
+  const supabase = await createClient();
+  const adminId = await requireAdmin(supabase);
+  if (!adminId) return { ok: false, message: "Hanya admin.", code: "forbidden", retryable: false };
+
+  let svc: ReturnType<typeof createServiceClient>;
+  try {
+    svc = createServiceClient();
+  } catch (e) {
+    if (e instanceof ServiceKeyMissing)
+      return {
+        ok: false,
+        message:
+          "Kunci layanan server belum diatur (SUPABASE_SERVICE_ROLE_KEY di .env.local), lalu mulai ulang server.",
+        code: "service_key_missing",
+        retryable: false,
+      };
+    throw e;
+  }
+
+  const [{ data: team }, { data: profile }] = await Promise.all([
+    svc.from("teams").select("name,qr_token").eq("id", parsed.data.teamId).maybeSingle(),
+    svc.from("profiles").select("username").eq("id", parsed.data.teamId).maybeSingle(),
+  ]);
+  if (!team || !profile)
+    return { ok: false, message: "Tim tidak ditemukan.", code: "team_not_found", retryable: false };
+
+  await svc.from("audit_log").insert({
+    actor_id: adminId,
+    action: "view_team_qr",
+    payload: { team_id: parsed.data.teamId },
+  });
+  const qr = await qrDataUrl(formatTeamQr({ username: profile.username, token: team.qr_token }));
+  return { ok: true, data: { teamId: parsed.data.teamId, name: team.name, username: profile.username, qr } };
 }

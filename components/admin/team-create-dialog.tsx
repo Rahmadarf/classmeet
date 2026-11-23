@@ -1,8 +1,8 @@
 "use client";
 
-import { Download } from "lucide-react";
 import { useId, useState } from "react";
 import { createTeam, type NewTeam } from "@/app/admin/teams/actions";
+import { QrCard } from "@/components/admin/qr-card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 
@@ -67,28 +67,7 @@ export function TeamCreateDialog({
               tim: unduh atau cetak sekarang, lalu jangan dibagikan. QR tidak bisa dilihat lagi dari halaman
               ini.
             </DialogDescription>
-            {created.qr ? (
-              <div className="flex flex-col items-center gap-3">
-                {/* eslint-disable-next-line @next/next/no-img-element -- data URI dari server, bukan aset statis */}
-                <img
-                  src={created.qr}
-                  alt={`QR kartu ${created.name}`}
-                  className="border-line size-60 rounded-[12px] border bg-white p-2"
-                />
-                <a
-                  href={created.qr}
-                  download={`qr-${created.username}.png`}
-                  className="text-brand-text inline-flex min-h-11 items-center gap-2 text-base font-semibold"
-                >
-                  <Download className="size-5" aria-hidden /> Unduh QR (PNG)
-                </a>
-              </div>
-            ) : (
-              <p role="alert" className="text-bad-text text-base font-semibold">
-                Gambar QR gagal dibuat. Cetak kartunya lewat <code>npm run print-qr</code> memakai berkas
-                seed.
-              </p>
-            )}
+            <QrCard qr={created.qr} name={created.name} username={created.username} />
             <Button onClick={close}>Selesai</Button>
           </div>
         ) : (
