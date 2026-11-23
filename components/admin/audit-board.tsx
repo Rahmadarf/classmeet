@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { fetchAuditPage } from "@/lib/admin/data";
 import { FILTERS, type AuditCategory, type AuditRow } from "@/lib/admin/audit";
-import { usePolling } from "@/lib/hooks/use-polling";
 import { formatDateWib, formatTimeWib } from "@/lib/money";
+import { qk } from "@/lib/query/keys";
+import { useLivePage } from "@/lib/query/use-live-page";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -29,14 +30,14 @@ const PILL: Record<AuditCategory, string> = {
  */
 export function AuditBoard({ initial }: { initial: AuditRow[] }) {
   const supabase = useMemo(() => createClient(), []);
-  const [rows, setRows] = useState(initial);
+  const { data: rows } = useLivePage({
+    key: qk.admin("audit"),
+    label: "audit",
+    initial,
+    pollMs: POLL_MS,
+    fetch: () => fetchAuditPage(supabase),
+  });
   const [filter, setFilter] = useState<"semua" | AuditCategory>("semua");
-
-  const refresh = useCallback(async () => {
-    const next = await fetchAuditPage(supabase);
-    if (next) setRows(next);
-  }, [supabase]);
-  usePolling(refresh, POLL_MS);
 
   const shown = filter === "semua" ? rows : rows.filter((r) => r.category === filter);
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle, Check } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   resetGame,
@@ -21,9 +21,11 @@ import {
   type GameState,
   type NewsPool,
 } from "@/lib/admin/state";
-import { usePolling } from "@/lib/hooks/use-polling";
 import type { ActionResult } from "@/lib/schemas/common";
 import { formatTimeWib } from "@/lib/money";
+import { qk } from "@/lib/query/keys";
+import { useLivePage, useLivePageMaybe } from "@/lib/query/use-live-page";
+import { useRealtime } from "@/lib/query/use-realtime";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -51,30 +53,30 @@ const RESET_WORD = "RESET";
  */
 export function StateBoard({ initial }: { initial: { game: AdminGame; pool: NewsPool | null } }) {
   const supabase = useMemo(() => createClient(), []);
-  const [game, setGame] = useState(initial.game);
-  const [pool, setPool] = useState(initial.pool);
   const [now, setNow] = useState<number | null>(null);
   const [pending, setPending] = useState<Pending>(null);
   const [busy, setBusy] = useState(false);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [lbBusy, setLbBusy] = useState(false);
   const [resetText, setResetText] = useState("");
-  const dropped = useRef(false);
 
-  const refreshGame = useCallback(async () => {
-    const next = await fetchAdminGame(supabase);
-    if (next) setGame(next);
-  }, [supabase]);
-  const refreshPool = useCallback(async () => {
-    const next = await fetchNewsPool(supabase);
-    if (next) setPool(next);
-  }, [supabase]);
+  const { data: game, refresh: refreshGame } = useLivePage({
+    key: qk.admin("game"),
+    label: "game",
+    initial: initial.game,
+    pollMs: GAME_POLL_MS,
+    fetch: () => fetchAdminGame(supabase),
+  });
+  const { data: pool, refresh: refreshPool } = useLivePageMaybe({
+    key: qk.admin("news-pool"),
+    label: "news-pool",
+    initial: initial.pool,
+    pollMs: POOL_POLL_MS,
+    fetch: () => fetchNewsPool(supabase),
+  });
   const refreshAll = useCallback(async () => {
     await Promise.all([refreshGame(), refreshPool()]);
   }, [refreshGame, refreshPool]);
-
-  usePolling(refreshGame, GAME_POLL_MS);
-  usePolling(refreshPool, POOL_POLL_MS);
 
   useEffect(() => {
     const tick = () => setNow(Date.now());
@@ -86,28 +88,7 @@ export function StateBoard({ initial }: { initial: { game: AdminGame; pool: News
     };
   }, []);
 
-  useEffect(() => {
-    const channel = supabase
-      .channel("admin-state")
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "game_settings" },
-        () => void refreshAll(),
-      )
-      .subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          if (dropped.current) {
-            dropped.current = false;
-            void refreshAll();
-          }
-        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
-          dropped.current = true;
-        }
-      });
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [supabase, refreshAll]);
+  useRealtime("admin-state", [{ event: "UPDATE", table: "game_settings", onEvent: () => void refreshAll() }]);
 
   const badge = STATE_BADGE[game.state];
   const day = now === null ? null : gameDay(game.startedAt, now);
@@ -229,8 +210,8 @@ export function StateBoard({ initial }: { initial: { game: AdminGame; pool: News
                     Mulai game
                   </Button>
                   <p className="text-ink-muted text-base">
-                    Mulai game membuka pasar dan memulai berita dari awal. Layar publik menampilkan &ldquo;Game
-                    belum di mulai&rdquo; sampai tombol ini ditekan.
+                    Mulai game membuka pasar dan memulai berita dari awal. Layar publik menampilkan
+                    &ldquo;Game belum di mulai&rdquo; sampai tombol ini ditekan.
                   </p>
                 </>
               ) : (

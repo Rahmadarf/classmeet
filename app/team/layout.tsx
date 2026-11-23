@@ -7,6 +7,7 @@ import { FinishButton } from "@/components/session/finish-button";
 import { OfflineBanner } from "@/components/states";
 import { NewsReaderHost } from "@/components/team/news-reader";
 import { SidebarNav } from "@/components/shell/sidebar-nav";
+import { QueryProvider } from "@/lib/query/provider";
 import { createClient } from "@/lib/supabase/server";
 
 // Menu tim: Beranda, Pasar, Portofolio, Riwayat (halaman Order dihapus bersama order book, docs/17). Daftar Pos TIDAK ada di akun tim: dipindah ke layar akun display
@@ -39,21 +40,23 @@ async function TeamShell({ children }: { children: React.ReactNode }) {
     : { data: null };
 
   return (
-    <AppShell
-      navigation={<SidebarNav items={NAV} />}
-      banner={
-        <>
-          <SessionBanner />
-          <OfflineBanner />
-        </>
-      }
-      account={
-        <AccountCard name={team?.name ?? "Tim"} roleLabel="Tim">
-          <FinishButton />
-        </AccountCard>
-      }
-    >
-      <NewsReaderHost>{children}</NewsReaderHost>
-    </AppShell>
+    <QueryProvider>
+      <AppShell
+        navigation={<SidebarNav items={NAV} />}
+        banner={
+          <>
+            <SessionBanner />
+            <OfflineBanner />
+          </>
+        }
+        account={
+          <AccountCard name={team?.name ?? "Tim"} roleLabel="Tim">
+            <FinishButton />
+          </AccountCard>
+        }
+      >
+        <NewsReaderHost>{children}</NewsReaderHost>
+      </AppShell>
+    </QueryProvider>
   );
 }

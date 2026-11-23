@@ -1,12 +1,14 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { BrandMark } from "@/components/shell/brand-mark";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 import { ScaledStage } from "@/components/display/scaled-stage";
-import { usePolling } from "@/lib/hooks/use-polling";
-import { fetchLeaderboard, type LeaderboardResult } from "@/lib/display/data";
+import type { LeaderboardResult } from "@/lib/display/data";
 import type { LeaderRow } from "@/lib/display/view";
 import { formatNumber } from "@/lib/money";
+import { pollOptions, seedMaybe } from "@/lib/query/options";
+import { leaderboardQuery } from "@/lib/query/queries";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -36,25 +38,15 @@ export function LeaderboardScreen({
   live?: boolean;
 }) {
   const supabase = useMemo(() => createClient(), []);
-  const [result, setResult] = useState<LeaderboardResult | null>(initial);
-  const [offline, setOffline] = useState(false);
-  const mounted = useRef(true);
-
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-    };
-  }, []);
-
-  const refresh = useCallback(async () => {
-    if (!live) return;
-    const next = await fetchLeaderboard(supabase);
-    if (!mounted.current) return;
-    if (next) setResult(next);
-    setOffline(next === null);
-  }, [supabase, live]);
-  usePolling(refresh, POLL_MS);
+  // `live` false (pratinjau): tanpa pengambilan, hanya data awal.
+  const q = useQuery({
+    ...leaderboardQuery(supabase),
+    ...pollOptions(POLL_MS),
+    ...seedMaybe(initial),
+    enabled: live,
+  });
+  const result: LeaderboardResult | null = q.data ?? null;
+  const offline = q.isError;
 
   return (
     <ScaledStage>

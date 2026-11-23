@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { CorrectionDialog } from "@/components/admin/correction-dialog";
 import { TeamCreateDialog } from "@/components/admin/team-create-dialog";
@@ -9,8 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { fetchTeamsPage, type TeamRow } from "@/lib/admin/data";
-import { usePolling } from "@/lib/hooks/use-polling";
 import { formatRupiah } from "@/lib/money";
+import { qk } from "@/lib/query/keys";
+import { useLivePage } from "@/lib/query/use-live-page";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -26,18 +27,20 @@ const RANK = ["bg-accent-2", "bg-brand-light", "bg-accent"] as const;
  */
 export function TeamsBoard({ initial }: { initial: TeamRow[] }) {
   const supabase = useMemo(() => createClient(), []);
-  const [rows, setRows] = useState(initial);
-  const [stale, setStale] = useState(false);
+  const {
+    data: rows,
+    stale,
+    refresh,
+  } = useLivePage({
+    key: qk.admin("teams"),
+    label: "teams",
+    initial,
+    pollMs: POLL_MS,
+    fetch: () => fetchTeamsPage(supabase),
+  });
   const [correct, setCorrect] = useState<string | null>(null);
   const [qrTeam, setQrTeam] = useState<TeamRow | null>(null);
   const [creating, setCreating] = useState(false);
-
-  const refresh = useCallback(async () => {
-    const next = await fetchTeamsPage(supabase);
-    if (next) setRows(next);
-    setStale(next === null);
-  }, [supabase]);
-  usePolling(refresh, POLL_MS);
 
   const teams = rows.map((r) => ({ id: r.teamId, name: r.name, cash: r.freeCash }));
 

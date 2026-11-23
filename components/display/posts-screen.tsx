@@ -1,14 +1,17 @@
 "use client";
 
 import { MapPin, WifiOff } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
 import { ScaledStage } from "@/components/display/scaled-stage";
 import { Brand } from "@/components/shell/brand";
 import { AREA_H, cardOffset, zoneLayout } from "@/lib/display/posts-layout";
-import { usePolling } from "@/lib/hooks/use-polling";
 import { formatTimeSecondsWib } from "@/lib/money";
-import { fetchPosts } from "@/lib/posts/data";
 import { countPosts, type PostRow } from "@/lib/posts/view";
+import { qk } from "@/lib/query/keys";
+import { pollOptions, seed } from "@/lib/query/options";
+import { postsQuery } from "@/lib/query/queries";
+import { useRealtime } from "@/lib/query/use-realtime";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -58,38 +61,30 @@ export function PostsScreen({
   /** false hanya untuk pratinjau /dev (data contoh, tanpa polling/Realtime). */ live?: boolean;
 }) {
   const supabase = useMemo(() => createClient(), []);
-  const [posts, setPosts] = useState(initial);
-  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
+  const queryClient = useQueryClient();
+  const q = useQuery({ ...postsQuery(supabase), ...pollOptions(POLL_MS), ...seed(initial), enabled: live });
+  const posts = q.data;
+  const offline = q.isError;
   const [now, setNow] = useState<number | null>(null);
   const [fresh, setFresh] = useState<Record<string, number>>({});
-  const [offline, setOffline] = useState(false);
-  const dropped = useRef(false);
-  const prev = useRef(new Map(initial.map((p) => [p.id, p.isOpen])));
-
-  const refresh = useCallback(async () => {
-    if (!live) return;
-    const next = await fetchPosts(supabase);
-    if (next) {
-      const changed: Record<string, number> = {};
-      for (const p of next) {
-        const before = prev.current.get(p.id);
-        if (before !== undefined && before !== p.isOpen) changed[p.id] = Date.now();
-      }
-      prev.current = new Map(next.map((p) => [p.id, p.isOpen]));
-      if (Object.keys(changed).length > 0) setFresh((f) => ({ ...f, ...changed }));
-      setPosts(next);
-      setUpdatedAt(Date.now());
+  // Data terakhir yang sudah dibandingkan: pos yang baru berganti status ditandai (diturunkan saat render, tanpa efek).
+  const [seen, setSeen] = useState(initial);
+  if (posts !== seen) {
+    const before = new Map(seen.map((p) => [p.id, p.isOpen]));
+    const changed: Record<string, number> = {};
+    for (const p of posts) {
+      const was = before.get(p.id);
+      if (was !== undefined && was !== p.isOpen) changed[p.id] = q.dataUpdatedAt;
     }
-    setOffline(next === null);
-  }, [supabase, live]);
-  usePolling(refresh, POLL_MS);
+    setSeen(posts);
+    if (Object.keys(changed).length > 0) setFresh((f) => ({ ...f, ...changed }));
+  }
+  // `dataUpdatedAt` memakai jam browser; baru dipakai sesudah terpasang (server dan klien harus sama).
+  const updatedAt = now === null ? null : q.dataUpdatedAt;
 
   useEffect(() => {
     // Jam dihitung di browser, bukan saat render (server dan klien harus sama).
-    const id = window.setTimeout(() => {
-      setUpdatedAt(Date.now());
-      setNow(Date.now());
-    }, 0);
+    const id = window.setTimeout(() => setNow(Date.now()), 0);
     const tick = window.setInterval(() => setNow(Date.now()), 5_000);
     return () => {
       window.clearTimeout(id);
@@ -97,25 +92,18 @@ export function PostsScreen({
     };
   }, []);
 
-  useEffect(() => {
-    if (!live) return;
-    const channel = supabase
-      .channel("display-posts")
-      .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, () => void refresh())
-      .subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          if (dropped.current) {
-            dropped.current = false;
-            void refresh();
-          }
-        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
-          dropped.current = true;
-        }
-      });
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [supabase, refresh, live]);
+  // Realtime `posts`: hanya pemberitahuan (RLS terbuka, tabel kecil); polling 15 dtk cadangan.
+  useRealtime(
+    "display-posts",
+    [
+      {
+        event: "*",
+        table: "posts",
+        onEvent: () => void queryClient.invalidateQueries({ queryKey: qk.display.posts }),
+      },
+    ],
+    live,
+  );
 
   const { open, closed } = countPosts(posts);
   const byZone: Record<ZoneKey, PostRow[]> = {

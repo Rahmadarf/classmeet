@@ -2,15 +2,18 @@
 
 import { ArrowDown, ArrowUp, ChevronDown, LineChart, ReceiptText } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
 import { AnalysisReportBody } from "@/components/market/analysis-report";
 import { EmptyState } from "@/components/states";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { fetchHistory } from "@/lib/history/data";
 import { groupByDay, type HistoryItem } from "@/lib/history/view";
-import { usePolling } from "@/lib/hooks/use-polling";
 import { formatDateWib, formatNumber, formatRupiah, formatTimeSecondsWib, formatTimeWib } from "@/lib/money";
+import { qk } from "@/lib/query/keys";
+import { pollOptions, seed } from "@/lib/query/options";
+import { historyQuery } from "@/lib/query/queries";
+import { useRealtime } from "@/lib/query/use-realtime";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -29,19 +32,13 @@ const signed = (n: number) => `${n < 0 ? MINUS : "+"} ${formatRupiah(Math.abs(n)
  */
 export function HistoryBoard({ teamId, initial }: { teamId: string; initial: HistoryItem[] }) {
   const supabase = useMemo(() => createClient(), []);
-  const [items, setItems] = useState(initial);
-  const [stale, setStale] = useState(false);
+  const queryClient = useQueryClient();
+  const q = useQuery({ ...historyQuery(supabase, teamId), ...pollOptions(POLL_MS), ...seed(initial) });
+  const items = q.data;
+  const stale = q.isError;
   const [now, setNow] = useState<number | null>(null);
   // Rincian dibuka sebagai dropdown di bawah barisnya (satu per satu), bukan pop-up.
   const [openKey, setOpenKey] = useState<string | null>(null);
-  const dropped = useRef(false);
-
-  const refresh = useCallback(async () => {
-    const next = await fetchHistory(supabase, teamId);
-    if (next) setItems(next);
-    setStale(next === null);
-  }, [supabase, teamId]);
-  usePolling(refresh, POLL_MS);
 
   useEffect(() => {
     const tick = () => setNow(Date.now());
@@ -50,28 +47,14 @@ export function HistoryBoard({ teamId, initial }: { teamId: string; initial: His
     return () => window.clearInterval(id);
   }, []);
 
-  useEffect(() => {
-    const channel = supabase
-      .channel(`history:${teamId}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "payouts", filter: `team_id=eq.${teamId}` },
-        () => void refresh(),
-      )
-      .subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          if (dropped.current) {
-            dropped.current = false;
-            void refresh();
-          }
-        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
-          dropped.current = true;
-        }
-      });
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [supabase, teamId, refresh]);
+  useRealtime(`history:${teamId}`, [
+    {
+      event: "INSERT",
+      table: "payouts",
+      filter: `team_id=eq.${teamId}`,
+      onEvent: () => void queryClient.invalidateQueries({ queryKey: qk.history(teamId) }),
+    },
+  ]);
 
   // Sebelum terpasang di browser, patokan "hari ini" = waktu transaksi terbaru (tanpa Date.now() saat render).
   const groups = useMemo(

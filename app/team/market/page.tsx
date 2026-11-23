@@ -70,7 +70,7 @@ async function MarketContent({ searchParams }: { searchParams: SearchParams }) {
         initial={{
           market,
           game,
-          cash: summary?.cash ?? null,
+          summary,
           holdings: holdings ?? {},
           latestNews: news?.[0] ?? null,
           selectedId: selected.id,

@@ -1,10 +1,13 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { BrandMark } from "@/components/shell/brand-mark";
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { ScaledStage } from "@/components/display/scaled-stage";
-import { usePolling } from "@/lib/hooks/use-polling";
-import { fetchGame, type Game } from "@/lib/market/data";
+import type { Game } from "@/lib/market/data";
+import { pollOptions } from "@/lib/query/options";
+import { gameQuery } from "@/lib/query/queries";
+import { QueryProvider } from "@/lib/query/provider";
 import { createClient } from "@/lib/supabase/client";
 
 /** Status game dicek tiap 5 detik; saat `setup` semua layar publik tertutup tulisan "Game belum di mulai". */
@@ -22,13 +25,19 @@ export function DisplayGate({
   initialState: Game["state"] | null;
   children: ReactNode;
 }) {
+  // Penyedia cache untuk semua layar publik di bawahnya (peringkat, pasar, berita, pos).
+  return (
+    <QueryProvider>
+      <GateInner initialState={initialState}>{children}</GateInner>
+    </QueryProvider>
+  );
+}
+
+function GateInner({ initialState, children }: { initialState: Game["state"] | null; children: ReactNode }) {
   const supabase = useMemo(() => createClient(), []);
-  const [state, setState] = useState(initialState);
-  const refresh = useCallback(async () => {
-    const g = await fetchGame(supabase);
-    if (g) setState(g.state);
-  }, [supabase]);
-  usePolling(refresh, POLL_MS);
+  // Data awal hanya berupa status (bukan seluruh `Game`), jadi dipakai sebagai cadangan sampai pengambilan pertama.
+  const q = useQuery({ ...gameQuery(supabase), ...pollOptions(POLL_MS), select: (g) => g.state });
+  const state = q.data ?? initialState;
 
   return (
     <>

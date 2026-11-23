@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { StockBadge } from "@/components/market/stock-badge";
 import { PageHeader } from "@/components/shell/page-header";
 import { EmptyState } from "@/components/states";
@@ -8,9 +8,10 @@ import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { fetchAnalysisLog, fetchTransactionsPage, type AnalysisLog } from "@/lib/admin/data";
 import type { TransactionsPage } from "@/lib/admin/transactions";
-import { usePolling } from "@/lib/hooks/use-polling";
 import { formatBps, formatCompactRupiah } from "@/lib/market/rules";
 import { formatNumber, formatRupiah, formatTimeSecondsWib } from "@/lib/money";
+import { qk } from "@/lib/query/keys";
+import { useLivePage, useLivePageMaybe } from "@/lib/query/use-live-page";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -30,17 +31,20 @@ export function TransactionsBoard({
   analysis: AnalysisLog | null;
 }) {
   const supabase = useMemo(() => createClient(), []);
-  const [page, setPage] = useState(initial);
-  const [analysis, setAnalysis] = useState(analysisInitial);
-  const [stale, setStale] = useState(false);
-
-  const refresh = useCallback(async () => {
-    const [next, log] = await Promise.all([fetchTransactionsPage(supabase), fetchAnalysisLog(supabase)]);
-    if (next) setPage(next);
-    if (log) setAnalysis(log);
-    setStale(next === null);
-  }, [supabase]);
-  usePolling(refresh, POLL_MS);
+  const { data: page, stale } = useLivePage({
+    key: qk.admin("transactions"),
+    label: "transactions",
+    initial,
+    pollMs: POLL_MS,
+    fetch: () => fetchTransactionsPage(supabase),
+  });
+  const { data: analysis } = useLivePageMaybe({
+    key: qk.admin("analysis-log"),
+    label: "analysis-log",
+    initial: analysisInitial,
+    pollMs: POLL_MS,
+    fetch: () => fetchAnalysisLog(supabase),
+  });
 
   const { rows, flows, totals } = page;
 

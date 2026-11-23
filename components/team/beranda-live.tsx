@@ -1,14 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { HeroBalanceCard } from "@/components/team/hero-balance-card";
 import { NewsCard } from "@/components/team/news-card";
-import { usePolling } from "@/lib/hooks/use-polling";
 import { formatRupiah } from "@/lib/money";
+import { qk } from "@/lib/query/keys";
+import { pollOptions, seedMaybe } from "@/lib/query/options";
+import { newsQuery, summaryQuery } from "@/lib/query/queries";
+import { useRealtime } from "@/lib/query/use-realtime";
 import { createClient } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database.types";
-import { fetchNews, fetchSummary, type NewsItem, type Summary } from "@/lib/team/data";
+import type { NewsItem, Summary } from "@/lib/team/data";
 
 type PayoutRow = Database["public"]["Tables"]["payouts"]["Row"];
 type NewsFeedRow = Database["public"]["Tables"]["news_feed"]["Row"];
@@ -34,33 +38,23 @@ export function BerandaLive({
   initialNews: NewsItem[] | null;
 }) {
   const supabase = useMemo(() => createClient(), []);
-  const [summary, setSummary] = useState<Summary | null>(initialSummary);
-  const [news, setNews] = useState<NewsItem[]>(initialNews ?? []);
-  const [summaryFailed, setSummaryFailed] = useState(initialSummary === null);
+  const queryClient = useQueryClient();
+  // Kunci `summary` dibagi dengan Pasar dan Portofolio; `news` (30) khusus Beranda.
+  const summaryQ = useQuery({
+    ...summaryQuery(supabase),
+    ...pollOptions(SUMMARY_POLL_MS),
+    ...seedMaybe(initialSummary),
+  });
+  const newsQ = useQuery({
+    ...newsQuery(supabase, 30),
+    ...pollOptions(NEWS_POLL_MS),
+    ...seedMaybe(initialNews),
+  });
+  const summary: Summary | null = summaryQ.data ?? null;
+  const summaryFailed = summaryQ.isError || summaryQ.data === undefined;
+  const news: NewsItem[] = newsQ.data ?? [];
   // `null` sampai terpasang di browser: jam tidak boleh dihitung saat render (server/klien harus sama).
   const [now, setNow] = useState<number | null>(null);
-
-  const refreshSummary = useCallback(async () => {
-    const next = await fetchSummary(supabase);
-    if (next) {
-      setSummary(next);
-      setSummaryFailed(false);
-    } else {
-      setSummaryFailed(true);
-    }
-  }, [supabase]);
-
-  const refreshNews = useCallback(async () => {
-    const next = await fetchNews(supabase);
-    if (next) setNews(next);
-  }, [supabase]);
-
-  const refreshAll = useCallback(async () => {
-    await Promise.all([refreshSummary(), refreshNews()]);
-  }, [refreshSummary, refreshNews]);
-
-  usePolling(refreshSummary, SUMMARY_POLL_MS);
-  usePolling(refreshNews, NEWS_POLL_MS);
 
   // Jam untuk lencana "Baru" dan label waktu.
   useEffect(() => {
@@ -71,43 +65,33 @@ export function BerandaLive({
   }, []);
 
   // Realtime: pemberitahuan berita baru dan hadiah baru (RLS membatasi payouts ke tim ini).
-  const dropped = useRef(false);
-  useEffect(() => {
-    const channel = supabase
-      .channel(`beranda:${teamId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "news_feed" }, (payload) => {
+  useRealtime(`beranda:${teamId}`, [
+    {
+      event: "INSERT",
+      table: "news_feed",
+      onEvent: (payload) => {
         const row = payload.new as NewsFeedRow;
         toast.info(`Berita baru: ${row.title}`);
-        void refreshNews();
-      })
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "payouts", filter: `team_id=eq.${teamId}` },
-        async (payload) => {
-          const row = payload.new as PayoutRow;
-          void refreshSummary();
-          const { data: post } = await supabase
-            .from("posts")
-            .select("name")
-            .eq("id", row.post_id)
-            .maybeSingle();
-          toast.success(`Hadiah ${formatRupiah(row.amount)}${post ? ` dari ${post.name}` : ""} masuk`);
-        },
-      )
-      .subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          if (dropped.current) {
-            dropped.current = false;
-            void refreshAll(); // tersambung ulang: jangan percaya Realtime tidak terlewat
-          }
-        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
-          dropped.current = true;
-        }
-      });
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [supabase, teamId, refreshNews, refreshSummary, refreshAll]);
+        void queryClient.invalidateQueries({ queryKey: ["news"] });
+      },
+    },
+    {
+      event: "INSERT",
+      table: "payouts",
+      filter: `team_id=eq.${teamId}`,
+      onEvent: async (payload) => {
+        const row = payload.new as PayoutRow;
+        void queryClient.invalidateQueries({ queryKey: qk.summary });
+        void queryClient.invalidateQueries({ queryKey: qk.history(teamId) });
+        const { data: post } = await supabase
+          .from("posts")
+          .select("name")
+          .eq("id", row.post_id)
+          .maybeSingle();
+        toast.success(`Hadiah ${formatRupiah(row.amount)}${post ? ` dari ${post.name}` : ""} masuk`);
+      },
+    },
+  ]);
 
   return (
     <div className="flex flex-col gap-6">

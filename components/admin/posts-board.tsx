@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { setPostOpen } from "@/app/admin/posts/actions";
 import { PostCreateDialog } from "@/components/admin/post-create-dialog";
@@ -10,8 +10,10 @@ import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { StatusPill } from "@/components/ui/chip";
 import { fetchPostsPage, type AdminPost } from "@/lib/admin/data";
-import { usePolling } from "@/lib/hooks/use-polling";
 import { formatRupiah } from "@/lib/money";
+import { qk } from "@/lib/query/keys";
+import { useLivePage } from "@/lib/query/use-live-page";
+import { useRealtime } from "@/lib/query/use-realtime";
 import { createClient } from "@/lib/supabase/client";
 
 const POLL_MS = 15_000;
@@ -23,36 +25,20 @@ const POLL_MS = 15_000;
  */
 export function PostsBoard({ initial, finished }: { initial: AdminPost[]; finished: boolean }) {
   const supabase = useMemo(() => createClient(), []);
-  const [posts, setPosts] = useState(initial);
+  const { data: posts, refresh } = useLivePage({
+    key: qk.admin("posts"),
+    label: "posts",
+    initial,
+    pollMs: POLL_MS,
+    fetch: () => fetchPostsPage(supabase),
+  });
   const [busyId, setBusyId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
-  const dropped = useRef(false);
 
-  const refresh = useCallback(async () => {
-    const next = await fetchPostsPage(supabase);
-    if (next) setPosts(next);
-  }, [supabase]);
-  usePolling(refresh, POLL_MS);
-
-  useEffect(() => {
-    const channel = supabase
-      .channel("admin-posts")
-      .on("postgres_changes", { event: "*", schema: "public", table: "posts" }, () => void refresh())
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "payouts" }, () => void refresh())
-      .subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          if (dropped.current) {
-            dropped.current = false;
-            void refresh();
-          }
-        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
-          dropped.current = true;
-        }
-      });
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [supabase, refresh]);
+  useRealtime("admin-posts", [
+    { event: "*", table: "posts", onEvent: () => void refresh() },
+    { event: "INSERT", table: "payouts", onEvent: () => void refresh() },
+  ]);
 
   const toggle = async (p: AdminPost) => {
     if (busyId) return;

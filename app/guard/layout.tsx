@@ -2,6 +2,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { GuardShell } from "@/components/guard/guard-shell";
 import { fetchMyPost, splitPostName } from "@/lib/guard/data";
+import { QueryProvider } from "@/lib/query/provider";
 import { createClient } from "@/lib/supabase/server";
 
 export default function GuardLayout({ children }: { children: React.ReactNode }) {
@@ -26,11 +27,13 @@ async function Shell({ children }: { children: React.ReactNode }) {
   ]);
   const number = post ? splitPostName(post.name).number : null;
   return (
-    <GuardShell
-      name={profile?.display_name || profile?.username || "Penjaga"}
-      postLabel={number ? `Pos ${number}` : "Penjaga"}
-    >
-      {children}
-    </GuardShell>
+    <QueryProvider>
+      <GuardShell
+        name={profile?.display_name || profile?.username || "Penjaga"}
+        postLabel={number ? `Pos ${number}` : "Penjaga"}
+      >
+        {children}
+      </GuardShell>
+    </QueryProvider>
   );
 }

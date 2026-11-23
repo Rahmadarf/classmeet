@@ -1,7 +1,7 @@
 "use client";
 
 import { Pencil, Plus, Search } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AssetDialog } from "@/components/admin/asset-dialog";
 import { PageHeader } from "@/components/shell/page-header";
@@ -17,8 +17,9 @@ import {
   type AnalysisSettings,
   type TradeSettings,
 } from "@/lib/admin/data";
-import { usePolling } from "@/lib/hooks/use-polling";
 import { formatNumber } from "@/lib/money";
+import { qk } from "@/lib/query/keys";
+import { useLivePage } from "@/lib/query/use-live-page";
 import { createClient } from "@/lib/supabase/client";
 
 const POLL_MS = 15_000;
@@ -41,19 +42,19 @@ export function AssetsBoard({
   analysis: AnalysisSettings;
 }) {
   const supabase = useMemo(() => createClient(), []);
-  const [assets, setAssets] = useState(initial);
+  const { data: assets, refresh } = useLivePage({
+    key: qk.admin("assets"),
+    label: "assets",
+    initial,
+    pollMs: POLL_MS,
+    fetch: () => fetchAssetsPage(supabase),
+  });
   const [query, setQuery] = useState("");
   const [sector, setSector] = useState("");
   const [dialog, setDialog] = useState<{ open: boolean; asset: AdminAsset | null }>({
     open: false,
     asset: null,
   });
-
-  const refresh = useCallback(async () => {
-    const next = await fetchAssetsPage(supabase);
-    if (next) setAssets(next);
-  }, [supabase]);
-  usePolling(refresh, POLL_MS);
 
   const sectors = useMemo(() => [...new Set(assets.map((a) => a.sector))].sort(), [assets]);
   const shown = useMemo(() => {

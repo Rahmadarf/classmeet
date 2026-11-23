@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { PostsScreen } from "@/components/display/posts-screen";
+import { QueryProvider } from "@/lib/query/provider";
 import { buildPostRows } from "@/lib/posts/view";
 
 // Pratinjau layar Daftar Pos untuk display dengan data contoh (hanya pengembangan): /dev/display-posts?n=12
@@ -48,7 +49,9 @@ async function Preview({ searchParams }: { searchParams: Promise<{ n?: string; o
   }));
   return (
     <div className="fixed inset-0">
-      <PostsScreen initial={buildPostRows(posts)} live={false} />
+      <QueryProvider>
+        <PostsScreen initial={buildPostRows(posts)} live={false} />
+      </QueryProvider>
     </div>
   );
 }

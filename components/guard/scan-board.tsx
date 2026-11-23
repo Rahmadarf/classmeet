@@ -2,6 +2,7 @@
 
 import type { IDetectedBarcode, IScannerError } from "@yudiel/react-qr-scanner";
 import { AlertCircle, CameraOff } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { resolveTeam } from "@/app/guard/actions";
@@ -10,10 +11,12 @@ import { PayoutSheet, type PayoutPhase, type SheetTeam } from "@/components/guar
 import { PostToggle } from "@/components/guard/post-toggle";
 import { fetchMyPost, splitPostName, type MyPost } from "@/lib/guard/data";
 import { usePayoutQueue } from "@/lib/guard/use-payout-queue";
-import { usePolling } from "@/lib/hooks/use-polling";
-import { fetchGame, type GameState } from "@/lib/market/data";
+import type { GameState } from "@/lib/market/data";
 import { isNetworkError } from "@/lib/errors";
 import { parseTeamQr } from "@/lib/qr";
+import { qk } from "@/lib/query/keys";
+import { must, pollOptions, seed } from "@/lib/query/options";
+import { gameQuery } from "@/lib/query/queries";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -67,8 +70,18 @@ export function ScanBoard({
   initialState: GameState;
 }) {
   const supabase = useMemo(() => createClient(), []);
-  const [post, setPost] = useState(initialPost);
-  const [state, setState] = useState(initialState);
+  const queryClient = useQueryClient();
+  const postKey = qk.guardPost(guardId);
+  const postQ = useQuery({
+    queryKey: postKey,
+    queryFn: () => must(fetchMyPost(supabase, guardId), "post"),
+    ...pollOptions(POLL_MS),
+    ...seed(initialPost),
+  });
+  const post = postQ.data;
+  // Data awal hanya berupa status; dipakai sebagai cadangan sampai pengambilan pertama selesai.
+  const gameQ = useQuery({ ...gameQuery(supabase), ...pollOptions(POLL_MS), select: (g) => g.state });
+  const state: GameState = gameQ.data ?? initialState;
   const [team, setTeam] = useState<SheetTeam | null>(null);
   // Nominal yang baru dikirim dari form terbuka: form beralih ke tampilan saldo naik, lalu menutup sendiri.
   const [submittedAmount, setSubmittedAmount] = useState<number | null>(null);
@@ -86,13 +99,6 @@ export function ScanBoard({
     const pending = timers.current;
     return () => pending.forEach((t) => window.clearTimeout(t));
   }, []);
-
-  const refresh = useCallback(async () => {
-    const [p, g] = await Promise.all([fetchMyPost(supabase, guardId), fetchGame(supabase)]);
-    if (p) setPost(p);
-    if (g) setState(g.state);
-  }, [supabase, guardId]);
-  usePolling(refresh, POLL_MS);
 
   const release = useCallback(() => {
     // Jeda singkat: kartu yang sama masih di depan kamera jangan langsung terbaca lagi.
@@ -224,7 +230,9 @@ export function ScanBoard({
         <PostToggle
           open={post.open}
           disabled={state === "finished"}
-          onChanged={(open) => setPost((p) => ({ ...p, open }))}
+          onChanged={(open) =>
+            queryClient.setQueryData(postKey, (p: MyPost | undefined) => (p ? { ...p, open } : p))
+          }
         />
       </div>
 

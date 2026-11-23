@@ -1,12 +1,14 @@
 "use client";
 
 import { Newspaper } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
 import { DisplayHeader } from "@/components/display/display-header";
 import { ScaledStage } from "@/components/display/scaled-stage";
-import { fetchNewsBoard, type NewsBoardData } from "@/lib/display/data";
-import { usePolling } from "@/lib/hooks/use-polling";
+import type { NewsBoardData } from "@/lib/display/data";
 import { dayKeyWib, formatDateWib, formatTimeWib } from "@/lib/money";
+import { pollOptions, seedMaybe } from "@/lib/query/options";
+import { newsBoardQuery } from "@/lib/query/queries";
 import { firstParagraph, paragraphsOf } from "@/lib/team/news-text";
 import { createClient } from "@/lib/supabase/client";
 import type { NewsItem } from "@/lib/team/data";
@@ -25,26 +27,20 @@ const PREVIOUS = 5;
  */
 export function NewsScreen({ initial, live = true }: { initial: NewsBoardData | null; live?: boolean }) {
   const supabase = useMemo(() => createClient(), []);
-  const [data, setData] = useState<NewsBoardData | null>(initial);
-  const [offline, setOffline] = useState(false);
+  const q = useQuery({
+    ...newsBoardQuery(supabase, PREVIOUS + 1),
+    ...pollOptions(POLL_MS),
+    ...seedMaybe(initial),
+    enabled: live,
+  });
+  const data: NewsBoardData | null = q.data ?? null;
+  const offline = q.isError;
   const [now, setNow] = useState<number | null>(null);
-  const mounted = useRef(true);
-
-  const refresh = useCallback(async () => {
-    if (!live) return;
-    const next = await fetchNewsBoard(supabase, PREVIOUS + 1);
-    if (!mounted.current) return;
-    if (next) setData(next);
-    setOffline(next === null);
-  }, [supabase, live]);
-  usePolling(refresh, POLL_MS);
 
   useEffect(() => {
-    mounted.current = true;
     const id = window.setTimeout(() => setNow(Date.now()), 0);
     const clock = window.setInterval(() => setNow(Date.now()), 30_000);
     return () => {
-      mounted.current = false;
       window.clearTimeout(id);
       window.clearInterval(clock);
     };

@@ -217,6 +217,18 @@ Leaderboard dan saldo **tidak** dipantau per baris (`teams` tidak masuk publikas
 
 **Realtime hanyalah pemberitahuan, bukan sumber kebenaran.** Jika koneksi putus, UI harus mengambil ulang data dari API saat tersambung lagi, dan tombol beli/jual tetap divalidasi server.
 
+### 5.1 Pengambilan data di browser: TanStack Query
+
+Papan yang hidup (Pasar, Portofolio, Riwayat, Beranda, layar publik, admin, penjaga) memakai **TanStack Query** (`lib/query/`), bukan lagi `useState` + polling buatan sendiri:
+
+- **Data awal dari server** (RSC) masuk sebagai `initialData` (`seed`/`seedMaybe`), jadi tidak ada kedipan loading dan tidak ada panggilan ulang saat halaman pertama dipasang. Selanjutnya polling dengan `pollOptions(ms)`: berhenti saat tab tersembunyi, mengambil ulang saat tab aktif lagi, jendela fokus, atau koneksi tersambung (data awal dianggap baru setengah interval).
+- **Kunci bersama** (`lib/query/keys.ts`): satu sumber data = satu kunci, dipakai lintas komponen dan halaman (`summary`, `holdings`, `game`, `news`...). Panggilan RPC yang sama digabung, dan pindah halaman menampilkan cache lalu menyegarkannya.
+- **`fetchX` tetap mengembalikan `null` saat gagal**; `must()` mengubahnya jadi galat supaya Query mempertahankan data lama dan menandai `isError` (pengganti penanda "mencoba lagi…"). Tidak ada retry otomatis (`retry: false`): kegagalan sementara ditangani ketukan polling berikutnya, dan galat aturan game (mis. `insufficient_cash`) tidak diulang.
+- **Realtime = pemberitahuan**: `useRealtime` (satu kanal per papan) hanya memanggil `invalidateQueries`; bila kanal putus lalu tersambung ulang, semua query aktif diambil ulang.
+- **Sesudah transaksi** (`invalidateAfterTrade`): pasar, saldo, berita, Portofolio, dan Riwayat ditandai kedaluwarsa sekaligus.
+- **Penyedia cache per area** (`QueryProvider` di layout tim, admin, guard, dan `DisplayGate`), bukan di layout akar: berpindah akun melewati `/login` di luar penyedia, sehingga cache akun sebelumnya terbuang.
+
+
 ## 6. Struktur repositori usulan
 
 ```

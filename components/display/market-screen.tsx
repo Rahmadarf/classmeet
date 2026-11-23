@@ -1,13 +1,13 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DisplayHeader } from "@/components/display/display-header";
 import { IkcChart } from "@/components/display/ikc-chart";
 import { ScaledStage } from "@/components/display/scaled-stage";
-import { fetchIndexHistory, fetchMarketBoard, type MarketBoardData } from "@/lib/display/data";
+import { fetchMarketBoard, type MarketBoardData } from "@/lib/display/data";
 import { appendSample, mergeSeries, parseSamples, todaySeries, type IkcSample } from "@/lib/display/ikc";
 import type { Mover } from "@/lib/display/view";
-import { usePolling } from "@/lib/hooks/use-polling";
 import {
   formatDateWib,
   formatNumber,
@@ -16,6 +16,8 @@ import {
   formatTimeSecondsWib,
   formatTimeWib,
 } from "@/lib/money";
+import { must, pollOptions, seedMaybe } from "@/lib/query/options";
+import { indexHistoryQuery, marketBoardQuery } from "@/lib/query/queries";
 import { firstParagraph } from "@/lib/team/news-text";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -36,14 +38,9 @@ const ikc = (n: number) => ikcFormat.format(n);
  */
 export function MarketScreen({ initial, live = true }: { initial: MarketBoardData | null; live?: boolean }) {
   const supabase = useMemo(() => createClient(), []);
-  const [data, setData] = useState<MarketBoardData | null>(initial);
-  const [offline, setOffline] = useState(false);
   const [samples, setSamples] = useState<IkcSample[]>([]);
-  /** Riwayat IKC dari server (seluruh game); kosong bila belum ada / gagal dimuat. */
-  const [history, setHistory] = useState<IkcSample[]>([]);
   const [now, setNow] = useState<number | null>(null);
   const samplesRef = useRef<IkcSample[]>([]);
-  const mounted = useRef(true);
 
   const record = useCallback((value: number | null) => {
     if (value === null) return;
@@ -62,32 +59,32 @@ export function MarketScreen({ initial, live = true }: { initial: MarketBoardDat
     }
   }, []);
 
-  const refresh = useCallback(async () => {
-    if (!live) return;
-    const next = await fetchMarketBoard(supabase);
-    if (!mounted.current) return;
-    if (next) {
-      setData(next);
+  // Setiap pengambilan yang berhasil juga dicatat sebagai cuplikan grafik IKC (sama seperti polling sebelumnya;
+  // dilakukan di dalam queryFn supaya tiap ketukan tercatat walau isinya tidak berubah).
+  const marketQ = useQuery({
+    ...marketBoardQuery(supabase),
+    queryFn: async () => {
+      const next = await must(fetchMarketBoard(supabase), "market-board");
       record(next.index.ikc);
-    }
-    setOffline(next === null);
-  }, [supabase, live, record]);
-  usePolling(refresh, POLL_MS);
+      return next;
+    },
+    ...pollOptions(POLL_MS),
+    ...seedMaybe(initial),
+    enabled: live,
+  });
+  const data: MarketBoardData | null = marketQ.data ?? null;
+  const offline = marketQ.isError;
 
-  const loadHistory = useCallback(async () => {
-    if (!live) return;
-    const h = await fetchIndexHistory(supabase);
-    if (mounted.current && h) setHistory(h);
-  }, [supabase, live]);
-  // Riwayat server dimuat saat layar menyala lalu disegarkan tiap menit (catatan baru bertambah tiap ±30 detik).
-  useEffect(() => {
-    const id = window.setTimeout(() => void loadHistory(), 0);
-    return () => window.clearTimeout(id);
-  }, [loadHistory]);
-  usePolling(loadHistory, 60_000);
+  // Riwayat IKC dari server (seluruh game); kosong bila belum ada / gagal dimuat. Dimuat saat layar menyala
+  // lalu disegarkan tiap menit (catatan baru bertambah tiap ±30 detik).
+  const historyQ = useQuery({
+    ...indexHistoryQuery(supabase),
+    ...pollOptions(60_000),
+    enabled: live,
+  });
+  const history: IkcSample[] = useMemo(() => historyQ.data ?? [], [historyQ.data]);
 
   useEffect(() => {
-    mounted.current = true;
     // Muat cuplikan tersimpan, lalu catat nilai awal dari server; jam dihitung di browser (bukan saat render).
     const id = window.setTimeout(() => {
       try {
@@ -101,7 +98,6 @@ export function MarketScreen({ initial, live = true }: { initial: MarketBoardDat
     }, 0);
     const clock = window.setInterval(() => setNow(Date.now()), 30_000);
     return () => {
-      mounted.current = false;
       window.clearTimeout(id);
       window.clearInterval(clock);
     };

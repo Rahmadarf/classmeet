@@ -2,14 +2,15 @@
 
 import { Wallet } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { EmptyState } from "@/components/states";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { usePolling } from "@/lib/hooks/use-polling";
 import { formatNumber, formatPercent, formatRupiah, formatSignedRupiah } from "@/lib/money";
-import { fetchPortfolio } from "@/lib/portfolio/data";
 import type { Portfolio } from "@/lib/portfolio/view";
+import { pollOptions, seed } from "@/lib/query/options";
+import { portfolioQuery } from "@/lib/query/queries";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -32,15 +33,10 @@ function pnlText(pnl: number, pct: number | null): string {
  */
 export function PortfolioBoard({ initial }: { initial: Portfolio }) {
   const supabase = useMemo(() => createClient(), []);
-  const [portfolio, setPortfolio] = useState(initial);
-  const [stale, setStale] = useState(false);
-
-  const refresh = useCallback(async () => {
-    const next = await fetchPortfolio(supabase);
-    if (next) setPortfolio(next);
-    setStale(next === null);
-  }, [supabase]);
-  usePolling(refresh, POLL_MS);
+  // Kunci `portfolio` dibagi dengan halaman lain: ditandai kedaluwarsa setelah transaksi (invalidateAfterTrade).
+  const q = useQuery({ ...portfolioQuery(supabase), ...pollOptions(POLL_MS), ...seed(initial) });
+  const portfolio = q.data;
+  const stale = q.isError;
 
   const { rows, totalValue, totalCost, totalPnl, totalPnlPct } = portfolio;
   const totalTone = toneOf(totalPnl);

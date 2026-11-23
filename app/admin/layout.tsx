@@ -15,6 +15,7 @@ import { AdminSignOut } from "@/components/admin/admin-sign-out";
 import { ConnectionStatus } from "@/components/admin/connection-status";
 import { AccountCard, AppShell } from "@/components/shell/app-shell";
 import { OfflineBanner } from "@/components/states";
+import { QueryProvider } from "@/lib/query/provider";
 import { createClient } from "@/lib/supabase/server";
 
 // Menu admin: docs/07 §2.3 (urutan Figma `Admin — Status game`).
@@ -49,21 +50,23 @@ async function AdminShell({ children }: { children: React.ReactNode }) {
     : { data: null };
 
   return (
-    <AppShell
-      nav={NAV}
-      brandSubtitle="Admin"
-      banner={<OfflineBanner />}
-      account={
-        <AccountCard
-          name={profile?.display_name || profile?.username || "Admin"}
-          roleLabel="Panitia"
-          status={<ConnectionStatus />}
-        >
-          <AdminSignOut />
-        </AccountCard>
-      }
-    >
-      {children}
-    </AppShell>
+    <QueryProvider>
+      <AppShell
+        nav={NAV}
+        brandSubtitle="Admin"
+        banner={<OfflineBanner />}
+        account={
+          <AccountCard
+            name={profile?.display_name || profile?.username || "Admin"}
+            roleLabel="Panitia"
+            status={<ConnectionStatus />}
+          >
+            <AdminSignOut />
+          </AccountCard>
+        }
+      >
+        {children}
+      </AppShell>
+    </QueryProvider>
   );
 }

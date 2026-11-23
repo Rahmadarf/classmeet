@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { restartNews, setNewsReady } from "@/app/admin/news/actions";
 import { DraftEffectsToggle, NewsEffects } from "@/components/admin/news-effects";
@@ -12,7 +12,8 @@ import { Chip } from "@/components/ui/chip";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { fetchNewsPage, type NewsPage } from "@/lib/admin/data";
 import { fetchAdminGame } from "@/lib/admin/state";
-import { usePolling } from "@/lib/hooks/use-polling";
+import { qk } from "@/lib/query/keys";
+import { useLivePage } from "@/lib/query/use-live-page";
 import { createClient } from "@/lib/supabase/client";
 
 const POLL_MS = 15_000;
@@ -27,19 +28,21 @@ const POLL_MS = 15_000;
  */
 export function NewsBoard({ initial }: { initial: NewsPage }) {
   const supabase = useMemo(() => createClient(), []);
-  const [page, setPage] = useState(initial);
+  const { data: page, refresh } = useLivePage({
+    key: qk.admin("news"),
+    label: "news",
+    initial,
+    pollMs: POLL_MS,
+    fetch: async () => {
+      const game = await fetchAdminGame(supabase);
+      return fetchNewsPage(supabase, game ? game.startedAt !== null : initial.locked);
+    },
+  });
   const [busyId, setBusyId] = useState<string | null>(null);
   const [bankDialog, setBankDialog] = useState<{ open: boolean; newsId: string | null }>({
     open: false,
     newsId: null,
   });
-
-  const refresh = useCallback(async () => {
-    const game = await fetchAdminGame(supabase);
-    const next = await fetchNewsPage(supabase, game ? game.startedAt !== null : initial.locked);
-    if (next) setPage(next);
-  }, [supabase, initial.locked]);
-  usePolling(refresh, POLL_MS);
 
   const toggle = async (id: string, ready: boolean) => {
     if (busyId) return;

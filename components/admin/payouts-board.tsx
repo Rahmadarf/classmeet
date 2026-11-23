@@ -1,7 +1,7 @@
 "use client";
 
 import { AlertTriangle } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { CorrectionDialog } from "@/components/admin/correction-dialog";
 import { PageHeader } from "@/components/shell/page-header";
@@ -9,8 +9,10 @@ import { EmptyState } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { fetchPayoutsPage, type PayoutsPage } from "@/lib/admin/data";
-import { usePolling } from "@/lib/hooks/use-polling";
 import { formatRupiah, formatTimeWib } from "@/lib/money";
+import { qk } from "@/lib/query/keys";
+import { useLivePage } from "@/lib/query/use-live-page";
+import { useRealtime } from "@/lib/query/use-realtime";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -24,39 +26,23 @@ const POLL_MS = 10_000;
  */
 export function PayoutsBoard({ initial }: { initial: PayoutsPage }) {
   const supabase = useMemo(() => createClient(), []);
-  const [page, setPage] = useState(initial);
-  const [stale, setStale] = useState(false);
+  const {
+    data: page,
+    stale,
+    refresh,
+  } = useLivePage({
+    key: qk.admin("payouts"),
+    label: "payouts",
+    initial,
+    pollMs: POLL_MS,
+    fetch: () => fetchPayoutsPage(supabase),
+  });
   const [dialog, setDialog] = useState<{ open: boolean; teamId: string | null }>({
     open: false,
     teamId: null,
   });
-  const dropped = useRef(false);
 
-  const refresh = useCallback(async () => {
-    const next = await fetchPayoutsPage(supabase);
-    if (next) setPage(next);
-    setStale(next === null);
-  }, [supabase]);
-  usePolling(refresh, POLL_MS);
-
-  useEffect(() => {
-    const channel = supabase
-      .channel("admin-payouts")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "payouts" }, () => void refresh())
-      .subscribe((status) => {
-        if (status === "SUBSCRIBED") {
-          if (dropped.current) {
-            dropped.current = false;
-            void refresh();
-          }
-        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
-          dropped.current = true;
-        }
-      });
-    return () => {
-      void supabase.removeChannel(channel);
-    };
-  }, [supabase, refresh]);
+  useRealtime("admin-payouts", [{ event: "INSERT", table: "payouts", onEvent: () => void refresh() }]);
 
   return (
     <>
