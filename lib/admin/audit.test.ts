@@ -88,6 +88,21 @@ describe("aksi dari fungsi admin baru (scripts/sql/admin-functions-missing.sql)"
     ]);
   });
 
+  it("pengaturan Analisa Pasar: kategori aset dan ringkasan", () => {
+    expect(categoryOf("set_analysis_settings")).toBe("aset");
+    const [a, b] = buildAuditRows(
+      [
+        row("set_analysis_settings", { price: 200000, enabled: true }, "ad"),
+        row("set_analysis_settings", { price: 0, enabled: false }, "ad"),
+      ],
+      lookup,
+    );
+    expect([a.summary, b.summary]).toEqual([
+      "Analisa Pasar aktif, harga Rp 200.000",
+      "Analisa Pasar dimatikan, harga Rp 0",
+    ]);
+  });
+
   it("pengaturan toko: kategori aset dan ringkasan", () => {
     expect(categoryOf("set_trade_settings")).toBe("aset");
     const [r] = buildAuditRows(

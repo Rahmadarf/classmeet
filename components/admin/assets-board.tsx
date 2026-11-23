@@ -9,8 +9,14 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
 import { StatusPill } from "@/components/ui/chip";
+import { AnalysisSettingsCard } from "@/components/admin/analysis-settings-card";
 import { TradeSettingsCard } from "@/components/admin/trade-settings-card";
-import { fetchAssetsPage, type AdminAsset, type TradeSettings } from "@/lib/admin/data";
+import {
+  fetchAssetsPage,
+  type AdminAsset,
+  type AnalysisSettings,
+  type TradeSettings,
+} from "@/lib/admin/data";
 import { usePolling } from "@/lib/hooks/use-polling";
 import { formatNumber } from "@/lib/money";
 import { createClient } from "@/lib/supabase/client";
@@ -27,10 +33,12 @@ export function AssetsBoard({
   initial,
   locked,
   trade,
+  analysis,
 }: {
   initial: AssetsInitial;
   locked: boolean;
   trade: TradeSettings;
+  analysis: AnalysisSettings;
 }) {
   const supabase = useMemo(() => createClient(), []);
   const [assets, setAssets] = useState(initial);
@@ -75,6 +83,7 @@ export function AssetsBoard({
         }
       />
       <TradeSettingsCard initial={trade} locked={locked} />
+      <AnalysisSettingsCard initial={analysis} />
       <Card aria-labelledby="aset-judul" className="mt-6 flex flex-col gap-2">
         <p className="text-brand-text text-[13px] font-semibold tracking-[0.12em] uppercase">Daftar aset</p>
         <h2 id="aset-judul" className="text-ink text-2xl font-bold">

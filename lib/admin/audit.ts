@@ -53,6 +53,7 @@ export function categoryOf(action: string): AuditCategory {
       "upsert_asset",
       "set_stock",
       "set_trade_settings",
+      "set_analysis_settings",
       "asset_bankrupt",
       "asset_bankrupt_failed",
       "asset_dividend",
@@ -125,6 +126,8 @@ export function summarize(row: AuditRaw, lookup: Lookup): string {
       return `Stok ${lookup.assets?.[str(p.asset_id)] ?? "aset"} ${num(p.before)} → ${num(p.after)} · alasan: ${str(p.reason)}`;
     case "set_trade_settings":
       return `Pengaturan toko diubah: selisih jual ${pctText(num(p.sell_spread_bps))} %, tekanan ${pctText(num(p.pressure_bps_per_unit))} % per unit, batas pegang ${num(p.hold_cap_pct)} %`;
+    case "set_analysis_settings":
+      return `Analisa Pasar ${p.enabled === true ? "aktif" : "dimatikan"}, harga ${formatRupiah(num(p.price))}`;
     case "set_news_settings":
       return "Pengaturan berita diubah";
     case "reset_game":

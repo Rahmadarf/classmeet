@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { ListSkeleton } from "@/components/admin/list-skeleton";
 import { TransactionsBoard } from "@/components/admin/transactions-board";
 import { PageHeader } from "@/components/shell/page-header";
-import { fetchTransactionsPage } from "@/lib/admin/data";
+import { fetchAnalysisLog, fetchTransactionsPage } from "@/lib/admin/data";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Transaksi" };
@@ -22,7 +22,7 @@ export default function TransactionsPage() {
 async function Content() {
   await connection();
   const supabase = await createClient();
-  const page = await fetchTransactionsPage(supabase);
+  const [page, analysis] = await Promise.all([fetchTransactionsPage(supabase), fetchAnalysisLog(supabase)]);
   if (!page) {
     return (
       <>
@@ -33,5 +33,5 @@ async function Content() {
       </>
     );
   }
-  return <TransactionsBoard initial={page} />;
+  return <TransactionsBoard initial={page} analysis={analysis} />;
 }

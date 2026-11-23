@@ -92,3 +92,12 @@ export const tradeSettingsSchema = z.object({
   pressureDecayMinutes: z.number().int().min(1).max(240),
   holdCapPct: z.number().int().min(1).max(100),
 });
+
+/**
+ * Pengaturan Analisa Pasar (pay to win): harga (rupiah bulat, 0 = gratis) dan saklar. Boleh diubah kapan saja, termasuk saat
+ * game berjalan (`admin_set_analysis_settings`); berlaku untuk pembelian berikutnya.
+ */
+export const analysisSettingsSchema = z.object({
+  price: z.number().int().min(0).max(100_000_000),
+  enabled: z.boolean(),
+});

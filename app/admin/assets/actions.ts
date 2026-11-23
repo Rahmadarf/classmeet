@@ -2,7 +2,12 @@
 
 import { mapRpcError } from "@/lib/errors";
 import type { ActionResult } from "@/lib/schemas/common";
-import { setStockSchema, tradeSettingsSchema, upsertAssetSchema } from "@/lib/schemas/admin";
+import {
+  analysisSettingsSchema,
+  setStockSchema,
+  tradeSettingsSchema,
+  upsertAssetSchema,
+} from "@/lib/schemas/admin";
 import { createClient } from "@/lib/supabase/server";
 
 const INVALID: ActionResult<never> = {
@@ -81,6 +86,31 @@ export async function setTradeSettings(input: unknown): Promise<ActionResult> {
     const mapped = mapRpcError(error);
     if (!mapped.code && !mapped.retryable)
       console.error("[admin_set_trade_settings] galat tak terduga:", error.message);
+    return { ok: false, ...mapped };
+  }
+  return { ok: true, data: undefined };
+}
+
+/** Harga dan saklar Analisa Pasar (`admin_set_analysis_settings`). Boleh kapan saja; berlaku untuk pembelian berikutnya. */
+export async function setAnalysisSettings(input: unknown): Promise<ActionResult> {
+  const parsed = analysisSettingsSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: "Harga harus bilangan bulat Rp 0 sampai Rp 100.000.000.",
+      code: "invalid_input",
+      retryable: false,
+    };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_set_analysis_settings", {
+    p_price: parsed.data.price,
+    p_enabled: parsed.data.enabled,
+  });
+  if (error) {
+    const mapped = mapRpcError(error);
+    if (!mapped.code && !mapped.retryable)
+      console.error("[admin_set_analysis_settings] galat tak terduga:", error.message);
     return { ok: false, ...mapped };
   }
   return { ok: true, data: undefined };

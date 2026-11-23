@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { AssetsBoard } from "@/components/admin/assets-board";
 import { ListSkeleton } from "@/components/admin/list-skeleton";
 import { PageHeader } from "@/components/shell/page-header";
-import { fetchAssetsPage, fetchTradeSettings } from "@/lib/admin/data";
+import { fetchAnalysisSettings, fetchAssetsPage, fetchTradeSettings } from "@/lib/admin/data";
 import { fetchAdminGame } from "@/lib/admin/state";
 import { createClient } from "@/lib/supabase/server";
 
@@ -21,12 +21,13 @@ export default function AssetsPage() {
 async function Content() {
   await connection();
   const supabase = await createClient();
-  const [assets, game, trade] = await Promise.all([
+  const [assets, game, trade, analysis] = await Promise.all([
     fetchAssetsPage(supabase),
     fetchAdminGame(supabase),
     fetchTradeSettings(supabase),
+    fetchAnalysisSettings(supabase),
   ]);
-  if (!assets || !game || !trade) {
+  if (!assets || !game || !trade || !analysis) {
     return (
       <>
         <PageHeader
@@ -40,5 +41,5 @@ async function Content() {
       </>
     );
   }
-  return <AssetsBoard initial={assets} locked={game.startedAt !== null} trade={trade} />;
+  return <AssetsBoard initial={assets} locked={game.startedAt !== null} trade={trade} analysis={analysis} />;
 }

@@ -429,6 +429,49 @@ export async function fetchTradeSettings(supabase: Db): Promise<TradeSettings | 
   };
 }
 
+/** Harga dan saklar Analisa Pasar (pay to win); boleh diubah kapan saja. */
+export type AnalysisSettings = { price: number; enabled: boolean };
+
+export async function fetchAnalysisSettings(supabase: Db): Promise<AnalysisSettings | null> {
+  const { data, error } = await supabase
+    .from("game_settings")
+    .select("analysis_price,analysis_enabled")
+    .maybeSingle();
+  if (error || !data) return null;
+  return { price: data.analysis_price, enabled: data.analysis_enabled };
+}
+
+/** Log pembelian Analisa Pasar untuk admin: TANPA isi laporan (isinya membocorkan efek berita). */
+export type AnalysisLog = {
+  purchases: number;
+  buyers: number;
+  revenue: number;
+  rows: { id: number; at: string; teamName: string; newsTitle: string; price: number }[];
+};
+
+const ANALYSIS_LOG_LIMIT = 50;
+
+export async function fetchAnalysisLog(supabase: Db): Promise<AnalysisLog | null> {
+  const [summary, log] = await Promise.all([
+    supabase.rpc("admin_analysis_summary"),
+    supabase.rpc("admin_analysis_log", { p_limit: ANALYSIS_LOG_LIMIT }),
+  ]);
+  const s = summary.data?.[0];
+  if (summary.error || !s || log.error || !log.data) return null;
+  return {
+    purchases: Number(s.purchases),
+    buyers: Number(s.buyers),
+    revenue: Number(s.revenue),
+    rows: log.data.map((r) => ({
+      id: r.id,
+      at: r.created_at,
+      teamName: r.team_name,
+      newsTitle: r.news_title,
+      price: r.price,
+    })),
+  };
+}
+
 const TX_LIST_LIMIT = 100;
 
 /** Halaman Transaksi: 100 transaksi terbaru + ringkasan per aset dari seluruh transaksi (RLS: admin membaca semuanya). */

@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/shell/page-header";
 import { EmptyState } from "@/components/states";
 import { Card } from "@/components/ui/card";
 import { DataTable } from "@/components/ui/data-table";
-import { fetchTransactionsPage } from "@/lib/admin/data";
+import { fetchAnalysisLog, fetchTransactionsPage, type AnalysisLog } from "@/lib/admin/data";
 import type { TransactionsPage } from "@/lib/admin/transactions";
 import { usePolling } from "@/lib/hooks/use-polling";
 import { formatBps, formatCompactRupiah } from "@/lib/market/rules";
@@ -22,14 +22,22 @@ const POLL_MS = 10_000;
  * beserta stok dan tekanan sekarang. Tidak ada tombol yang mengubah transaksi; salah transaksi tidak dibatalkan
  * (koreksi saldo lewat halaman Hadiah bila perlu).
  */
-export function TransactionsBoard({ initial }: { initial: TransactionsPage }) {
+export function TransactionsBoard({
+  initial,
+  analysis: analysisInitial,
+}: {
+  initial: TransactionsPage;
+  analysis: AnalysisLog | null;
+}) {
   const supabase = useMemo(() => createClient(), []);
   const [page, setPage] = useState(initial);
+  const [analysis, setAnalysis] = useState(analysisInitial);
   const [stale, setStale] = useState(false);
 
   const refresh = useCallback(async () => {
-    const next = await fetchTransactionsPage(supabase);
+    const [next, log] = await Promise.all([fetchTransactionsPage(supabase), fetchAnalysisLog(supabase)]);
     if (next) setPage(next);
+    if (log) setAnalysis(log);
     setStale(next === null);
   }, [supabase]);
   usePolling(refresh, POLL_MS);
@@ -130,6 +138,50 @@ export function TransactionsBoard({ initial }: { initial: TransactionsPage }) {
           </p>
         </Card>
       </div>
+
+      {analysis ? (
+        <Card aria-labelledby="analisa-log-judul" className="mt-6 flex flex-col gap-1">
+          <p className="text-brand-text text-[13px] font-semibold tracking-[0.12em] uppercase">
+            Analisa Pasar (pay to win)
+          </p>
+          <h2 id="analisa-log-judul" className="text-ink mb-2 text-2xl font-bold">
+            Pembelian analisa
+          </h2>
+          <div className="mb-3 grid grid-cols-3 gap-3">
+            <Total label="Pembelian" value={formatNumber(analysis.purchases)} />
+            <Total label="Tim pembeli" value={formatNumber(analysis.buyers)} />
+            <Total label="Pendapatan" value={formatRupiah(analysis.revenue)} />
+          </div>
+          {analysis.rows.length === 0 ? (
+            <EmptyState
+              title="Belum ada pembelian analisa"
+              description="Tim yang membeli laporan analisa muncul di sini (tanpa isi laporan)."
+            />
+          ) : (
+            <ul>
+              {analysis.rows.map((r) => (
+                <li key={r.id} className="border-line flex items-center gap-3 border-t py-3 first:border-t-0">
+                  <span className="tnum text-ink-muted w-[4.5rem] shrink-0 text-sm">
+                    {formatTimeSecondsWib(r.at)}
+                  </span>
+                  <p className="min-w-0 flex-1 truncate text-base">
+                    <span className="text-ink font-bold">{r.teamName}</span>{" "}
+                    <span className="text-ink-muted">membeli analisa:</span>{" "}
+                    <span className="text-ink">{r.newsTitle}</span>
+                  </p>
+                  <span className="money text-ink shrink-0 text-right text-base font-bold whitespace-nowrap">
+                    {formatRupiah(r.price)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="text-ink-muted text-sm">
+            Hanya log pembelian. Isi laporan tidak ditampilkan ke admin karena membocorkan efek berita. Harga
+            dan saklar ada di halaman Aset.
+          </p>
+        </Card>
+      ) : null}
     </>
   );
 }
