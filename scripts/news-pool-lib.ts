@@ -9,7 +9,6 @@ import { NOISE_BY_SECTOR, NOISE_GENERIC } from "./data/news-noise";
 import {
   BANKRUPT_CAUSES,
   DIVIDEND_CAUSES,
-  SECTOR_CONTEXT,
   SECTOR_NAMES,
   SUSPEND_CAUSES,
   THEMES as BASE_THEMES,
@@ -18,8 +17,9 @@ import {
 } from "./data/news-themes";
 import { THEMES_2 } from "./data/news-themes-2";
 import { THEMES_3 } from "./data/news-themes-3";
+import { THEMES_4 } from "./data/news-themes-4";
 
-const THEMES = [...BASE_THEMES, ...THEMES_2, ...THEMES_3];
+const THEMES = [...BASE_THEMES, ...THEMES_2, ...THEMES_3, ...THEMES_4];
 
 export type PoolKind = "price" | "bankrupt" | "suspend" | "dividend";
 export type PoolEffect = { symbol: string; pct_bps: number };
@@ -109,62 +109,90 @@ export function traitPhrase(symbol: string, title: string): string | null {
   return t ? t.phrases[hashOf(`${title}|${symbol}`) % t.phrases.length] : null;
 }
 
+/** Hanya satu ciri per arah yang dibocorkan berita (tingkat sulit); sisanya hanya diketahui pembeli analisa. */
+const HINT_PER_SIDE_HARD = 1;
+
+/** Petunjuk tanpa arah: separuh petunjuk hanya menyebut ciri yang "terdampak", arahnya harus ditebak dari topik berita. */
+const isNeutralHint = (title: string, symbol: string) => hashOf(`netral|${title}|${symbol}`) % 2 === 0;
+
 /**
- * Kalimat petunjuk dampak: tanpa menyebut nama perusahaan, hanya ciri aset yang bergerak paling besar (maks. 2 naik, 2
- * turun, masing-masing dari aset berbeda; hanya efek berarti >= HINT_MIN_BPS). Aset di `exclude` (subjek berita event,
- * yang sudah disebut namanya) dilewati. Deterministik menurut judul. Aset pengisi berefek kecil tidak disebut.
+ * Kalimat petunjuk dampak (TINGKAT SULIT): tanpa menyebut nama perusahaan, hanya SATU ciri aset yang naik terbesar dan
+ * SATU yang turun terbesar (efek berarti >= HINT_MIN_BPS; subjek berita event di `exclude` dilewati). Separuh petunjuk
+ * tidak menyebut arah ("merasakan dampak langsung"), jadi arahnya harus disimpulkan dari topik berita. Deterministik
+ * menurut judul. Aset pengisi berefek kecil tidak disebut.
  */
 export function hintSentence(title: string, effects: PoolEffect[], exclude: string[] = []): string {
   const byMag = (a: PoolEffect, b: PoolEffect) => Math.abs(b.pct_bps) - Math.abs(a.pct_bps);
   const pool = effects.filter(
     (e) => !exclude.includes(e.symbol) && ASSET_TRAITS[e.symbol] && Math.abs(e.pct_bps) >= HINT_MIN_BPS,
   );
-  const phrases = (xs: PoolEffect[]) =>
-    xs
+  const top = (sign: number) =>
+    pool
+      .filter((e) => Math.sign(e.pct_bps) === sign)
       .sort(byMag)
-      .slice(0, HINT_PER_SIDE)
-      .map((e) => traitPhrase(e.symbol, title)!)
-      .filter(Boolean);
-  const up = phrases(pool.filter((e) => e.pct_bps > 0));
-  const down = phrases(pool.filter((e) => e.pct_bps < 0));
+      .slice(0, HINT_PER_SIDE_HARD);
   const h = hashOf(title);
-  const A = listSerta(up);
-  const B = listSerta(down);
-  if (up.length && down.length) {
-    const t = [
-      `Perusahaan yang ${A} diperkirakan mendapat keuntungan dari situasi ini, sedangkan perusahaan yang ${B} berisiko tertekan.`,
-      `Pelaku pasar menilai perusahaan yang ${A} berpeluang menguat. Sebaliknya, perusahaan yang ${B} diperkirakan melemah.`,
-      `Perusahaan yang ${A} dinilai paling siap memanfaatkan perubahan ini. Adapun perusahaan yang ${B} cenderung terdampak negatif.`,
-      `Analis menyebut perusahaan yang ${A} berada di posisi menguntungkan, sementara perusahaan yang ${B} menghadapi tekanan.`,
-    ];
-    return t[h % t.length];
-  }
-  if (up.length) {
-    const t = [
-      `Perusahaan yang ${A} diperkirakan mendapat keuntungan dari situasi ini.`,
-      `Pelaku pasar menilai perusahaan yang ${A} berpeluang menguat setelah kabar ini.`,
-    ];
-    return t[h % t.length];
-  }
-  if (down.length) {
-    const t = [
-      `Perusahaan yang ${B} diperkirakan menghadapi tekanan akibat situasi ini.`,
-      `Pelaku pasar menilai perusahaan yang ${B} berpotensi melemah setelah kabar ini.`,
-    ];
-    return t[h % t.length];
-  }
-  return "Dampak pada perusahaan lain diperkirakan terbatas.";
+  const clause = (e: PoolEffect, salt: number): string => {
+    const x = traitPhrase(e.symbol, title)!;
+    if (isNeutralHint(title, e.symbol)) {
+      return [
+        `Perusahaan yang ${x} disebut akan merasakan dampak langsungnya.`,
+        `Pelaku pasar memantau perusahaan yang ${x} dengan saksama.`,
+        `Perusahaan yang ${x} dinilai paling peka terhadap perkembangan ini.`,
+      ][(h + salt) % 3];
+    }
+    return e.pct_bps > 0
+      ? [
+          `Perusahaan yang ${x} diperkirakan mendapat keuntungan dari situasi ini.`,
+          `Pelaku pasar menilai perusahaan yang ${x} berpeluang menguat.`,
+          `Perusahaan yang ${x} dinilai berada di posisi menguntungkan.`,
+        ][(h + salt) % 3]
+      : [
+          `Perusahaan yang ${x} berisiko tertekan.`,
+          `Perusahaan yang ${x} diperkirakan melemah.`,
+          `Adapun perusahaan yang ${x} cenderung terdampak negatif.`,
+        ][(h + salt) % 3];
+  };
+  const parts = [...top(1), ...top(-1)].map((e, i) => clause(e, i));
+  return parts.length ? parts.join(" ") : "Dampak pada perusahaan lain diperkirakan terbatas.";
 }
 
-/** Sektor dengan bobot terbesar pada efek (untuk memilih pengecoh yang berdekatan topiknya). */
+/**
+ * Pengecoh berupa SIFAT aset yang sebenarnya TIDAK terdampak (efek < HINT_MIN_BPS atau tidak ada): disebut netral seolah
+ * relevan ("disebut-sebut ikut memantau"), tanpa arah. Deterministik menurut judul; subjek event dilewati. Laporan
+ * analisa menyebut pengecoh ini sebagai pengecoh (paragraf 4).
+ */
+export function decoyOf(
+  title: string,
+  effects: PoolEffect[],
+  exclude: string[] = [],
+): { symbol: string; phrase: string; sentence: string } | null {
+  const meaningful = new Set(effects.filter((e) => Math.abs(e.pct_bps) >= HINT_MIN_BPS).map((e) => e.symbol));
+  const candidates = Object.keys(ASSET_TRAITS)
+    .filter((sym) => !meaningful.has(sym) && !exclude.includes(sym))
+    .sort();
+  if (candidates.length === 0) return null;
+  const symbol = candidates[hashOf(`pengecoh|${title}`) % candidates.length];
+  const phrase = traitPhrase(symbol, title)!;
+  const sentence = [
+    `Nama perusahaan yang ${phrase} sempat ramai dibicarakan di kalangan pelaku pasar.`,
+    `Perusahaan yang ${phrase} disebut-sebut ikut memantau perkembangan ini, meski belum ada pernyataan resmi.`,
+    `Sejumlah pengamat juga menyinggung perusahaan yang ${phrase} dalam pembahasan hari ini.`,
+  ][hashOf(`kalimat|${title}`) % 3];
+  return { symbol, phrase, sentence };
+}
+
+/** Sektor dengan bobot terbesar pada efek. */
 function leadSectorOf(effects: PoolEffect[], sectorOf: Map<string, SectorKey>): SectorKey | undefined {
   const top = [...effects].sort((a, b) => Math.abs(b.pct_bps) - Math.abs(a.pct_bps))[0];
   return top ? sectorOf.get(top.symbol) : undefined;
 }
 
 /**
- * Paragraf kedua: kalimat petunjuk + dua kalimat pengecoh ("Di sisi lain, ..." dan "Selain itu, ..."): satu pengecoh
- * berdekatan topiknya dengan sektor utama berita, satu umum. Memakai RNG utama untuk memilih pengecoh.
+ * Paragraf kedua (TINGKAT SULIT): kalimat petunjuk (satu ciri naik dan satu turun, separuhnya tanpa arah), satu kalimat
+ * PENGECOH yang menyebut sifat aset yang sebenarnya tidak terdampak (`decoyOf`), lalu dua kalimat pengecoh biasa ("Di
+ * sisi lain, ..." dan "Selain itu, ..."). Pengecoh bertopik biasa sengaja berdekatan dengan sektor LAIN (bukan sektor
+ * utama berita) supaya tidak membocorkan sektor yang terdampak. Memakai RNG utama untuk memilih pengecoh biasa.
  */
 function secondParagraph(
   rng: Rng,
@@ -177,11 +205,13 @@ function secondParagraph(
     effects.filter((e) => !exclude.includes(e.symbol)),
     sectorOf,
   );
-  const adjacent = lead ? rng.pick(NOISE_BY_SECTOR[lead]) : rng.pick(NOISE_GENERIC);
+  const others = (Object.keys(NOISE_BY_SECTOR) as SectorKey[]).filter((k) => k !== lead);
+  const adjacent = rng.pick(NOISE_BY_SECTOR[rng.pick(others)]);
   let generic = rng.pick(NOISE_GENERIC);
   while (generic === adjacent) generic = rng.pick(NOISE_GENERIC);
   const link = ["Selain itu", "Sementara itu", "Pada waktu yang sama"][hashOf(title) % 3];
-  return `${hintSentence(title, effects, exclude)} Di sisi lain, ${adjacent}. ${link}, ${generic}.`;
+  const decoy = decoyOf(title, effects, exclude);
+  return `${hintSentence(title, effects, exclude)}${decoy ? ` ${decoy.sentence}` : ""} Di sisi lain, ${adjacent}. ${link}, ${generic}.`;
 }
 
 /**
@@ -258,7 +288,12 @@ export function analysisParagraphs(
     parts.push(
       `Sebanyak ${tiny} perusahaan lain hanya bergerak tipis (di bawah 1 %), jadi tidak layak dikejar.`,
     );
-  parts.push("Kalimat pengecoh di akhir berita tidak memengaruhi harga sama sekali.");
+  const decoy = decoyOf(title, effects, event ? [event.symbol] : []);
+  if (decoy)
+    parts.push(
+      `Perusahaan yang ${decoy.phrase}, yang sempat disebut di berita, hanyalah pengecoh: tidak ada efek harga yang berarti.`,
+    );
+  parts.push("Kalimat pengecoh lain di berita tidak memengaruhi harga sama sekali.");
   if (kind === "bankrupt")
     parts.push(
       "Berita ini membawa kebangkrutan: perusahaan yang disebut dilikuidasi dan tidak bisa diperdagangkan lagi, jadi tidak ada efek harga untuknya.",
@@ -278,7 +313,6 @@ export function analysisParagraphs(
 
 /** Efek berarti (tematis) bermagnitudo >= ini dan layak jadi petunjuk; efek pengisi selalu di bawahnya (<= 90 bps). */
 export const HINT_MIN_BPS = 100;
-const HINT_PER_SIDE = 2;
 
 const clampBps = (bps: number, cap: number) => {
   const v = Math.max(-cap, Math.min(cap, Math.round(bps / 10) * 10));
@@ -313,6 +347,21 @@ function sectorMap(assets: PoolAsset[]): Map<string, SectorKey> {
 const weightOf = (theme: (typeof THEMES)[number], symbol: string, sector?: SectorKey) =>
   theme.a?.[symbol] ?? (sector ? (theme.w[sector] ?? 0) : 0);
 
+/** Kalimat pertama sebuah paragraf (peristiwa); sisanya (akibat per sektor) dibuang pada tingkat sulit. */
+export function firstSentence(text: string): string {
+  const m = /^[\s\S]*?[.!?](?=\s|$)/.exec(text.trim());
+  return m ? m[0] : text.trim();
+}
+
+/** Komentar netral pengganti kalimat konteks sektor: tidak menyebut sektor atau arah. */
+const NEUTRAL_COMMENTARY = [
+  "Para pelaku pasar masih menimbang dampaknya.",
+  "Sebagian pihak menilai dampaknya akan terasa bertahap.",
+  "Belum ada pernyataan resmi mengenai langkah lanjutan.",
+  "Sejumlah pihak menyebut situasinya masih bisa berubah.",
+  "Pengamat meminta publik tidak terburu-buru menarik kesimpulan.",
+];
+
 function priceNews(assets: PoolAsset[], cfg: PoolConfig, rng: Rng): PoolNews[] {
   const out: PoolNews[] = [];
   const sectorOf = sectorMap(assets);
@@ -336,9 +385,10 @@ function priceNews(assets: PoolAsset[], cfg: PoolConfig, rng: Rng): PoolNews[] {
           }
         }
         fillEffects(rng, chosen, assets, Math.max(target, cfg.minAssets), cfg.capBps);
-        const lead = ranked[0] ? sectorOf.get(ranked[0].a.symbol) : undefined;
-        const base = theme[dir].b;
-        const second = variant === 1 && lead ? ` ${SECTOR_CONTEXT[lead]}` : "";
+        // tingkat sulit: paragraf 1 hanya kalimat peristiwa (kalimat akibat per sektor dibuang); varian 1 memakai komentar netral
+        const base = firstSentence(theme[dir].b);
+        const second =
+          variant === 1 ? ` ${NEUTRAL_COMMENTARY[hashOf(theme[dir].t[1]) % NEUTRAL_COMMENTARY.length]}` : "";
         const title = theme[dir].t[variant];
         const effects = [...chosen].map(([symbol, pct_bps]) => ({ symbol, pct_bps }));
         out.push({

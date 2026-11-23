@@ -4,7 +4,7 @@ Berita harga **tidak menyebut nama perusahaan**. Aset yang terdampak hanya bisa 
 ("Perusahaan yang memproduksi mi instan dalam jumlah besar … berpeluang menguat"). Berkas sumbernya `scripts/data/asset-traits.ts`;
 ubah di sana, lalu `npm run generate-news`. Dokumen ini ringkasannya untuk ditinjau panitia (dan bahan briefing tim).
 
-- **Frasa ciri**: satu dipilih per aset per berita (deterministik menurut judul). Berita menyebut maksimal 2 aset yang naik dan 2 yang turun
+- **Frasa ciri**: satu dipilih per aset per berita (deterministik menurut judul). Berita (tingkat sulit, 23 Nov: lihat [15](15-mesin-berita-v2.md) §3b) menyebut 1 aset yang naik dan 1 yang turun, separuhnya tanpa arah, ditambah satu pengecoh sifat; sebelumnya maksimal 2 naik dan 2 turun
   (yang efeknya terbesar, minimal 1 %); aset berefek kecil tidak disebut.
 - **Kata kunci**: khas satu aset, tidak dipakai aset lain, dan **tidak boleh** muncul di kalimat pengecoh (diperiksa tes `scripts/news-pool-lib.test.ts`).
 - Berita event (bangkrut, suspensi, dividen) tetap menyebut nama perusahaan subjeknya di paragraf pertama; petunjuk di paragraf kedua tidak menyebut subjek itu lagi.

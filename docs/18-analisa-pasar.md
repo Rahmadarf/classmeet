@@ -29,9 +29,9 @@ Dibuat saat kumpulan berita dibuat (`scripts/news-pool-lib.ts`, `analysisParagra
 | 1 | Ringkasan | Judul berita, arah pasar (condong naik / condong turun / campuran), jumlah ciri naik dan turun yang berarti (efek ≥ 1 %), dan perkiraan waktu: rentang selebar 2 menit yang pasti memuat sisa waktu sebenarnya ("dalam sekitar 6 sampai 8 menit ke depan"; di bawah 1 menit: "kurang dari 2 menit"). |
 | 2 | Ciri yang naik | Sampai 3 ciri, urut dari terbesar, masing-masing dengan kekuatan: **kuat** (di atas 4 %), **sedang** (2 sampai 4 %), **ringan** (1 sampai 2 %). Sisanya disebut jumlahnya. Bila tidak ada: dinyatakan terus terang. |
 | 3 | Ciri yang turun | Sama dengan paragraf 2. |
-| 4 | Catatan | Jumlah perusahaan yang bergerak tipis (< 1 %, tidak layak dikejar), kalimat pengecoh berita tidak memengaruhi harga, catatan event (kebangkrutan, penghentian sementara, atau dividen), dan pengingat selisih jual, tekanan stok, serta batas pegang. |
+| 4 | Catatan | Jumlah perusahaan yang bergerak tipis (< 1 %, tidak layak dikejar), ciri pengecoh yang disebut berita dinyatakan sebagai pengecoh, kalimat pengecoh lain tidak memengaruhi harga, catatan event (kebangkrutan, penghentian sementara, atau dividen), dan pengingat selisih jual, tekanan stok, serta batas pegang. |
 
-Frasa ciri di laporan adalah frasa **alternatif** dari aset yang sama (bukan frasa yang dipakai berita), supaya pembeli mendapat petunjuk tambahan, bukan pengulangan. Satu frasa menunjuk tepat satu aset (diuji). Sekitar 38 % berita tidak punya ciri naik yang berarti dan sekitar 53 % tidak punya ciri turun yang berarti; laporan menyatakannya.
+Frasa ciri di laporan adalah frasa **alternatif** dari aset yang sama (bukan frasa yang dipakai berita), supaya pembeli mendapat petunjuk tambahan, bukan pengulangan. Satu frasa menunjuk tepat satu aset (diuji). Sekitar 35 % berita tidak punya ciri naik yang berarti dan sekitar 49 % tidak punya ciri turun yang berarti; laporan menyatakannya. Berita sendiri kini bertingkat sulit ([15](15-mesin-berita-v2.md) §3b): hanya 1 ciri naik dan 1 turun yang dibocorkan (separuh tanpa arah) plus satu pengecoh sifat, sehingga laporan benar-benar menambah informasi. Paragraf 4 laporan menyebut pengecoh sifat itu sebagai pengecoh.
 
 ## 4. Database (`scripts/sql/analysis.sql`)
 

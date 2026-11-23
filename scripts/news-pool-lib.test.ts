@@ -4,7 +4,9 @@ import { ASSET_TRAITS } from "./data/asset-traits";
 import { NOISE_BY_SECTOR, NOISE_GENERIC } from "./data/news-noise";
 import {
   buildPool,
+  decoyOf,
   DEFAULT_CONFIG,
+  firstSentence,
   hintSentence,
   makeRng,
   poolToSql,
@@ -24,8 +26,8 @@ describe("buildPool", () => {
     expect(validatePool(pool, assets)).toEqual([]);
   });
 
-  it("tiap aset: tepat 1 bangkrut, 5 suspensi, 10 dividen; total tepat 1000 berita", () => {
-    expect(pool).toHaveLength(1000);
+  it("tiap aset: tepat 1 bangkrut, 5 suspensi, 10 dividen; total tepat 1100 berita", () => {
+    expect(pool).toHaveLength(1100);
     for (const a of assets) {
       const count = (k: string) => pool.filter((n) => n.kind === k && n.event?.symbol === a.symbol).length;
       expect([count("bankrupt"), count("suspend"), count("dividend")]).toEqual([1, 5, 10]);
@@ -34,7 +36,7 @@ describe("buildPool", () => {
 
   it("tidak semua berita membawa event: berita harga mendominasi dan tanpa event", () => {
     const price = pool.filter((n) => n.kind === "price");
-    expect(price.length).toBe(520);
+    expect(price.length).toBe(620);
     expect(price.every((n) => n.event === null)).toBe(true);
     expect(pool.filter((n) => n.kind !== "price").every((n) => n.event !== null)).toBe(true);
   });
@@ -102,19 +104,69 @@ describe("isi berita dua paragraf dengan petunjuk sifat", () => {
     expect(sample.body.split(/\n{2,}/)[1]).toMatch(/Perusahaan yang|perusahaan yang/);
   });
 
-  it("hintSentence: sifat aset naik disebut menguntungkan, yang turun tertekan; deterministik; tanpa nama aset", () => {
+  it("hintSentence (tingkat sulit): satu ciri naik dan satu turun terbesar saja, deterministik, tanpa nama aset", () => {
     const fx = [
       { symbol: "KA", pct_bps: 300 },
+      { symbol: "SM", pct_bps: 150 },
       { symbol: "AD", pct_bps: -200 },
+      { symbol: "PN", pct_bps: -120 },
       { symbol: "IN", pct_bps: 50 },
     ];
     const a = hintSentence("Judul", fx);
     expect(a).toBe(hintSentence("Judul", fx));
-    expect(a).not.toMatch(/Kalbe|Adaro|Indofood/);
-    expect(a).toMatch(/keuntungan|menguat|posisi menguntungkan|memanfaatkan/);
-    expect(a).toMatch(/tertekan|melemah|negatif|tekanan/);
-    expect(hintSentence("Judul", fx, ["KA", "IN"])).not.toMatch(/obat bebas|vitamin|apotek|mi instan/);
+    expect(a).not.toMatch(/Kalbe|Adaro|Indofood|Sido|PLN/);
+    const phrasesIn = (sym: string) => ASSET_TRAITS[sym].phrases.filter((p) => a.includes(p)).length;
+    expect(phrasesIn("KA")).toBe(1); // naik terbesar
+    expect(phrasesIn("SM")).toBe(0); // naik kedua tidak dibocorkan
+    expect(phrasesIn("AD")).toBe(1); // turun terbesar
+    expect(phrasesIn("PN")).toBe(0);
+    expect(phrasesIn("IN")).toBe(0); // efek kecil tidak disebut
+    expect(hintSentence("Judul", fx, ["KA", "AD"])).not.toMatch(
+      /obat bebas|vitamin|apotek|minuman kesehatan|batu bara|tambang/,
+    );
     expect(hintSentence("Judul", [], [])).toContain("terbatas");
+  });
+
+  it("sekitar separuh petunjuk tidak menyebut arah (harus ditebak dari topik)", () => {
+    let neutral = 0;
+    let directional = 0;
+    for (const n of pool.filter((x) => x.kind === "price")) {
+      const p2 = n.body.split(/\n{2,}/)[1];
+      if (/merasakan dampak langsungnya|memantau perusahaan .* dengan saksama|paling peka/.test(p2))
+        neutral++;
+      if (
+        /mendapat keuntungan|berpeluang menguat|posisi menguntungkan|berisiko tertekan|diperkirakan melemah|terdampak negatif/.test(
+          p2,
+        )
+      )
+        directional++;
+    }
+    expect(neutral).toBeGreaterThan(100);
+    expect(directional).toBeGreaterThan(100);
+  });
+
+  it("pengecoh sifat: menyebut aset yang efeknya < 1 % atau tidak ada, dan laporan menyebutnya pengecoh", () => {
+    for (const n of pool) {
+      const d = decoyOf(n.title, n.effects, n.event ? [n.event.symbol] : []);
+      expect(d).not.toBeNull();
+      const fx = n.effects.find((e) => e.symbol === d!.symbol);
+      expect(!fx || Math.abs(fx.pct_bps) < 100, `${n.title}: pengecoh ${d!.symbol} berefek berarti`).toBe(
+        true,
+      );
+      expect(n.body.split(/\n{2,}/)[1]).toContain(d!.sentence);
+      expect(n.analysis[3]).toContain(
+        `Perusahaan yang ${d!.phrase}, yang sempat disebut di berita, hanyalah pengecoh`,
+      );
+    }
+  });
+
+  it("paragraf 1 hanya kalimat peristiwa: tanpa kalimat akibat per sektor", () => {
+    for (const n of pool.filter((x) => x.kind === "price")) {
+      const p1 = n.body.split(/\n{2,}/)[0];
+      expect(p1).not.toMatch(/Pelaku sektor/);
+    }
+    expect(firstSentence("A satu. B dua. C tiga.")).toBe("A satu.");
+    expect(firstSentence("Hanya satu kalimat tanpa titik")).toBe("Hanya satu kalimat tanpa titik");
   });
 
   it("kalimat pengecoh tidak memuat kata kunci sifat aset mana pun", () => {

@@ -50,8 +50,8 @@ Untuk tiap aset dalam berita: bernilai tinggi bila arah efek **berlawanan** deng
 terakhir, dan dikurangi bila harga akan menabrak batas. Dirata-ratakan per berita.
 
 ## 3. Kumpulan berita
-- Dibuat `npm run generate-news` dari tema di `scripts/data/news-themes.ts` dan `news-themes-2.ts`: **1000 berita** =
-  **520 berita harga** (130 tema × 2 arah × 2 varian) dan **480 berita event** (30 aset × [1 bangkrut + 5 suspensi + 10 dividen]);
+- Dibuat `npm run generate-news` dari tema di `scripts/data/news-themes*.ts`: **1100 berita** =
+  **620 berita harga** (155 tema × 2 arah × 2 varian) dan **480 berita event** (30 aset × [1 bangkrut + 5 suspensi + 10 dividen]);
   hasilnya `scripts/data/news-pool.json` dan `docs/14-kumpulan-berita.md` untuk ditinjau. Teks fiksi; nama perusahaan memakai nama aset.
 - Dimasukkan dengan `npm run seed` (berita `ready`, event lewat `admin_set_news_bankruptcy` / `admin_set_news_event`).
 - Kebutuhan: ±220 berita terbit per game (3 hari × 11 jam, rata-rata 9 menit per berita). Berita harga terpakai ±185, jadi
@@ -76,6 +76,20 @@ Menggantikan paragraf kedua lama ("Analis memperkirakan Pertamina, PLN dan Adaro
 - Tema bergaya tren sektor dari contoh panitia (permintaan produk kesehatan, perlindungan finansial, hiburan digital) ditambah 3 tema serupa (kendaraan ramah lingkungan, makan di rumah, pembayaran nontunai) di `scripts/data/news-themes-3.ts`; tema dapat menyasar aset tertentu lewat bobot per simbol (`a`). Enam tema lama (perizinan, internet desa, perangkat bekas, label produk, pekan raya, tabungan) dilepas supaya jumlah tema tetap 130 dan kumpulan tetap 1000.
 - Bank pengecoh di `scripts/data/news-noise.ts` (27 umum + 18 per sektor, termasuk contoh panitia); tidak boleh memuat kata kunci sifat aset mana pun (diperiksa tes).
 - Memuat ulang kumpulan: `npm run load-news -- --replace` mengganti semua berita `ready`/`draft` (isi dan efek); yang sudah punya riwayat dibatalkan dan diberi judul arsip, yang sudah terbit tidak disentuh.
+
+## 3b. Tingkat sulit (23 Nov, setelah ada Analisa Pasar)
+
+Karena tim kini bisa membeli analisa ([18](18-analisa-pasar.md)), berita dipersulit supaya laporan berbayar benar-benar bernilai:
+
+| Mekanisme | Sebelum | Sekarang |
+|-----------|---------|----------|
+| Paragraf 1 | Peristiwa + kalimat akibat per sektor ("Produsen energi menikmati margin…"); varian b menambah konteks sektor utama | **Hanya kalimat peristiwa** (`firstSentence`); varian b diganti komentar netral tanpa sektor atau arah |
+| Petunjuk di paragraf 2 | Sampai 2 ciri naik + 2 turun, semuanya menyebut arah | **1 ciri naik + 1 ciri turun** terbesar saja; **separuh petunjuk tanpa arah** ("merasakan dampak langsungnya"), arahnya harus disimpulkan dari topik |
+| Pengecoh sifat | Tidak ada | Satu kalimat netral yang menyebut **ciri aset yang sebenarnya tidak terdampak** (efek < 1 % atau tidak ada), "disebut-sebut ikut memantau perkembangan ini" (`decoyOf`) |
+| Pengecoh topik | "Di sisi lain" berdekatan dengan sektor utama (membocorkan sektor) | Berdekatan dengan sektor LAIN (menyesatkan) |
+| Tema | 130 tema bergaya langsung dan tren sektor | + **25 tema samar** (`news-themes-4.ts`): peristiwa dituturkan tanpa sektor, dampak tidak satu arah (satu berita bisa menaikkan dan menurunkan aset berbeda sekaligus), hanya bisa ditebak dari akibat tidak langsung |
+
+Pembeli analisa mendapat 3 ciri naik + 3 turun beserta kekuatannya, perkiraan waktu, dan pengecoh yang disebut berita dibuka sebagai pengecoh (paragraf 4). `news_pool()` tetap menolak berita yang petunjuk 2+2-nya menyebut aset nonaktif (lebih ketat dari 1+1 yang tampil sekarang, jadi aman). Simulasi 3 hari tetap sehat: tidak ada aset di batas harga, perubahan akhir −29 % sampai +31 %.
 
 ## 4. Simulasi dan hasil
 `scripts/sim-news-engine.sh [hari] [suhu] [benih] [intensitas]` menjalankan 3 hari permainan (jam simulasi via
@@ -120,7 +134,7 @@ kenaikannya beragam (−9 % sampai +37 %), terbanyak pada kondisi naik, sesuai r
    berita `ready`; berita baru tidak bisa dimasukkan sesudah game dibuka.
 
 ## 7. Memuat kumpulan dan tombol Mulai ulang berita
-- `npm run load-news` memuat 1000 berita langsung ke database Docker (berstatus `ready`; idempoten menurut judul; melewati penguncian game,
+- `npm run load-news` memuat 1100 berita (dan 1100 laporan analisa) langsung ke database Docker (berstatus `ready`; idempoten menurut judul; melewati penguncian game,
   jadi bisa dipakai saat game sudah berjalan). Untuk game baru sebelum dibuka, cara resminya `npm run seed`.
 - **Admin → Berita → Mulai ulang berita** (`admin_restart_news`, `scripts/sql/news-restart.sql`; dengan dialog konfirmasi): berita yang sudah terbit
   dan yang sedang tayang kembali ke kumpulan (`ready`; yang efek aktifnya di luar 10–15 aset menjadi `draft`), daftar berita tim dan catatan event

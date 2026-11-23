@@ -16,7 +16,7 @@ Di game ini:
 
 - Tim mulai dari **Rp 0**. Uang hanya datang dari **hadiah pos** (kamu mengunjungi pos, bermain game di sana, dan penjaga memberi uang).
 - Harga aset berubah **karena berita**. Berita terbit, dan **3–15 menit kemudian** (acak) harga aset yang terdampak bergerak. Selama menunggu, harga lama masih berlaku. **Di sinilah peluang untung**: kalau kamu bisa menebak aset mana yang akan naik dari berita yang baru terbit, beli sekarang sebelum harganya naik.
-- Berita **tidak menyebut nama perusahaan**. Aset yang terdampak harus kamu tebak dari **ciri perusahaannya** (misalnya "memproduksi mi instan", "mengolah minyak dan gas") yang disebut di paragraf kedua. Ada juga kalimat **pengecoh** yang tidak berarti apa-apa untuk harga.
+- Berita **tidak menyebut nama perusahaan**. Aset yang terdampak harus kamu tebak dari **ciri perusahaannya** (misalnya "memproduksi mi instan", "mengolah minyak dan gas") yang disebut di paragraf kedua. Berita itu **sengaja sulit**: hanya satu ciri yang naik dan satu yang turun yang dibocorkan, **sebagian tanpa menyebut arah** (kamu menyimpulkannya dari topik berita), dan ada **pengecoh** yang menyebut ciri perusahaan yang sebenarnya tidak terdampak. [Analisa Pasar](#8-analisa-pasar-bantuan-berbayar) membuka lebih banyak ciri beserta kekuatannya.
 - Trading hanya bisa saat pasar **Buka** (08.00–19.00 WIB, selama 3 hari; admin yang membuka dan menutup). Saat pasar tutup atau dijeda, kamu tidak bisa membeli atau menjual.
 - Masuk ke akun dengan memindai **kartu QR** timmu di laptop kiosk. Sesi keluar sendiri setelah 5 menit tanpa gerakan, atau saat kamu menekan _Selesai_.
 - Tidak ada pinjaman, tidak ada jual kosong (menjual aset yang tidak kamu punya), dan saldo tidak boleh negatif.
@@ -134,7 +134,7 @@ Tips untuk pemula:
 - Mulai dengan jumlah kecil sampai paham cara kerjanya.
 - Jangan habiskan seluruh saldo di satu aset; berita bisa menguntungkan aset lain, dan ada batas pegang per aset.
 - Waspadai aset berlabel **Langka**: stoknya tipis dan harganya sudah terdorong naik oleh pembelian.
-- Pengecoh di berita tidak berarti apa-apa; yang penting adalah **ciri perusahaan** yang disebut dalam kalimat "Perusahaan yang ... diperkirakan ...".
+- Tidak semua ciri perusahaan yang disebut di berita ikut bergerak: ada pengecoh yang menyebut perusahaan yang sebenarnya tidak terdampak. Baca topik beritanya dulu, baru cocokkan ciri perusahaan; ragu? Analisa Pasar bisa memastikan.
 
 ## Kamus istilah dan singkatan
 
