@@ -1,5 +1,5 @@
-// Dibuat dari database Docker lokal lewat postgres-meta (`/generators/typescript`, skema public), 20 Nov 2026,
-// setelah migrasi trading toko (scripts/sql/trading-shop.sql). `ComputedFields` dan `NonNullable<Json>` dari
+// Dibuat dari database Docker lokal lewat postgres-meta (`/generators/typescript`, skema public), 23 Nov 2026,
+// setelah migrasi analisa pay-to-win (scripts/sql/analysis.sql). `ComputedFields` dan `NonNullable<Json>` dari
 // generator yang lebih baru dihapus agar cocok dengan supabase-js terpasang. Jangan disunting tangan; buat ulang bila skema berubah.
 export type Json =
   | string
@@ -17,6 +17,58 @@ export type Database = {
   }
   public: {
     Tables: {
+      analysis_purchases: {
+        Row: {
+          created_at: string
+          id: number
+          news_id: string
+          news_title: string
+          paragraphs: string[]
+          price: number
+          request_id: string
+          team_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: never
+          news_id: string
+          news_title: string
+          paragraphs: string[]
+          price: number
+          request_id: string
+          team_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: never
+          news_id?: string
+          news_title?: string
+          paragraphs?: string[]
+          price?: number
+          request_id?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analysis_purchases_news_id_fkey"
+            columns: ["news_id"]
+            referencedRelation: "news"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analysis_purchases_team_id_fkey"
+            columns: ["team_id"]
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "analysis_purchases_team_id_fkey"
+            columns: ["team_id"]
+            referencedRelation: "v_team_net_worth"
+            referencedColumns: ["team_id"]
+          },
+        ]
+      }
       assets: {
         Row: {
           bankrupt_at: string | null
@@ -109,7 +161,6 @@ export type Database = {
           {
             foreignKeyName: "audit_log_actor_id_fkey"
             columns: ["actor_id"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -150,28 +201,24 @@ export type Database = {
           {
             foreignKeyName: "dividends_asset_id_fkey"
             columns: ["asset_id"]
-            isOneToOne: false
             referencedRelation: "assets"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "dividends_news_id_fkey"
             columns: ["news_id"]
-            isOneToOne: false
             referencedRelation: "news"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "dividends_team_id_fkey"
             columns: ["team_id"]
-            isOneToOne: false
             referencedRelation: "teams"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "dividends_team_id_fkey"
             columns: ["team_id"]
-            isOneToOne: false
             referencedRelation: "v_team_net_worth"
             referencedColumns: ["team_id"]
           },
@@ -179,6 +226,8 @@ export type Database = {
       }
       game_settings: {
         Row: {
+          analysis_enabled: boolean
+          analysis_price: number
           bankrupt_max_per_day: number
           bankrupt_max_total: number
           event_asset_gap_minutes: number
@@ -211,6 +260,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          analysis_enabled?: boolean
+          analysis_price?: number
           bankrupt_max_per_day?: number
           bankrupt_max_total?: number
           event_asset_gap_minutes?: number
@@ -243,6 +294,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          analysis_enabled?: boolean
+          analysis_price?: number
           bankrupt_max_per_day?: number
           bankrupt_max_total?: number
           event_asset_gap_minutes?: number
@@ -299,21 +352,18 @@ export type Database = {
           {
             foreignKeyName: "holdings_asset_id_fkey"
             columns: ["asset_id"]
-            isOneToOne: false
             referencedRelation: "assets"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "holdings_team_id_fkey"
             columns: ["team_id"]
-            isOneToOne: false
             referencedRelation: "teams"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "holdings_team_id_fkey"
             columns: ["team_id"]
-            isOneToOne: false
             referencedRelation: "v_team_net_worth"
             referencedColumns: ["team_id"]
           },
@@ -366,14 +416,12 @@ export type Database = {
           {
             foreignKeyName: "leaderboard_snapshot_team_id_fkey"
             columns: ["team_id"]
-            isOneToOne: true
             referencedRelation: "teams"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "leaderboard_snapshot_team_id_fkey"
             columns: ["team_id"]
-            isOneToOne: true
             referencedRelation: "v_team_net_worth"
             referencedColumns: ["team_id"]
           },
@@ -405,14 +453,12 @@ export type Database = {
           {
             foreignKeyName: "market_event_log_asset_id_fkey"
             columns: ["asset_id"]
-            isOneToOne: false
             referencedRelation: "assets"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "market_event_log_news_id_fkey"
             columns: ["news_id"]
-            isOneToOne: false
             referencedRelation: "news"
             referencedColumns: ["id"]
           },
@@ -456,8 +502,32 @@ export type Database = {
           {
             foreignKeyName: "news_created_by_fkey"
             columns: ["created_by"]
-            isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      news_analysis: {
+        Row: {
+          created_at: string
+          news_id: string
+          paragraphs: string[]
+        }
+        Insert: {
+          created_at?: string
+          news_id: string
+          paragraphs: string[]
+        }
+        Update: {
+          created_at?: string
+          news_id?: string
+          paragraphs?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "news_analysis_news_id_fkey"
+            columns: ["news_id"]
+            referencedRelation: "news"
             referencedColumns: ["id"]
           },
         ]
@@ -482,14 +552,12 @@ export type Database = {
           {
             foreignKeyName: "news_bankruptcies_asset_id_fkey"
             columns: ["asset_id"]
-            isOneToOne: true
             referencedRelation: "assets"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "news_bankruptcies_news_id_fkey"
             columns: ["news_id"]
-            isOneToOne: true
             referencedRelation: "news"
             referencedColumns: ["id"]
           },
@@ -515,14 +583,12 @@ export type Database = {
           {
             foreignKeyName: "news_effects_asset_id_fkey"
             columns: ["asset_id"]
-            isOneToOne: false
             referencedRelation: "assets"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "news_effects_news_id_fkey"
             columns: ["news_id"]
-            isOneToOne: false
             referencedRelation: "news"
             referencedColumns: ["id"]
           },
@@ -551,14 +617,12 @@ export type Database = {
           {
             foreignKeyName: "news_events_asset_id_fkey"
             columns: ["asset_id"]
-            isOneToOne: false
             referencedRelation: "assets"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "news_events_news_id_fkey"
             columns: ["news_id"]
-            isOneToOne: false
             referencedRelation: "news"
             referencedColumns: ["id"]
           },
@@ -587,7 +651,6 @@ export type Database = {
           {
             foreignKeyName: "news_feed_news_id_fkey"
             columns: ["news_id"]
-            isOneToOne: true
             referencedRelation: "news"
             referencedColumns: ["id"]
           },
@@ -628,28 +691,24 @@ export type Database = {
           {
             foreignKeyName: "payouts_guard_id_fkey"
             columns: ["guard_id"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "payouts_post_id_fkey"
             columns: ["post_id"]
-            isOneToOne: false
             referencedRelation: "posts"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "payouts_team_id_fkey"
             columns: ["team_id"]
-            isOneToOne: false
             referencedRelation: "teams"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "payouts_team_id_fkey"
             columns: ["team_id"]
-            isOneToOne: false
             referencedRelation: "v_team_net_worth"
             referencedColumns: ["team_id"]
           },
@@ -684,7 +743,6 @@ export type Database = {
           {
             foreignKeyName: "posts_guard_id_fkey"
             columns: ["guard_id"]
-            isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -722,21 +780,18 @@ export type Database = {
           {
             foreignKeyName: "price_history_asset_id_fkey"
             columns: ["asset_id"]
-            isOneToOne: false
             referencedRelation: "assets"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "price_history_changed_by_fkey"
             columns: ["changed_by"]
-            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "price_history_news_id_fkey"
             columns: ["news_id"]
-            isOneToOne: false
             referencedRelation: "news"
             referencedColumns: ["id"]
           },
@@ -810,7 +865,6 @@ export type Database = {
           {
             foreignKeyName: "teams_id_fkey"
             columns: ["id"]
-            isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -857,21 +911,18 @@ export type Database = {
           {
             foreignKeyName: "transactions_asset_id_fkey"
             columns: ["asset_id"]
-            isOneToOne: false
             referencedRelation: "assets"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "transactions_team_id_fkey"
             columns: ["team_id"]
-            isOneToOne: false
             referencedRelation: "teams"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "transactions_team_id_fkey"
             columns: ["team_id"]
-            isOneToOne: false
             referencedRelation: "v_team_net_worth"
             referencedColumns: ["team_id"]
           },
@@ -891,7 +942,6 @@ export type Database = {
           {
             foreignKeyName: "teams_id_fkey"
             columns: ["team_id"]
-            isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -902,6 +952,25 @@ export type Database = {
       admin_adjust_cash: {
         Args: { p_delta: number; p_reason: string; p_team_id: string }
         Returns: number
+      }
+      admin_analysis_log: {
+        Args: { p_limit?: number }
+        Returns: {
+          created_at: string
+          id: number
+          news_title: string
+          price: number
+          team_id: string
+          team_name: string
+        }[]
+      }
+      admin_analysis_summary: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          buyers: number
+          purchases: number
+          revenue: number
+        }[]
       }
       admin_applied_news: {
         Args: { p_limit?: number }
@@ -941,10 +1010,7 @@ export type Database = {
           value: number
         }[]
       }
-      admin_reset_game: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
+      admin_reset_game: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_restart_news: { Args: Record<PropertyKey, never>; Returns: number }
       admin_rotate_team_qr: { Args: { p_team_id: string }; Returns: string }
       admin_save_news: {
@@ -955,6 +1021,10 @@ export type Database = {
           p_title: string
         }
         Returns: string
+      }
+      admin_set_analysis_settings: {
+        Args: { p_enabled: boolean; p_price: number }
+        Returns: undefined
       }
       admin_set_game_state: {
         Args: { p_state: Database["public"]["Enums"]["game_state"] }
@@ -1083,6 +1153,25 @@ export type Database = {
         Args: { p_asset_id: string; p_bps: number; p_news_id: string }
         Returns: undefined
       }
+      buy_analysis: {
+        Args: { p_request_id: string }
+        Returns: {
+          created_at: string
+          id: number
+          news_id: string
+          news_title: string
+          paragraphs: string[]
+          price: number
+          request_id: string
+          team_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "analysis_purchases"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       buy_asset: {
         Args: { p_asset_id: string; p_qty: number; p_request_id: string }
         Returns: {
@@ -1119,6 +1208,26 @@ export type Database = {
         Returns: undefined
       }
       game_is_locked: { Args: Record<PropertyKey, never>; Returns: boolean }
+      get_analysis_offer: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          can_buy: boolean
+          news_title: string
+          owned: boolean
+          price: number
+          reason: string
+        }[]
+      }
+      get_bankrupt_notices: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          asset_id: string
+          bankrupt_at: string
+          liquidation_price: number
+          name: string
+          symbol: string
+        }[]
+      }
       get_day_open_prices: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -1160,16 +1269,6 @@ export type Database = {
           value: number
         }[]
       }
-      get_bankrupt_notices: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          asset_id: string
-          bankrupt_at: string
-          liquidation_price: number
-          name: string
-          symbol: string
-        }[]
-      }
       get_market_summary: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -1189,6 +1288,25 @@ export type Database = {
           symbol: string
           val: number
         }[]
+      }
+      get_my_analyses: {
+        Args: { p_limit?: number }
+        Returns: {
+          created_at: string
+          id: number
+          news_id: string
+          news_title: string
+          paragraphs: string[]
+          price: number
+          request_id: string
+          team_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "analysis_purchases"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_my_summary: {
         Args: Record<PropertyKey, never>

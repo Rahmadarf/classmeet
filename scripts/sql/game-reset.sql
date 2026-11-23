@@ -1,8 +1,8 @@
--- Tombol "Reset game" (21 Nov): kembalikan game ke keadaan sebelum dimulai. Aman dijalankan ulang.
+-- Tombol "Reset game" (21 Nov): kembalikan game ke keadaan sebelum dimulai. Aman dijalankan ulang. Jalankan SESUDAH analysis.sql.
 --   docker exec -i supabase-db psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 < scripts/sql/game-reset.sql
 --
 -- `admin_reset_game()` (hanya admin; boleh di status mana pun, termasuk `finished`), satu transaksi:
---   DIKOSONGKAN : transaksi, kepemilikan (holdings), hadiah pos (payouts), dividen, riwayat harga (price_history),
+--   DIKOSONGKAN : pembelian analisa, transaksi, kepemilikan (holdings), hadiah pos (payouts), dividen, riwayat harga (price_history),
 --                 grafik IKC (index_history), peringkat beku (leaderboard_snapshot), daftar berita tim (news_feed),
 --                 catatan event (market_event_log).
 --   DIKEMBALIKAN: saldo semua tim = Rp 0; tiap aset = harga awal (base_price), stok awal (init_stock), tekanan stok 0,
@@ -17,12 +17,13 @@ create or replace function public.admin_reset_game()
 returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare
-  v_tx int; v_hold int; v_pay int; v_div int; v_ph int; v_idx int; v_news int; v_teams int;
+  v_tx int; v_hold int; v_pay int; v_div int; v_ph int; v_idx int; v_news int; v_teams int; v_an int;
 begin
   if app_role() is distinct from 'admin' then raise exception 'forbidden'; end if;
   perform public.ob_lock();
   perform set_config('classmeet.system', 'on', true);
 
+  delete from analysis_purchases where true;    get diagnostics v_an = row_count;
   delete from transactions where true;          get diagnostics v_tx = row_count;
   delete from holdings where true;              get diagnostics v_hold = row_count;
   delete from payouts where true;               get diagnostics v_pay = row_count;
@@ -58,7 +59,7 @@ begin
   insert into audit_log (actor_id, action, payload)
   values (auth.uid(), 'reset_game', jsonb_build_object(
     'transactions', v_tx, 'holdings', v_hold, 'payouts', v_pay, 'dividends', v_div,
-    'price_history', v_ph, 'index_history', v_idx, 'teams', v_teams, 'news_ready', v_news));
+    'price_history', v_ph, 'index_history', v_idx, 'teams', v_teams, 'news_ready', v_news, 'analysis_purchases', v_an));
   perform set_config('classmeet.system', 'off', true);
   return jsonb_build_object('teams', v_teams, 'transactions', v_tx, 'payouts', v_pay, 'news_ready', v_news);
 end $$;
