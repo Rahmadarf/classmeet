@@ -18,6 +18,7 @@ import {
 import { THEMES_2 } from "./data/news-themes-2";
 import { THEMES_3 } from "./data/news-themes-3";
 import { THEMES_4 } from "./data/news-themes-4";
+import { CITIES, ORGANIZATIONS, PEOPLE, QUOTES, SCENES, SOURCES } from "./data/news-voices";
 
 const THEMES = [...BASE_THEMES, ...THEMES_2, ...THEMES_3, ...THEMES_4];
 
@@ -289,7 +290,9 @@ function secondParagraph(
     ...hintClauses(title, effects, exclude, usedTemplates).map((text) => ({ text, clause: false })),
     ...decoysOf(title, effects, exclude, usedTemplates).map((d) => ({ text: d.sentence, clause: false })),
   ];
-  const noiseCount = 1 + (hashOf(`jumlah-noise|${title}`) % 3 === 0 ? 1 : 0);
+  // genre "singkat" (berita kawat): hanya satu pengecoh topik
+  const noiseCount =
+    genreOf(title) === "singkat" ? 1 : 1 + (hashOf(`jumlah-noise|${title}`) % 3 === 0 ? 1 : 0);
   const usedNoise = new Set<string>();
   for (let i = 0; i < noiseCount; i++) {
     const bank =
@@ -453,6 +456,44 @@ function sectorMap(assets: PoolAsset[]): Map<string, SectorKey> {
 const weightOf = (theme: (typeof THEMES)[number], symbol: string, sector?: SectorKey) =>
   theme.a?.[symbol] ?? (sector ? (theme.w[sector] ?? 0) : 0);
 
+/**
+ * Genre berita (23 Nov, tahap 2 perbaikan teks): cara peristiwa DITUTURKAN berbeda-beda supaya tidak semua berita berbentuk
+ * "satu kalimat peristiwa + paragraf ciri". Dipilih deterministik menurut judul (hash). Hanya paragraf 1 yang berubah (awalan
+ * atau tambahan di sekitar kalimat peristiwa; tidak pernah mengubah isi peristiwa), dan tambahannya netral (tanpa arah/sektor).
+ */
+export type Genre = "lurus" | "singkat" | "kutipan" | "sumber" | "rilis" | "lapangan";
+const GENRES: readonly Genre[] = [
+  "lurus",
+  "lurus",
+  "lurus",
+  "singkat",
+  "kutipan",
+  "sumber",
+  "rilis",
+  "lapangan",
+];
+export const genreOf = (title: string): Genre => GENRES[hashOf(`genre|${title}`) % GENRES.length];
+
+/** Bungkus paragraf peristiwa menurut genre (fiktif; nama dari `news-voices.ts`). */
+export function decorateEvent(title: string, event: string): string {
+  switch (genreOf(title)) {
+    case "singkat":
+      return `${pickBy(CITIES, title, "kota").toUpperCase()} — ${event}`;
+    case "kutipan": {
+      const [nama, jabatan, lembaga] = pickBy(PEOPLE, title, "tokoh");
+      return `${event} "${pickBy(QUOTES, title, "kutipan")}," kata ${nama}, ${jabatan} ${lembaga}.`;
+    }
+    case "sumber":
+      return `${event} Informasi itu dihimpun dari ${pickBy(SOURCES, title, "sumber")}.`;
+    case "rilis":
+      return `${event} Hal itu disampaikan ${pickBy(ORGANIZATIONS, title, "lembaga")} dalam keterangan tertulis.`;
+    case "lapangan":
+      return `${event} ${pickBy(SCENES, title, "adegan")}`;
+    default:
+      return event;
+  }
+}
+
 /** Kalimat pertama sebuah paragraf (peristiwa); sisanya (akibat per sektor) dibuang pada tingkat sulit. */
 export function firstSentence(text: string): string {
   const m = /^[\s\S]*?[.!?](?=\s|$)/.exec(text.trim());
@@ -507,7 +548,7 @@ function priceNews(assets: PoolAsset[], cfg: PoolConfig, rng: Rng): PoolNews[] {
         out.push({
           kind: "price",
           title,
-          body: `${base}${second}\n\n${secondParagraph(title, effects, sectorOf)}`,
+          body: `${decorateEvent(title, base)}${genreOf(title) === "singkat" ? "" : second}\n\n${secondParagraph(title, effects, sectorOf)}`,
           effects,
           event: null,
           analysis: analysisParagraphs(title, "price", effects, null),
@@ -575,7 +616,7 @@ function eventNews(assets: PoolAsset[], cfg: PoolConfig, rng: Rng): PoolNews[] {
         out.push({
           kind,
           title,
-          body: `${body}\n\n${secondParagraph(title, effects, sectorOf, [asset.symbol])}`,
+          body: `${decorateEvent(title, body)}\n\n${secondParagraph(title, effects, sectorOf, [asset.symbol])}`,
           effects,
           event: { symbol: asset.symbol, amount },
           analysis: analysisParagraphs(title, kind, effects, { symbol: asset.symbol, amount }),

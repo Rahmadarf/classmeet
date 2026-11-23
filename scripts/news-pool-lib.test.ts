@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import assetsFile from "./data/assets.example.json";
 import { ASSET_TRAITS } from "./data/asset-traits";
 import { NOISE_BY_SECTOR, NOISE_GENERIC } from "./data/news-noise";
+import { CITIES, ORGANIZATIONS, PEOPLE, QUOTES, SCENES, SOURCES } from "./data/news-voices";
 import {
   buildPool,
   decoysOf,
@@ -10,6 +11,7 @@ import {
   NEUTRAL_TEMPLATES,
   DEFAULT_CONFIG,
   firstSentence,
+  genreOf,
   hintClauses,
   hintSentence,
   makeRng,
@@ -426,6 +428,83 @@ describe("struktur berita tanpa ciri khas (tidak ada pola yang membocorkan penge
       expect(n.body).not.toMatch(/dengan [^.]*dengan saksama/);
       expect(n.body).not.toMatch(/Nama perusahaan yang/);
       expect(n.body).not.toMatch(/\.\./);
+    }
+  });
+});
+
+describe("genre dan tekstur (suara fiktif, pengecoh yang wajar)", () => {
+  const keys = Object.values(ASSET_TRAITS).flatMap((t) => t.keys);
+  const keyRe = (k: string) => new RegExp(`(?<![\\p{L}])${k}(?![\\p{L}])`, "iu");
+
+  it("bank pengecoh topik besar dan unik (>= 150), dan tak satu kalimat pun dipakai di > 3 % berita", () => {
+    const all = [...NOISE_GENERIC, ...Object.values(NOISE_BY_SECTOR).flat()];
+    expect(all.length).toBeGreaterThanOrEqual(150);
+    expect(new Set(all).size).toBe(all.length);
+    let maxShare = 0;
+    for (const nz of all) {
+      const used = pool.filter((n) =>
+        n.body
+          .split(/\n{2,}/)[1]
+          .toLowerCase()
+          .includes(nz.toLowerCase()),
+      ).length;
+      maxShare = Math.max(maxShare, used / pool.length);
+    }
+    expect(maxShare).toBeLessThan(0.03);
+  });
+
+  it("suara fiktif (kota, tokoh, lembaga, sumber, kutipan, adegan) tidak memuat kata kunci sifat maupun nama aset", () => {
+    const voices = [...CITIES, ...PEOPLE.flat(), ...ORGANIZATIONS, ...SOURCES, ...QUOTES, ...SCENES];
+    for (const v of voices) {
+      for (const k of keys) expect(keyRe(k).test(v), `"${v}" memuat "${k}"`).toBe(false);
+      for (const a of assets)
+        expect(new RegExp(`(?<![\\p{L}])${a.name}(?![\\p{L}])`, "u").test(v), `"${v}" memuat ${a.name}`).toBe(
+          false,
+        );
+    }
+  });
+
+  it("genre tersebar: tak ada genre > 45 % dan tiap genre >= 5 %; tiap genre punya ciri tekstnya", () => {
+    const counts = new Map<string, number>();
+    for (const n of pool) counts.set(genreOf(n.title), (counts.get(genreOf(n.title)) ?? 0) + 1);
+    expect([...counts.keys()].sort()).toEqual(["kutipan", "lapangan", "lurus", "rilis", "singkat", "sumber"]);
+    for (const [g, c] of counts) {
+      expect(c / pool.length, g).toBeLessThan(0.45);
+      expect(c / pool.length, g).toBeGreaterThanOrEqual(0.05);
+    }
+    for (const n of pool) {
+      const p1 = n.body.split(/\n{2,}/)[0];
+      switch (genreOf(n.title)) {
+        case "singkat":
+          expect(p1).toMatch(/^[A-Z ]+ — /);
+          break;
+        case "kutipan":
+          expect(p1).toMatch(/"[^"]+," kata [A-Z][a-z]+ [A-Z][a-z]+, /);
+          break;
+        case "sumber":
+          expect(p1).toContain("Informasi itu dihimpun dari ");
+          break;
+        case "rilis":
+          expect(p1).toContain("dalam keterangan tertulis.");
+          break;
+        case "lapangan":
+          expect(p1).toMatch(/(^|[.!?] )Di [a-zA-Z]+/);
+          break;
+        default:
+          expect(p1).not.toMatch(/ — |kata [A-Z]|Informasi itu dihimpun|keterangan tertulis/);
+      }
+    }
+  });
+
+  it("genre singkat: tanpa komentar netral dan hanya satu pengecoh topik; berita event tetap menyebut subjeknya", () => {
+    for (const n of pool.filter((x) => genreOf(x.title) === "singkat")) {
+      expect(n.body.split(/\n{2,}/)[0].split(/(?<=[.!?])\s+/).length).toBeLessThanOrEqual(
+        n.kind === "price" ? 1 : 3,
+      );
+    }
+    for (const n of pool.filter((x) => x.event)) {
+      const name = assets.find((a) => a.symbol === n.event!.symbol)!.name;
+      expect(n.body.split(/\n{2,}/)[0]).toContain(name);
     }
   });
 });
