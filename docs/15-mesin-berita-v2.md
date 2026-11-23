@@ -89,6 +89,15 @@ Karena tim kini bisa membeli analisa ([18](18-analisa-pasar.md)), berita dipersu
 | Pengecoh topik | "Di sisi lain" berdekatan dengan sektor utama (membocorkan sektor) | Berdekatan dengan sektor LAIN (menyesatkan) |
 | Tema | 130 tema bergaya langsung dan tren sektor | + **25 tema samar** (`news-themes-4.ts`): peristiwa dituturkan tanpa sektor, dampak tidak satu arah (satu berita bisa menaikkan dan menurunkan aset berbeda sekaligus), hanya bisa ditebak dari akibat tidak langsung |
 
+**Struktur tanpa ciri khas (23 Nov, tahap 1 perbaikan teks).** Hasil pengukuran: paragraf 2 hanya punya 62 kerangka untuk 620 berita harga, "Di sisi lain," ada di 100 % berita, dan pengecoh sifat memakai 3 rumusan tetap, sehingga pemain atau program bisa langsung membuang kalimat-kalimat itu (pola membocorkan pengecoh). Perbaikan di `news-pool-lib.ts`:
+- **Pustaka rumusan bersama:** petunjuk tanpa arah dan pengecoh sifat memakai 12 rumusan NETRAL yang sama (`NEUTRAL_TEMPLATES`); kalimat berarah (`HINT_UP`, `HINT_DOWN`, masing-masing 7) hanya untuk petunjuk yang benar. Tata bahasa yang janggal diperbaiki ("dengan … dengan saksama", "Nama perusahaan yang").
+- **Susunan acak:** paragraf 2 berisi petunjuk (1 naik, 1 turun), 0–2 pengecoh sifat, dan 1–2 pengecoh topik, diurutkan acak (hash judul); tiap rumusan dipakai paling banyak sekali per berita.
+- **Penyambung variatif:** 6 penyambung dan separuh tanpa penyambung, dipilih tanpa melihat jenis kalimat; kalimat pertama tidak pernah bersambung; tidak ada penyambung yang sama berurutan. "Di sisi lain," kini di 22 % berita (dulu 100 %).
+- **Tanpa RNG utama:** semua pilihan memakai hash judul; `hashOf` diberi pengacak akhir (murmur3) karena bit rendah FNV berkorelasi antar garam.
+- Hasil: 607 kerangka unik dari 620 berita harga (dulu 62), kerangka terbanyak 2 berita; jumlah kalimat paragraf 2 bervariasi 2–6. Komentar penutup paragraf 1 diperluas dari 5 ke 12.
+- Tes baru (kelompok "struktur berita tanpa ciri khas"): keragaman kerangka (≥ 80 % unik, tak ada > 2 %), penyambung tidak wajib dan tidak menandai jenis kalimat, urutan acak, tidak ada rumusan > 25 % berita, rumusan pengecoh = rumusan petunjuk tanpa arah, tidak ada rumusan/penyambung ganda dalam satu berita, dan tata bahasa. Kalibrasi tetap: pembaca petunjuk +23,1 % pada selisih 2 % (docs/19), simulasi mesin 3 hari sehat.
+- Belum dikerjakan (tahap berikutnya): pengecoh topik yang terasa wajar (kini masih kegiatan komunitas yang jelas tak relevan), variasi genre, dan tekstur konkret (lembaga/tokoh fiktif).
+
 Pembeli analisa mendapat 3 ciri naik + 3 turun beserta kekuatannya, perkiraan waktu, dan pengecoh yang disebut berita dibuka sebagai pengecoh (paragraf 4). `news_pool()` tetap menolak berita yang petunjuk 2+2-nya menyebut aset nonaktif (lebih ketat dari 1+1 yang tampil sekarang, jadi aman). Simulasi 3 hari tetap sehat: tidak ada aset di batas harga, perubahan akhir −29 % sampai +31 %.
 
 Besar efek dikalibrasi 23 Nov (`effectScale` 2; [19](19-kalibrasi-ekonomi.md)): efek berarti rata-rata ±5,7 %, jauh di atas selisih jual 2 %. Simulasi 3 hari pada skala ini tetap sehat (tidak ada aset di batas harga).

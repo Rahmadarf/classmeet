@@ -98,6 +98,12 @@ type Rng = ReturnType<typeof makeRng>;
 function hashOf(text: string): number {
   let h = 2166136261;
   for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
+  // pengacak akhir (murmur3): bit rendah FNV lemah (paritas karakter), sehingga `% 2` dan `% 12` dari teks mirip saling berkorelasi
+  h ^= h >>> 16;
+  h = Math.imul(h, 0x85ebca6b);
+  h ^= h >>> 13;
+  h = Math.imul(h, 0xc2b2ae35);
+  h ^= h >>> 16;
   return h >>> 0;
 }
 
@@ -121,13 +127,86 @@ const HINT_PER_SIDE_HARD = 1;
 /** Petunjuk tanpa arah: separuh petunjuk hanya menyebut ciri yang "terdampak", arahnya harus ditebak dari topik berita. */
 const isNeutralHint = (title: string, symbol: string) => hashOf(`netral|${title}|${symbol}`) % 2 === 0;
 
+/** Pilihan deterministik menurut judul + garam (tanpa RNG utama, jadi efek dan judul tidak bergeser). */
+const pickBy = <T>(xs: readonly T[], title: string, salt: string): T =>
+  xs[hashOf(`${salt}|${title}`) % xs.length];
+
+/** Seperti `pickBy`, tetapi melewati rumusan yang sudah dipakai di paragraf yang sama (`used`), supaya tidak ada kalimat berpola sama dua kali. */
+function pickDistinct<T>(xs: readonly T[], title: string, salt: string, used: Set<T>): T {
+  let i = hashOf(`${salt}|${title}`) % xs.length;
+  for (let k = 0; k < xs.length && used.has(xs[i]); k++) i = (i + 1) % xs.length;
+  used.add(xs[i]);
+  return xs[i];
+}
+
+const upperFirst = (t: string) => (t ? t[0].toUpperCase() + t.slice(1) : t);
+const lowerFirst = (t: string) => (t ? t[0].toLowerCase() + t.slice(1) : t);
+
+/**
+ * Pustaka rumusan kalimat (`{x}` = ciri perusahaan, diawali kata kerja). PETUNJUK TANPA ARAH dan PENGECOH SIFAT memakai
+ * pustaka NETRAL yang SAMA, sehingga bentuk kalimat tidak membedakan keduanya (dulu pengecoh punya 3 rumusan tetap yang
+ * mudah dibuang). Kalimat berarah (naik/turun) hanya dipakai petunjuk yang benar.
+ */
+export const HINT_UP = [
+  "Perusahaan {x} diperkirakan mendapat keuntungan dari situasi ini.",
+  "Pelaku pasar menilai perusahaan {x} berpeluang menguat.",
+  "Perusahaan {x} dinilai berada di posisi menguntungkan.",
+  "Perusahaan {x} disebut sebagai pihak yang paling diuntungkan.",
+  "Analis memperkirakan perusahaan {x} ikut terdorong naik.",
+  "Bagi perusahaan {x}, kabar ini terbaca sebagai angin segar.",
+  "Perusahaan {x} kemungkinan menikmati dampak positifnya.",
+] as const;
+export const HINT_DOWN = [
+  "Perusahaan {x} berisiko tertekan.",
+  "Perusahaan {x} diperkirakan melemah.",
+  "Perusahaan {x} cenderung terdampak negatif.",
+  "Bagi perusahaan {x}, kabar ini terbaca kurang menguntungkan.",
+  "Perusahaan {x} disebut sebagai pihak yang paling terpukul.",
+  "Analis memperkirakan perusahaan {x} ikut tertekan.",
+  "Perusahaan {x} menghadapi tekanan baru.",
+] as const;
+export const NEUTRAL_TEMPLATES = [
+  "Perusahaan {x} disebut akan merasakan dampak langsungnya.",
+  "Pelaku pasar mencermati perusahaan {x} secara saksama.",
+  "Perusahaan {x} dinilai paling peka terhadap perkembangan ini.",
+  "Pembahasan hari ini banyak menyinggung perusahaan {x}.",
+  "Sejumlah analis menyebut perusahaan {x} patut dipantau.",
+  "Perusahaan {x} menjadi salah satu yang ditanyakan investor.",
+  "Di kalangan pelaku pasar, perusahaan {x} ramai dibicarakan.",
+  "Sumber di pasar menyebut perusahaan {x} ikut dipantau.",
+  "Perhatian tertuju pada perusahaan {x}.",
+  "Perusahaan {x} belum memberi tanggapan.",
+  "Beberapa pihak menyinggung perusahaan {x} tanpa merinci alasannya.",
+  "Tak sedikit investor menanyakan nasib perusahaan {x}.",
+] as const;
+const fillX = (template: string, phrase: string) => template.replace("{x}", `yang ${phrase}`);
+
+/** Penyambung antarkalimat; separuhnya kosong, dan dipakai sama untuk semua jenis kalimat (tidak menandai pengecoh). */
+const CONNECTORS = [
+  "Di sisi lain, ",
+  "Selain itu, ",
+  "Sementara itu, ",
+  "Pada waktu yang sama, ",
+  "Terpisah dari itu, ",
+  "Dalam kabar lain, ",
+  "",
+  "",
+  "",
+  "",
+] as const;
+
 /**
  * Kalimat petunjuk dampak (TINGKAT SULIT): tanpa menyebut nama perusahaan, hanya SATU ciri aset yang naik terbesar dan
  * SATU yang turun terbesar (efek berarti >= HINT_MIN_BPS; subjek berita event di `exclude` dilewati). Separuh petunjuk
- * tidak menyebut arah ("merasakan dampak langsung"), jadi arahnya harus disimpulkan dari topik berita. Deterministik
- * menurut judul. Aset pengisi berefek kecil tidak disebut.
+ * tidak menyebut arah (rumusan netral yang sama dengan pengecoh), jadi arahnya harus disimpulkan dari topik berita.
+ * Deterministik menurut judul. Aset pengisi berefek kecil tidak disebut.
  */
-export function hintSentence(title: string, effects: PoolEffect[], exclude: string[] = []): string {
+export function hintClauses(
+  title: string,
+  effects: PoolEffect[],
+  exclude: string[] = [],
+  used: Set<string> = new Set(),
+): string[] {
   const byMag = (a: PoolEffect, b: PoolEffect) => Math.abs(b.pct_bps) - Math.abs(a.pct_bps);
   const pool = effects.filter(
     (e) => !exclude.includes(e.symbol) && ASSET_TRAITS[e.symbol] && Math.abs(e.pct_bps) >= HINT_MIN_BPS,
@@ -137,55 +216,48 @@ export function hintSentence(title: string, effects: PoolEffect[], exclude: stri
       .filter((e) => Math.sign(e.pct_bps) === sign)
       .sort(byMag)
       .slice(0, HINT_PER_SIDE_HARD);
-  const h = hashOf(title);
-  const clause = (e: PoolEffect, salt: number): string => {
+  return [...top(1), ...top(-1)].map((e) => {
     const x = traitPhrase(e.symbol, title)!;
-    if (isNeutralHint(title, e.symbol)) {
-      return [
-        `Perusahaan yang ${x} disebut akan merasakan dampak langsungnya.`,
-        `Pelaku pasar memantau perusahaan yang ${x} dengan saksama.`,
-        `Perusahaan yang ${x} dinilai paling peka terhadap perkembangan ini.`,
-      ][(h + salt) % 3];
-    }
-    return e.pct_bps > 0
-      ? [
-          `Perusahaan yang ${x} diperkirakan mendapat keuntungan dari situasi ini.`,
-          `Pelaku pasar menilai perusahaan yang ${x} berpeluang menguat.`,
-          `Perusahaan yang ${x} dinilai berada di posisi menguntungkan.`,
-        ][(h + salt) % 3]
-      : [
-          `Perusahaan yang ${x} berisiko tertekan.`,
-          `Perusahaan yang ${x} diperkirakan melemah.`,
-          `Adapun perusahaan yang ${x} cenderung terdampak negatif.`,
-        ][(h + salt) % 3];
-  };
-  const parts = [...top(1), ...top(-1)].map((e, i) => clause(e, i));
+    const list = isNeutralHint(title, e.symbol) ? NEUTRAL_TEMPLATES : e.pct_bps > 0 ? HINT_UP : HINT_DOWN;
+    return fillX(pickDistinct<string>(list, title, `petunjuk|${e.symbol}`, used), x);
+  });
+}
+
+/** Semua kalimat petunjuk digabung (untuk tes dan kompatibilitas). */
+export function hintSentence(title: string, effects: PoolEffect[], exclude: string[] = []): string {
+  const parts = hintClauses(title, effects, exclude);
   return parts.length ? parts.join(" ") : "Dampak pada perusahaan lain diperkirakan terbatas.";
 }
 
 /**
- * Pengecoh berupa SIFAT aset yang sebenarnya TIDAK terdampak (efek < HINT_MIN_BPS atau tidak ada): disebut netral seolah
- * relevan ("disebut-sebut ikut memantau"), tanpa arah. Deterministik menurut judul; subjek event dilewati. Laporan
- * analisa menyebut pengecoh ini sebagai pengecoh (paragraf 4).
+ * Pengecoh SIFAT: 0 sampai 2 kalimat yang menyebut ciri aset yang sebenarnya TIDAK terdampak (efek < HINT_MIN_BPS atau tidak
+ * ada), memakai rumusan NETRAL yang sama dengan petunjuk tanpa arah. Deterministik menurut judul; subjek event dilewati.
+ * Laporan analisa menyebutnya sebagai pengecoh (paragraf 4).
  */
-export function decoyOf(
+export function decoysOf(
   title: string,
   effects: PoolEffect[],
   exclude: string[] = [],
-): { symbol: string; phrase: string; sentence: string } | null {
+  used: Set<string> = new Set(),
+): { symbol: string; phrase: string; sentence: string }[] {
   const meaningful = new Set(effects.filter((e) => Math.abs(e.pct_bps) >= HINT_MIN_BPS).map((e) => e.symbol));
   const candidates = Object.keys(ASSET_TRAITS)
     .filter((sym) => !meaningful.has(sym) && !exclude.includes(sym))
     .sort();
-  if (candidates.length === 0) return null;
-  const symbol = candidates[hashOf(`pengecoh|${title}`) % candidates.length];
-  const phrase = traitPhrase(symbol, title)!;
-  const sentence = [
-    `Nama perusahaan yang ${phrase} sempat ramai dibicarakan di kalangan pelaku pasar.`,
-    `Perusahaan yang ${phrase} disebut-sebut ikut memantau perkembangan ini, meski belum ada pernyataan resmi.`,
-    `Sejumlah pengamat juga menyinggung perusahaan yang ${phrase} dalam pembahasan hari ini.`,
-  ][hashOf(`kalimat|${title}`) % 3];
-  return { symbol, phrase, sentence };
+  const count = Math.min([0, 1, 1, 1, 1, 2][hashOf(`jumlah-pengecoh|${title}`) % 6], candidates.length);
+  const out: { symbol: string; phrase: string; sentence: string }[] = [];
+  for (let i = 0; i < count; i++) {
+    let symbol = candidates[hashOf(`pengecoh${i}|${title}`) % candidates.length];
+    while (out.some((d) => d.symbol === symbol))
+      symbol = candidates[(candidates.indexOf(symbol) + 1) % candidates.length];
+    const phrase = traitPhrase(symbol, title)!;
+    out.push({
+      symbol,
+      phrase,
+      sentence: fillX(pickDistinct<string>(NEUTRAL_TEMPLATES, title, `kalimat-pengecoh${i}`, used), phrase),
+    });
+  }
+  return out;
 }
 
 /** Sektor dengan bobot terbesar pada efek. */
@@ -195,13 +267,12 @@ function leadSectorOf(effects: PoolEffect[], sectorOf: Map<string, SectorKey>): 
 }
 
 /**
- * Paragraf kedua (TINGKAT SULIT): kalimat petunjuk (satu ciri naik dan satu turun, separuhnya tanpa arah), satu kalimat
- * PENGECOH yang menyebut sifat aset yang sebenarnya tidak terdampak (`decoyOf`), lalu dua kalimat pengecoh biasa ("Di
- * sisi lain, ..." dan "Selain itu, ..."). Pengecoh bertopik biasa sengaja berdekatan dengan sektor LAIN (bukan sektor
- * utama berita) supaya tidak membocorkan sektor yang terdampak. Memakai RNG utama untuk memilih pengecoh biasa.
+ * Paragraf kedua (TINGKAT SULIT, struktur tanpa ciri khas): kalimat petunjuk (satu naik dan satu turun terbesar), 0-2
+ * pengecoh sifat, dan 1-2 pengecoh topik (berdekatan dengan sektor LAIN atau umum). Semua kalimat diacak urutannya, dan
+ * penyambungnya (termasuk "tanpa penyambung") dipilih tanpa melihat jenis kalimat, sehingga tidak ada pola yang
+ * membedakan petunjuk, pengecoh sifat, dan pengecoh topik. Tanpa RNG utama (hash judul), jadi efek tidak bergeser.
  */
 function secondParagraph(
-  rng: Rng,
   title: string,
   effects: PoolEffect[],
   sectorOf: Map<string, SectorKey>,
@@ -212,12 +283,41 @@ function secondParagraph(
     sectorOf,
   );
   const others = (Object.keys(NOISE_BY_SECTOR) as SectorKey[]).filter((k) => k !== lead);
-  const adjacent = rng.pick(NOISE_BY_SECTOR[rng.pick(others)]);
-  let generic = rng.pick(NOISE_GENERIC);
-  while (generic === adjacent) generic = rng.pick(NOISE_GENERIC);
-  const link = ["Selain itu", "Sementara itu", "Pada waktu yang sama"][hashOf(title) % 3];
-  const decoy = decoyOf(title, effects, exclude);
-  return `${hintSentence(title, effects, exclude)}${decoy ? ` ${decoy.sentence}` : ""} Di sisi lain, ${adjacent}. ${link}, ${generic}.`;
+  // kalimat berhuruf besar (petunjuk dan pengecoh sifat) dan anak kalimat huruf kecil (pengecoh topik)
+  const usedTemplates = new Set<string>(); // rumusan netral/arah yang sudah dipakai di paragraf ini
+  const slots: { text: string; clause: boolean }[] = [
+    ...hintClauses(title, effects, exclude, usedTemplates).map((text) => ({ text, clause: false })),
+    ...decoysOf(title, effects, exclude, usedTemplates).map((d) => ({ text: d.sentence, clause: false })),
+  ];
+  const noiseCount = 1 + (hashOf(`jumlah-noise|${title}`) % 3 === 0 ? 1 : 0);
+  const usedNoise = new Set<string>();
+  for (let i = 0; i < noiseCount; i++) {
+    const bank =
+      hashOf(`bank${i}|${title}`) % 2 === 0
+        ? NOISE_GENERIC
+        : NOISE_BY_SECTOR[pickBy(others, title, `sektor-lain${i}`)];
+    let item = pickBy(bank, title, `noise${i}`);
+    for (let k = 1; usedNoise.has(item) && k < bank.length; k++)
+      item = bank[(bank.indexOf(item) + 1) % bank.length];
+    usedNoise.add(item);
+    slots.push({ text: item, clause: true });
+  }
+  const ordered = slots
+    .map((slot, i) => ({ slot, key: hashOf(`urutan|${title}|${i}`) }))
+    .sort((a, b) => a.key - b.key)
+    .map((x) => x.slot);
+  let previousConnector = "";
+  return ordered
+    .map(({ text, clause }, i) => {
+      let connector = i === 0 ? "" : pickBy(CONNECTORS, title, `sambung${i}`);
+      // penyambung yang sama tidak dipakai dua kali berturut-turut
+      for (let k = 0; connector && connector === previousConnector && k < CONNECTORS.length; k++)
+        connector = CONNECTORS[(CONNECTORS.indexOf(connector) + 1) % CONNECTORS.length];
+      if (connector) previousConnector = connector;
+      if (clause) return connector ? `${connector}${text}.` : `${upperFirst(text)}.`;
+      return connector ? `${connector}${lowerFirst(text)}` : text;
+    })
+    .join(" ");
 }
 
 /**
@@ -294,10 +394,10 @@ export function analysisParagraphs(
     parts.push(
       `Sebanyak ${tiny} perusahaan lain hanya bergerak tipis (di bawah 1 %), jadi tidak layak dikejar.`,
     );
-  const decoy = decoyOf(title, effects, event ? [event.symbol] : []);
-  if (decoy)
+  const decoys = decoysOf(title, effects, event ? [event.symbol] : []);
+  if (decoys.length)
     parts.push(
-      `Perusahaan yang ${decoy.phrase}, yang sempat disebut di berita, hanyalah pengecoh: tidak ada efek harga yang berarti.`,
+      `Ciri ${listSerta(decoys.map((d) => `perusahaan yang ${d.phrase}`))}, yang sempat disebut di berita, hanyalah pengecoh: tidak ada efek harga yang berarti.`,
     );
   parts.push("Kalimat pengecoh lain di berita tidak memengaruhi harga sama sekali.");
   if (kind === "bankrupt")
@@ -366,6 +466,13 @@ const NEUTRAL_COMMENTARY = [
   "Belum ada pernyataan resmi mengenai langkah lanjutan.",
   "Sejumlah pihak menyebut situasinya masih bisa berubah.",
   "Pengamat meminta publik tidak terburu-buru menarik kesimpulan.",
+  "Rincian pelaksanaannya masih dibahas.",
+  "Angka resmi dijadwalkan keluar pekan depan.",
+  "Sejumlah pelaku usaha mengaku baru mengetahui kabar ini hari ini.",
+  "Belum jelas kapan kebijakan atau perubahan itu mulai terasa.",
+  "Pihak terkait enggan memberi keterangan lebih jauh.",
+  "Sebagian pihak masih menunggu data pendukung.",
+  "Reaksi awal di lapangan terlihat beragam.",
 ];
 
 function priceNews(assets: PoolAsset[], cfg: PoolConfig, rng: Rng): PoolNews[] {
@@ -400,7 +507,7 @@ function priceNews(assets: PoolAsset[], cfg: PoolConfig, rng: Rng): PoolNews[] {
         out.push({
           kind: "price",
           title,
-          body: `${base}${second}\n\n${secondParagraph(rng, title, effects, sectorOf)}`,
+          body: `${base}${second}\n\n${secondParagraph(title, effects, sectorOf)}`,
           effects,
           event: null,
           analysis: analysisParagraphs(title, "price", effects, null),
@@ -468,7 +575,7 @@ function eventNews(assets: PoolAsset[], cfg: PoolConfig, rng: Rng): PoolNews[] {
         out.push({
           kind,
           title,
-          body: `${body}\n\n${secondParagraph(rng, title, effects, sectorOf, [asset.symbol])}`,
+          body: `${body}\n\n${secondParagraph(title, effects, sectorOf, [asset.symbol])}`,
           effects,
           event: { symbol: asset.symbol, amount },
           analysis: analysisParagraphs(title, kind, effects, { symbol: asset.symbol, amount }),

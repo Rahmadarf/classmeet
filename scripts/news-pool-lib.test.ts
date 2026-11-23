@@ -4,9 +4,13 @@ import { ASSET_TRAITS } from "./data/asset-traits";
 import { NOISE_BY_SECTOR, NOISE_GENERIC } from "./data/news-noise";
 import {
   buildPool,
-  decoyOf,
+  decoysOf,
+  HINT_DOWN,
+  HINT_UP,
+  NEUTRAL_TEMPLATES,
   DEFAULT_CONFIG,
   firstSentence,
+  hintClauses,
   hintSentence,
   makeRng,
   poolToSql,
@@ -20,6 +24,27 @@ const assets: PoolAsset[] = (assetsFile.assets as PoolAsset[]).map((a) => ({
   sector: a.sector,
 }));
 const pool = buildPool(assets);
+const allPhrases = Object.values(ASSET_TRAITS).flatMap((t) => t.phrases);
+/** Templat berisi {x}: jadikan ungkapan reguler untuk mengenali kalimat yang dibuat dari templat itu. */
+const templateRegex = (t: string) =>
+  new RegExp("^" + t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace("\\{x\\}", "yang .+?") + "$", "i");
+const neutralRegexes = NEUTRAL_TEMPLATES.map(templateRegex);
+const upRegexes = HINT_UP.map(templateRegex);
+const downRegexes = HINT_DOWN.map(templateRegex);
+/** Kalimat di paragraf 2 tanpa penyambung di depan dan dengan huruf pertama dinormalkan, untuk mencocokkan templat. */
+const bare = (sentence: string) => {
+  let t = sentence.trim();
+  for (const c of [
+    "Di sisi lain, ",
+    "Selain itu, ",
+    "Sementara itu, ",
+    "Pada waktu yang sama, ",
+    "Terpisah dari itu, ",
+    "Dalam kabar lain, ",
+  ])
+    if (t.startsWith(c)) t = t.slice(c.length);
+  return t[0].toUpperCase() + t.slice(1);
+};
 
 describe("buildPool", () => {
   it("lolos validasi (10–15 aset, efek valid, judul unik, tiap aset punya tiap jenis event)", () => {
@@ -76,12 +101,14 @@ describe("buildPool", () => {
 });
 
 describe("isi berita dua paragraf dengan petunjuk sifat", () => {
-  it("tiap berita minimal 2 paragraf; paragraf kedua memuat petunjuk sifat dan dua kalimat pengecoh", () => {
+  it("tiap berita minimal 2 paragraf; paragraf kedua memuat petunjuk sifat dan sedikitnya satu pengecoh topik", () => {
     for (const n of pool) {
       const parts = n.body.split(/\n{2,}/);
       expect(parts.length).toBeGreaterThanOrEqual(2);
-      expect(parts[1]).toContain("Di sisi lain, ");
-      expect(parts[1]).toMatch(/\. (Selain itu|Sementara itu|Pada waktu yang sama), /);
+      const sentences = parts[1].split(/(?<=\.)\s+/);
+      expect(sentences.length, n.title).toBeGreaterThanOrEqual(2);
+      const noiseCount = sentences.filter((x) => !allPhrases.some((ph) => x.includes(ph))).length;
+      expect(noiseCount, `${n.title}: tanpa pengecoh topik`).toBeGreaterThanOrEqual(1);
     }
   });
 
@@ -127,37 +154,39 @@ describe("isi berita dua paragraf dengan petunjuk sifat", () => {
     expect(hintSentence("Judul", [], [])).toContain("terbatas");
   });
 
-  it("sekitar separuh petunjuk tidak menyebut arah (harus ditebak dari topik)", () => {
+  it("sekitar separuh petunjuk tidak menyebut arah (rumusan netral), separuh lagi berarah", () => {
     let neutral = 0;
     let directional = 0;
     for (const n of pool.filter((x) => x.kind === "price")) {
-      const p2 = n.body.split(/\n{2,}/)[1];
-      if (/merasakan dampak langsungnya|memantau perusahaan .* dengan saksama|paling peka/.test(p2))
-        neutral++;
-      if (
-        /mendapat keuntungan|berpeluang menguat|posisi menguntungkan|berisiko tertekan|diperkirakan melemah|terdampak negatif/.test(
-          p2,
-        )
-      )
-        directional++;
+      for (const c of hintClauses(n.title, n.effects)) {
+        if (neutralRegexes.some((r) => r.test(c))) neutral++;
+        else directional++;
+      }
     }
-    expect(neutral).toBeGreaterThan(100);
-    expect(directional).toBeGreaterThan(100);
+    expect(neutral).toBeGreaterThan(200);
+    expect(directional).toBeGreaterThan(200);
+    expect(Math.abs(neutral - directional) / (neutral + directional)).toBeLessThan(0.15);
   });
 
-  it("pengecoh sifat: menyebut aset yang efeknya < 1 % atau tidak ada, dan laporan menyebutnya pengecoh", () => {
+  it("pengecoh sifat (0-2 per berita): aset yang efeknya < 1 % atau tidak ada; laporan menyebutnya pengecoh", () => {
+    let withDecoy = 0;
     for (const n of pool) {
-      const d = decoyOf(n.title, n.effects, n.event ? [n.event.symbol] : []);
-      expect(d).not.toBeNull();
-      const fx = n.effects.find((e) => e.symbol === d!.symbol);
-      expect(!fx || Math.abs(fx.pct_bps) < 100, `${n.title}: pengecoh ${d!.symbol} berefek berarti`).toBe(
-        true,
-      );
-      expect(n.body.split(/\n{2,}/)[1]).toContain(d!.sentence);
-      expect(n.analysis[3]).toContain(
-        `Perusahaan yang ${d!.phrase}, yang sempat disebut di berita, hanyalah pengecoh`,
-      );
+      const ds = decoysOf(n.title, n.effects, n.event ? [n.event.symbol] : []);
+      expect(ds.length).toBeLessThanOrEqual(2);
+      if (ds.length) withDecoy++;
+      const p2 = n.body.split(/\n{2,}/)[1];
+      for (const d of ds) {
+        const fx = n.effects.find((e) => e.symbol === d.symbol);
+        expect(!fx || Math.abs(fx.pct_bps) < 100, `${n.title}: pengecoh ${d.symbol} berefek berarti`).toBe(
+          true,
+        );
+        expect(p2).toContain(`yang ${d.phrase}`);
+        expect(n.analysis[3]).toContain(`perusahaan yang ${d.phrase}`);
+        expect(n.analysis[3]).toContain("hanyalah pengecoh");
+      }
+      if (ds.length === 0) expect(n.analysis[3]).not.toContain("hanyalah pengecoh");
     }
+    expect(withDecoy / pool.length).toBeGreaterThan(0.7);
   });
 
   it("paragraf 1 hanya kalimat peristiwa: tanpa kalimat akibat per sektor", () => {
@@ -272,6 +301,132 @@ describe("analisa pay to win (laporan 4 paragraf)", () => {
     const a = buildPool(assets);
     expect(a.map((n) => [n.title, n.body, n.effects])).toEqual(pool.map((n) => [n.title, n.body, n.effects]));
     expect(a.map((n) => n.analysis)).toEqual(pool.map((n) => n.analysis));
+  });
+});
+
+describe("struktur berita tanpa ciri khas (tidak ada pola yang membocorkan pengecoh)", () => {
+  const price = pool.filter((n) => n.kind === "price");
+  const sentencesOf = (n: (typeof pool)[number]) => n.body.split(/\n{2,}/)[1].split(/(?<=\.)\s+/);
+  const maskKerangka = (n: (typeof pool)[number]) => {
+    let t = n.body.split(/\n{2,}/)[1];
+    for (const ph of allPhrases) t = t.split(ph).join("<CIRI>");
+    for (const nz of noiseAll) {
+      t = t.split(nz).join("<N>");
+      t = t.split(nz[0].toUpperCase() + nz.slice(1)).join("<N>");
+    }
+    return t;
+  };
+  const noiseAll = [...NOISE_GENERIC, ...Object.values(NOISE_BY_SECTOR).flat()];
+
+  it("kerangka paragraf kedua beragam: sedikitnya 80 % unik dan tak ada yang dipakai lebih dari 2 % berita", () => {
+    const counts = new Map<string, number>();
+    for (const n of price) counts.set(maskKerangka(n), (counts.get(maskKerangka(n)) ?? 0) + 1);
+    expect(counts.size / price.length).toBeGreaterThan(0.8);
+    expect(Math.max(...counts.values()) / price.length).toBeLessThan(0.02);
+  });
+
+  it('tidak ada penyambung wajib: "Di sisi lain," muncul di bawah 35 % berita, dan penyambung acak tidak tetap di satu posisi', () => {
+    const withDi = pool.filter((n) => n.body.split(/\n{2,}/)[1].includes("Di sisi lain,")).length;
+    expect(withDi / pool.length).toBeLessThan(0.35);
+    expect(withDi / pool.length).toBeGreaterThan(0.05);
+    // kalimat pertama paragraf kedua tidak pernah diawali penyambung
+    for (const n of pool)
+      expect(sentencesOf(n)[0]).not.toMatch(
+        /^(Di sisi lain|Selain itu|Sementara itu|Pada waktu yang sama|Terpisah dari itu|Dalam kabar lain),/,
+      );
+  });
+
+  it("urutan acak: petunjuk, pengecoh sifat, dan pengecoh topik tidak selalu berurutan sama", () => {
+    const firstIsNoise = price.filter((n) => !allPhrases.some((ph) => sentencesOf(n)[0].includes(ph))).length;
+    expect(firstIsNoise / price.length).toBeGreaterThan(0.15);
+    expect(firstIsNoise / price.length).toBeLessThan(0.7);
+  });
+
+  it("tidak ada templat yang mendominasi: tiap templat dipakai di bawah 25 % berita", () => {
+    const all = [...neutralRegexes, ...upRegexes, ...downRegexes];
+    const hits = all.map(() => 0);
+    for (const n of pool) {
+      const bares = sentencesOf(n).map(bare);
+      all.forEach((r, i) => {
+        if (bares.some((x) => r.test(x))) hits[i]++;
+      });
+    }
+    expect(Math.max(...hits) / pool.length).toBeLessThan(0.25);
+    expect(Math.min(...hits)).toBeGreaterThan(0); // semua rumusan terpakai
+  });
+
+  it("pengecoh sifat dan petunjuk tanpa arah memakai rumusan YANG SAMA (tidak bisa dibedakan dari bentuk)", () => {
+    const decoyTemplates = new Set<number>();
+    const neutralHintTemplates = new Set<number>();
+    for (const n of pool) {
+      for (const d of decoysOf(n.title, n.effects, n.event ? [n.event.symbol] : [])) {
+        const i = neutralRegexes.findIndex((r) =>
+          r.test(bare(sentencesOf(n).find((x) => x.includes(`yang ${d.phrase}`))!)),
+        );
+        expect(i, `${n.title}: pengecoh bukan rumusan netral`).toBeGreaterThanOrEqual(0);
+        decoyTemplates.add(i);
+      }
+      for (const c of hintClauses(n.title, n.effects)) {
+        const i = neutralRegexes.findIndex((r) => r.test(c));
+        if (i >= 0) neutralHintTemplates.add(i);
+      }
+    }
+    expect([...decoyTemplates].sort()).toEqual([...neutralHintTemplates].sort());
+    expect(decoyTemplates.size).toBe(NEUTRAL_TEMPLATES.length);
+  });
+
+  it("penyambung tidak menandai jenis kalimat: porsi kalimat bersambung mirip untuk pengecoh topik dan kalimat ciri", () => {
+    let noiseWith = 0,
+      noiseAll_ = 0,
+      traitWith = 0,
+      traitAll = 0;
+    for (const n of pool) {
+      for (const [i, s2] of sentencesOf(n).entries()) {
+        if (i === 0) continue;
+        const hasConn =
+          /^(Di sisi lain|Selain itu|Sementara itu|Pada waktu yang sama|Terpisah dari itu|Dalam kabar lain), /.test(
+            s2,
+          );
+        if (allPhrases.some((ph) => s2.includes(ph))) {
+          traitAll++;
+          if (hasConn) traitWith++;
+        } else {
+          noiseAll_++;
+          if (hasConn) noiseWith++;
+        }
+      }
+    }
+    expect(Math.abs(noiseWith / noiseAll_ - traitWith / traitAll)).toBeLessThan(0.12);
+  });
+
+  it("dalam satu berita: tidak ada rumusan yang sama dua kali dan tidak ada penyambung yang sama berurutan", () => {
+    const all = [...neutralRegexes, ...upRegexes, ...downRegexes];
+    for (const n of pool) {
+      const bares = sentencesOf(n).map(bare);
+      all.forEach((r, i) => {
+        expect(
+          bares.filter((x) => r.test(x)).length,
+          `${n.title}: rumusan ${i} dua kali`,
+        ).toBeLessThanOrEqual(1);
+      });
+      let prev = "";
+      for (const sx of sentencesOf(n)) {
+        const m =
+          /^(Di sisi lain|Selain itu|Sementara itu|Pada waktu yang sama|Terpisah dari itu|Dalam kabar lain), /.exec(
+            sx,
+          );
+        if (m) expect(m[1], `${n.title}: penyambung berulang`).not.toBe(prev);
+        prev = m ? m[1] : "";
+      }
+    }
+  });
+
+  it("tata bahasa: tidak ada kata ganda 'dengan ... dengan saksama' dan tidak ada 'Nama perusahaan yang'", () => {
+    for (const n of pool) {
+      expect(n.body).not.toMatch(/dengan [^.]*dengan saksama/);
+      expect(n.body).not.toMatch(/Nama perusahaan yang/);
+      expect(n.body).not.toMatch(/\.\./);
+    }
   });
 });
 
