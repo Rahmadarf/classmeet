@@ -1,8 +1,9 @@
 "use client";
 
-import { ArrowDown, ArrowUp, ChevronDown, ReceiptText } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, LineChart, ReceiptText } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnalysisReportBody } from "@/components/market/analysis-report";
 import { EmptyState } from "@/components/states";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -150,7 +151,9 @@ function Row({ item, open, onToggle }: { item: HistoryItem; open: boolean; onTog
             ? `${formatNumber(item.qty)} unit × ${formatRupiah(item.price)} · ${formatTimeWib(item.at)}`
             : item.kind === "dividend"
               ? `${formatNumber(item.qty)} unit × ${formatRupiah(item.perUnit)} · ${formatTimeWib(item.at)}`
-              : `Dari penjaga pos · ${formatTimeWib(item.at)}`}
+              : item.kind === "analysis"
+                ? `Laporan 4 paragraf · ${formatTimeWib(item.at)}`
+                : `Dari penjaga pos · ${formatTimeWib(item.at)}`}
         </span>
       </span>
       <span className={cn("flex shrink-0 items-center gap-2", out ? "text-accent-text" : "text-cyan-text")}>
@@ -172,6 +175,7 @@ function Row({ item, open, onToggle }: { item: HistoryItem; open: boolean; onTog
 function rowTitle(item: HistoryItem): string {
   if (item.kind === "trade") return `${item.side === "buy" ? "Beli" : "Jual"} ${item.name}`;
   if (item.kind === "dividend") return `Dividen ${item.name}`;
+  if (item.kind === "analysis") return "Analisa Pasar";
   return `Hadiah ${item.postName}`;
 }
 
@@ -191,6 +195,16 @@ function Tile({ item }: { item: HistoryItem }) {
       </span>
     );
   }
+  if (item.kind === "analysis") {
+    return (
+      <span
+        aria-hidden
+        className={cn("rounded-control bg-tint text-brand-text grid shrink-0 place-items-center", box)}
+      >
+        <LineChart className="size-6" />
+      </span>
+    );
+  }
   return (
     <span
       aria-hidden
@@ -206,6 +220,22 @@ function Tile({ item }: { item: HistoryItem }) {
 
 /** Rincian satu transaksi/hadiah (dropdown di bawah baris). Catatan hadiah dari penjaga SELALU teks biasa. */
 function DetailBody({ item }: { item: HistoryItem }) {
+  if (item.kind === "analysis") {
+    return (
+      <div className="bg-field rounded-row mb-3 flex flex-col gap-3 px-4 py-3.5">
+        <p className="text-ink text-[15px] font-semibold">Berita: {item.newsTitle}</p>
+        <AnalysisReportBody
+          report={{
+            id: 0,
+            newsTitle: item.newsTitle,
+            price: -item.net,
+            paragraphs: item.paragraphs,
+            createdAt: item.at,
+          }}
+        />
+      </div>
+    );
+  }
   return (
     <div className="bg-field rounded-row mb-3 px-4 py-3.5">
       <p className="tnum text-ink-dim mb-3 text-sm">

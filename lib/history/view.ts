@@ -29,6 +29,15 @@ export type DividendIn = {
   createdAt: string;
 };
 
+/** Pembelian Analisa Pasar (`analysis_purchases`): uang keluar `price`, laporan 4 paragraf ikut dibuka di rincian. */
+export type AnalysisIn = {
+  id: number;
+  newsTitle: string;
+  price: number;
+  paragraphs: string[];
+  createdAt: string;
+};
+
 export type AssetName = { symbol: string; name: string };
 export type PostInfo = { name: string; location: string };
 
@@ -72,7 +81,17 @@ export type DividendItem = {
   net: number;
 };
 
-export type HistoryItem = TradeItem | PayoutItem | DividendItem;
+/** Analisa Pasar yang dibeli tim: uang keluar. */
+export type AnalysisItem = {
+  kind: "analysis";
+  key: string;
+  at: string;
+  newsTitle: string;
+  paragraphs: string[];
+  net: number;
+};
+
+export type HistoryItem = TradeItem | PayoutItem | DividendItem | AnalysisItem;
 
 /** "Pos 3 · Estafet Balon" → "03". */
 export function postNumber(name: string): string | null {
@@ -90,6 +109,7 @@ export function buildHistory(
   assets: Record<string, AssetName>,
   posts: Record<string, PostInfo>,
   dividends: DividendIn[] = [],
+  analyses: AnalysisIn[] = [],
 ): HistoryItem[] {
   const items: HistoryItem[] = [];
   for (const t of trades) {
@@ -131,6 +151,16 @@ export function buildHistory(
       qty: d.qty,
       perUnit: d.perUnit,
       net: d.amount,
+    });
+  }
+  for (const a of analyses) {
+    items.push({
+      kind: "analysis",
+      key: `a${a.id}`,
+      at: a.createdAt,
+      newsTitle: a.newsTitle,
+      paragraphs: a.paragraphs,
+      net: -a.price,
     });
   }
   return items.sort((a, b) => Date.parse(b.at) - Date.parse(a.at) || b.key.localeCompare(a.key));

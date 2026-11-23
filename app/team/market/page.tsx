@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { MarketBoard } from "@/components/market/market-board";
 import { PageHeader } from "@/components/shell/page-header";
 import { Skeleton } from "@/components/states";
+import { fetchAnalysisOffer } from "@/lib/analysis/data";
 import { fetchBankruptAssets, fetchGame, fetchHoldings, fetchMarket } from "@/lib/market/data";
 import { createClient } from "@/lib/supabase/server";
 import { fetchNews, fetchSummary } from "@/lib/team/data";
@@ -36,12 +37,13 @@ async function MarketContent({ searchParams }: { searchParams: SearchParams }) {
   const supabase = await createClient();
 
   const game = await fetchGame(supabase);
-  const [market, summary, holdings, news, bankrupt] = await Promise.all([
+  const [market, summary, holdings, news, bankrupt, analysis] = await Promise.all([
     fetchMarket(supabase, game?.sellSpreadBps),
     fetchSummary(supabase),
     fetchHoldings(supabase),
     fetchNews(supabase, 1),
     fetchBankruptAssets(supabase),
+    fetchAnalysisOffer(supabase),
   ]);
 
   if (!market || market.length === 0 || !game) {
@@ -74,6 +76,7 @@ async function MarketContent({ searchParams }: { searchParams: SearchParams }) {
           selectedId: selected.id,
           initialSide,
           bankrupt: bankrupt ?? [],
+          analysis,
           nowMs: nowMs(),
         }}
       />

@@ -8,13 +8,14 @@ type Db = SupabaseClient<Database>;
 const TRADE_LIMIT = 300;
 const PAYOUT_LIMIT = 100;
 const DIVIDEND_LIMIT = 100;
+const ANALYSIS_LIMIT = 100;
 
 /**
- * Transaksi (`transactions`), hadiah pos (`payouts`), dan dividen (`dividends`) milik tim, digabung jadi satu lini masa. RLS membatasi
+ * Transaksi (`transactions`), hadiah pos (`payouts`), dividen (`dividends`), dan pembelian analisa (`analysis_purchases`) milik tim, digabung jadi satu lini masa. RLS membatasi
  * tabel ke baris tim ini. Hadiah ditulis penjaga lewat `award_payout`; tim hanya membaca. null bila gagal dimuat.
  */
 export async function fetchHistory(supabase: Db, myId: string): Promise<HistoryItem[] | null> {
-  const [trades, payouts, assets, posts, dividends] = await Promise.all([
+  const [trades, payouts, assets, posts, dividends, analyses] = await Promise.all([
     supabase
       .from("transactions")
       .select("id,asset_id,side,qty,unit_price,list_price,total,created_at")
@@ -35,10 +36,17 @@ export async function fetchHistory(supabase: Db, myId: string): Promise<HistoryI
       .eq("team_id", myId)
       .order("id", { ascending: false })
       .limit(DIVIDEND_LIMIT),
+    supabase
+      .from("analysis_purchases")
+      .select("id,news_title,price,paragraphs,created_at")
+      .eq("team_id", myId)
+      .order("id", { ascending: false })
+      .limit(ANALYSIS_LIMIT),
   ]);
   if (trades.error || !trades.data || payouts.error || !payouts.data || assets.error || !assets.data)
     return null;
   if (posts.error || !posts.data || dividends.error || !dividends.data) return null;
+  if (analyses.error || !analyses.data) return null;
 
   return buildHistory(
     trades.data.flatMap((t) =>
@@ -73,6 +81,13 @@ export async function fetchHistory(supabase: Db, myId: string): Promise<HistoryI
       perUnit: d.per_unit,
       amount: d.amount,
       createdAt: d.paid_at,
+    })),
+    analyses.data.map((a) => ({
+      id: a.id,
+      newsTitle: a.news_title,
+      price: a.price,
+      paragraphs: a.paragraphs,
+      createdAt: a.created_at,
     })),
   );
 }

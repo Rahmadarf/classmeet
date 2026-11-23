@@ -31,6 +31,10 @@ const MESSAGES: Record<string, string> = {
   symbol_taken: "Kode aset sudah dipakai.",
   guard_invalid: "Penjaga tidak valid atau sudah memegang pos lain.",
   rate_limited: "Terlalu banyak permintaan, tunggu sebentar.",
+  feature_disabled: "Analisa Pasar sedang dimatikan panitia.",
+  no_live_news: "Belum ada berita yang tayang untuk dianalisa.",
+  window_closed: "Waktu membeli analisa untuk berita ini sudah habis.",
+  analysis_unavailable: "Laporan analisa untuk berita ini belum tersedia.",
 };
 
 export const GENERIC_ERROR = "Terjadi kesalahan, coba lagi.";

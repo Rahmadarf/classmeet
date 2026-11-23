@@ -12,6 +12,36 @@ describe("postNumber", () => {
   });
 });
 
+describe("buildHistory: analisa", () => {
+  it("pembelian analisa masuk sebagai uang keluar (−harga) dan terurut bersama item lain", () => {
+    const items = buildHistory(
+      [],
+      [{ id: 1, postId: "p3", amount: 300_000, note: null, createdAt: "2026-11-18T07:00:00Z" }],
+      assets,
+      posts,
+      [],
+      [
+        {
+          id: 9,
+          newsTitle: "Harga minyak naik",
+          price: 200_000,
+          paragraphs: ["a", "b", "c", "d"],
+          createdAt: "2026-11-18T08:00:00Z",
+        },
+      ],
+    );
+    expect(items.map((i) => i.kind)).toEqual(["analysis", "payout"]);
+    expect(items[0]).toEqual({
+      kind: "analysis",
+      key: "a9",
+      at: "2026-11-18T08:00:00Z",
+      newsTitle: "Harga minyak naik",
+      paragraphs: ["a", "b", "c", "d"],
+      net: -200_000,
+    });
+  });
+});
+
 describe("buildHistory: dividen", () => {
   it("dividen masuk sebagai uang positif dan terurut bersama item lain", () => {
     const items = buildHistory([], [], assets, posts, [

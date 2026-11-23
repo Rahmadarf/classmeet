@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AssetDetail } from "@/components/market/asset-detail";
+import { AnalysisCard } from "@/components/market/analysis-card";
 import { AssetList } from "@/components/market/asset-list";
 import { BankruptNotice } from "@/components/market/bankrupt-notice";
 import { MarketStateBanner } from "@/components/market/market-state-banner";
@@ -10,6 +11,8 @@ import { NewsStrip } from "@/components/market/news-strip";
 import { SuspendNotice } from "@/components/market/suspend-notice";
 import { TradePanel } from "@/components/market/trade-panel";
 import { ErrorState } from "@/components/states";
+import { fetchAnalysisOffer } from "@/lib/analysis/data";
+import type { AnalysisOffer } from "@/lib/analysis/view";
 import { usePolling } from "@/lib/hooks/use-polling";
 import {
   fetchBankruptAssets,
@@ -43,6 +46,8 @@ export type MarketInitial = {
   /** Tab awal panel (tautan dari Portofolio membuka tab Jual). */
   initialSide: "buy" | "sell";
   bankrupt: BankruptAsset[];
+  /** Tawaran Analisa Pasar (pay to win); null bila gagal dimuat. */
+  analysis: AnalysisOffer | null;
   /** Jam server (ms) saat halaman dibuat; sesudahnya jam peramban. */
   nowMs: number;
 };
@@ -60,6 +65,7 @@ export function MarketBoard({ initial }: { initial: MarketInitial }) {
   const [holdings, setHoldings] = useState(initial.holdings);
   const [latestNews, setLatestNews] = useState(initial.latestNews);
   const [bankrupt, setBankrupt] = useState(initial.bankrupt);
+  const [analysis, setAnalysis] = useState(initial.analysis);
   const [now, setNow] = useState(initial.nowMs);
   const [selectedId, setSelectedId] = useState(initial.selectedId);
   const [stale, setStale] = useState(false);
@@ -70,12 +76,14 @@ export function MarketBoard({ initial }: { initial: MarketInitial }) {
   const refreshFast = useCallback(async () => {
     const g = await fetchGame(supabase);
     if (g) spreadRef.current = g.sellSpreadBps;
-    const [m, h, bk] = await Promise.all([
+    const [m, h, bk, an] = await Promise.all([
       fetchMarket(supabase, spreadRef.current),
       fetchHoldings(supabase),
       fetchBankruptAssets(supabase),
+      fetchAnalysisOffer(supabase),
     ]);
     if (bk) setBankrupt(bk);
+    if (an) setAnalysis(an);
     if (m && m.length > 0) {
       setMarket(m);
       // Aset yang dilihat hilang dari daftar (bangkrut): pindah ke aset pertama.
@@ -124,6 +132,7 @@ export function MarketBoard({ initial }: { initial: MarketInitial }) {
         const row = payload.new as NewsFeedRow;
         setLatestNews({ id: row.news_id, title: row.title, body: row.body, publishedAt: row.published_at });
         toast(`Berita baru: ${row.title}`);
+        void refreshFast(); // berita baru tayang: tawaran analisa berubah
       })
       .subscribe((status) => {
         if (status === "SUBSCRIBED") {
@@ -185,6 +194,9 @@ export function MarketBoard({ initial }: { initial: MarketInitial }) {
         </div>
 
         <div className="flex min-w-0 flex-col gap-4">
+          {analysis ? (
+            <AnalysisCard offer={analysis} cash={cash} onChanged={() => void refreshAll()} />
+          ) : null}
           <TradePanel
             key={selected.id}
             initialSide={selected.id === initial.selectedId ? initial.initialSide : "buy"}

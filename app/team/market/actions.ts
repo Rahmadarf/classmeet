@@ -1,6 +1,9 @@
 "use server";
 
+import { toReport } from "@/lib/analysis/data";
+import type { AnalysisReport } from "@/lib/analysis/view";
 import { mapRpcError } from "@/lib/errors";
+import { buyAnalysisSchema } from "@/lib/schemas/analysis";
 import type { ActionResult } from "@/lib/schemas/common";
 import { tradeSchema, type TradeResult } from "@/lib/schemas/trade";
 import { createClient } from "@/lib/supabase/server";
@@ -46,4 +49,23 @@ export async function tradeAsset(input: unknown): Promise<ActionResult<TradeResu
       total: data.total,
     },
   };
+}
+
+/**
+ * Beli Analisa Pasar untuk berita yang sedang tayang (`buy_analysis`). Sesi pengguna, bukan service role. `requestId`
+ * dipakai ulang saat percobaan ulang (idempotensi). Membeli lagi untuk berita yang sama mengembalikan laporan lama
+ * tanpa biaya. Harga dan syarat (pasar buka, berita tayang, saldo, jendela waktu) ditegakkan database.
+ */
+export async function buyAnalysis(input: unknown): Promise<ActionResult<AnalysisReport>> {
+  const parsed = buyAnalysisSchema.safeParse(input);
+  if (!parsed.success) return INVALID;
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("buy_analysis", { p_request_id: parsed.data.requestId });
+  if (error || !data) {
+    const mapped = mapRpcError(error ?? { message: "empty" });
+    if (!mapped.code && !mapped.retryable) console.error("[buy_analysis] galat tak terduga:", error?.message);
+    return { ok: false, ...mapped };
+  }
+  return { ok: true, data: toReport(data) };
 }
