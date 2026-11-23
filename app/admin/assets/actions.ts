@@ -68,7 +68,8 @@ export async function setTradeSettings(input: unknown): Promise<ActionResult> {
   if (!parsed.success) {
     return {
       ok: false,
-      message: "Isian belum benar. Periksa selisih jual, tekanan, lama pemulihan, dan batas pegang.",
+      message:
+        "Isian belum benar. Periksa selisih jual (harus lebih besar dari tekanan per unit), tekanan, lama pemulihan, dan batas pegang.",
       code: "invalid_input",
       retryable: false,
     };

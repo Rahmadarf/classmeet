@@ -249,10 +249,10 @@ function DetailBody({ item }: { item: HistoryItem }) {
             {item.side === "sell" ? (
               <>
                 <Line label="Harga tayang saat itu" value={formatRupiah(item.listPrice)} />
-                <Line label="Harga jual per unit" value={formatRupiah(item.price)} />
+                <Line label="Harga jual rata-rata per unit" value={formatRupiah(item.price)} />
               </>
             ) : (
-              <Line label="Harga beli per unit" value={formatRupiah(item.price)} />
+              <Line label="Harga beli rata-rata per unit" value={formatRupiah(item.price)} />
             )}
             <Line
               strong
@@ -279,8 +279,8 @@ function DetailBody({ item }: { item: HistoryItem }) {
       <p className="text-ink-muted mt-3 text-sm">
         {item.kind === "trade"
           ? item.side === "sell"
-            ? "Harga jual adalah harga tayang dikurangi selisih jual. Total ini langsung masuk ke saldo."
-            : "Beli dilakukan pada harga tayang saat itu. Total ini langsung keluar dari saldo."
+            ? "Tiap unit dijual sedikit lebih murah dari sebelumnya (tekanan stok) dan dikurangi selisih jual. Total ini langsung masuk ke saldo."
+            : "Unit pertama dibayar pada harga tayang, tiap unit berikutnya sedikit lebih mahal (tekanan stok). Total ini langsung keluar dari saldo."
           : item.kind === "dividend"
             ? "Dividen dibayar ke semua tim yang memegang aset itu saat berita berlaku, langsung ke saldo."
             : "Hadiah langsung masuk ke saldo saat penjaga mengirimnya."}

@@ -48,6 +48,12 @@ export function TradeSettingsCard({ initial, locked }: { initial: TradeSettings;
       setError("Semua isian harus berupa angka.");
       return;
     }
+    if ((input.sellSpreadBps as number) <= (input.pressureBpsPerUnit as number)) {
+      setError(
+        "Selisih jual harus lebih besar dari tekanan per unit (kalau tidak, beli lalu jual langsung bisa untung).",
+      );
+      return;
+    }
     setSaving(true);
     try {
       const res = await setTradeSettings(input);
@@ -79,7 +85,10 @@ export function TradeSettingsCard({ initial, locked }: { initial: TradeSettings;
             className={field}
           />
         </Field>
-        <Field label="Tekanan per unit (%)" hint="Harga naik tiap unit dibeli">
+        <Field
+          label="Tekanan per unit (%)"
+          hint="Harga naik tiap unit di dalam transaksi; harus lebih kecil dari selisih jual"
+        >
           <input
             inputMode="decimal"
             value={pressure}

@@ -47,7 +47,8 @@ begin
   select * into n from news where status = 'ready' order by id limit 1;
   update news set status = 'live', published_at = now(), effect_at = now() + interval '9 minutes 30 seconds' where id = n.id;
   insert into news_analysis (news_id, paragraphs) values (n.id,
-    array['Efek berlaku {waktu} lagi.', 'Ciri naik.', 'Ciri turun.', 'Catatan.']);
+    array['Efek berlaku {waktu} lagi.', 'Ciri naik.', 'Ciri turun.', 'Catatan.'])
+  on conflict (news_id) do update set paragraphs = excluded.paragraphs;
 
   -- 0. penawaran dan peran
   perform pg_temp.as_user(t1);
@@ -155,7 +156,8 @@ begin
   update news set status = 'ready', published_at = null, effect_at = null where id = n.id;
   select * into n2 from news where status = 'ready' and id <> n.id order by id limit 1;
   update news set status = 'live', published_at = now(), effect_at = now() + interval '4 minutes 30 seconds' where id = n2.id;
-  insert into news_analysis (news_id, paragraphs) values (n2.id, array['Efek berlaku {waktu} lagi.', 'Ciri naik.', 'Ciri turun.', 'Catatan.']);
+  insert into news_analysis (news_id, paragraphs) values (n2.id, array['Efek berlaku {waktu} lagi.', 'Ciri naik.', 'Ciri turun.', 'Catatan.'])
+  on conflict (news_id) do update set paragraphs = excluded.paragraphs;
   perform pg_temp.as_user(v_admin);
   perform public.admin_set_analysis_settings(0, true);
   perform pg_temp.as_user(t1);

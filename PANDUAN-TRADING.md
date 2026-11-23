@@ -25,16 +25,16 @@ Di game ini:
 
 Setiap aset di **Pasar** punya tiga angka penting:
 
-| Angka          | Artinya                                                                                                                              |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| **Harga beli** | Harga yang kamu bayar per unit. Inilah harga yang tampil di daftar aset.                                                             |
-| **Harga jual** | Harga yang kamu terima per unit saat menjual. **Selalu sedikit lebih rendah (2 %)** dari harga beli. Selisih ini satu-satunya biaya. |
-| **Stok**       | Sisa unit yang masih bisa dibeli dari pasar. Makin banyak yang membeli, makin tipis.                                                 |
+| Angka          | Artinya                                                                                                                                      |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Harga beli** | Harga yang kamu bayar per unit. Inilah harga yang tampil di daftar aset (untuk jumlah besar, harga rata-rata per unit sedikit lebih tinggi). |
+| **Harga jual** | Harga yang kamu terima per unit saat menjual. **Selalu sedikit lebih rendah (2 %)** dari harga beli. Selisih ini satu-satunya biaya.         |
+| **Stok**       | Sisa unit yang masih bisa dibeli dari pasar. Makin banyak yang membeli, makin tipis.                                                         |
 
 Tiga hal yang menggerakkan harga:
 
 1. **Berita** menggeser harga acuan (3–15 menit setelah terbit).
-2. **Tekanan stok**: tiap unit yang dibeli menaikkan harga sedikit (±0,2 %), tiap unit yang dijual menurunkannya. Efek ini hilang sendiri dalam sekitar 10 menit. Tekanan tidak pernah membawa harga lebih dari 15 % dari harga acuan.
+2. **Tekanan stok**: tiap unit yang dibeli menaikkan harga sedikit (±0,2 %), tiap unit yang dijual menurunkannya. Efek ini hilang sendiri dalam sekitar 10 menit. Tekanan tidak pernah membawa harga lebih dari 15 % dari harga acuan. Pergeserannya terjadi **unit demi unit di dalam transaksi yang sama**: unit pertama dibayar di harga tayang, unit kedua sedikit lebih mahal, dan seterusnya. Jadi membeli banyak sekaligus menaikkan harga rata-rata per unit, dan membeli lalu langsung menjual selalu rugi (tidak ada cara untung tanpa menunggu harga bergerak).
 3. **Stok menipis**: aset dengan stok di bawah 20 % diberi label **Langka**. Stok habis berarti tidak bisa dibeli sampai ada tim yang menjual.
 
 **Batas pegang:** satu tim hanya boleh memegang maksimal **30 % stok awal** sebuah aset (minimal 1 unit). Aset bersetok 10 berarti maksimal 3 unit per tim. Ini mencegah satu tim memborong aset mahal.

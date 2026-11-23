@@ -29,8 +29,8 @@ Setiap tim **mulai dari Rp 0**. Satu-satunya sumber uang adalah **hadiah pos** (
 | Berita terbit → harga berubah | **Acak 3–15 menit**, diundi sistem untuk tiap berita (bukan patokan tetap) | `game_settings.news_delay_min_minutes` (3), `news_delay_max_minutes` (15) |
 | Jeda setelah harga berubah sebelum berita berikutnya | **0** (berita berikutnya langsung terbit); boleh diisi sebelum game dibuka | `game_settings.news_gap_minutes` |
 | Urutan berita dan waktu perubahan harga | **Sepenuhnya sistem.** Panitia tidak bisa memilih, mengantre, mempercepat, menunda, atau mengubah harga sejak game dibuka sampai selesai | `game_is_locked()`, pemicu `guard_game_lock()` |
-| Jumlah aset yang terpengaruh per berita | **4–7**, eksplisit per aset | `game_settings.min_news_assets`, `max_news_assets` |
-| Besar efek per aset | **8–14 %** (pedoman admin); **maksimum 15 %** yang ditegakkan database | `game_settings.max_effect_bps` (pedoman 8–14 % ada di tangan admin, bukan kode) |
+| Jumlah aset yang terpengaruh per berita | **10–15**: efek tematis (≥ 1 %) plus efek pengisi kecil (≤ 0,9 %), eksplisit per aset | `game_settings.min_news_assets` (10), `max_news_assets` (15) |
+| Besar efek per aset | Efek tematis **1–15 %** (umumnya 1–6 %; rata-rata efek berarti ±3 %), pengisi ≤ 0,9 %; **maksimum 15 %** ditegakkan database | `game_settings.max_effect_bps` (1500) |
 | Perubahan harga acak | **Tidak ada**. Yang acak hanya **pemilihan berita**, bukan besar harga | — |
 | Pemilihan berita | **Otomatis, acak berbatas** dari kumpulan berita siap; admin tidak memilih | `news.status = 'ready'`, `process_news_cycle()` |
 | Jumlah berita yang disiapkan | **±220** bila `news_gap_minutes = 0` dan pasar tak pernah ditutup; lihat §4.4 | `news` |
@@ -50,7 +50,7 @@ Ringkasan; rincian, parameter, dan contoh di [`17-trading-toko.md`](17-trading-t
 1. **Hanya saat pasar `open`.** Saat `setup`, `paused`, atau `finished`, beli dan jual ditolak.
 2. **Satu harga, langsung ke pasar.** Tim membeli dari dan menjual ke pasar (stok panitia); tidak ada transaksi antar tim dan tidak ada order antre. **Harga tayang** = harga acuan (digeser berita) × tekanan stok; itulah **harga beli**. **Harga jual** = harga tayang dikurangi **2 %**. Harga tayang juga dipakai untuk net worth, peringkat, dan IKC.
 3. **Beli/jual** 1 sampai batas pegang unit sekali ketuk; eksekusi atomik di server dan idempoten (`request_id`). 1 lot dan 1 unit sama (istilah lot tidak dipakai lagi).
-4. **Tekanan stok.** Tiap unit dibeli menaikkan harga tayang 0,2 %, tiap unit dijual menurunkannya 0,2 %, dibatasi ±15 % dari harga acuan, dan pulih ke netral dalam ±10 menit. Berita tetap penggerak utama.
+4. **Tekanan stok (di dalam transaksi).** Tiap unit dibeli menaikkan harga tayang 0,2 %, tiap unit dijual menurunkannya 0,2 %, dibatasi ±15 % dari harga acuan, dan pulih ke netral dalam ±10 menit. Harga bergerak satu langkah per unit **di dalam transaksi itu sendiri**: unit pertama harga tayang, unit kedua satu langkah lebih mahal (beli) atau lebih murah (jual), dan seterusnya; jadi membeli banyak sekaligus membayar lebih per unit, dan beli lalu jual langsung selalu rugi (tidak ada arbitrase). Selisih jual wajib lebih besar dari langkah tekanan (ditegakkan database). Berita tetap penggerak utama. Rincian di [`17-trading-toko.md`](17-trading-toko.md).
 5. **Stok.** Stok pasar berkurang saat dibeli dan bertambah saat dijual; stok + Σ milik tim = stok awal (kecuali yang dilikuidasi saat bangkrut). Label: aman, menipis (< 50 %), **Langka** (< 20 %), habis. Stok awal per aset: murah banyak, mahal sedikit (§5).
 6. **Batas pegang:** satu tim memegang maksimal 30 % stok awal sebuah aset (minimal 1 unit).
 7. **Tidak ada jual kosong, pinjaman, atau margin.** Saldo dan kepemilikan tidak boleh negatif. Tim bersaldo Rp 0 tidak bisa membeli ("Saldo belum cukup; dapatkan hadiah di pos dulu.").
@@ -97,7 +97,7 @@ Admin juga **tidak bisa membaca** isi berita (`news`, `news_effects`) setelah ga
 
 | Aturan | Nilai |
 |--------|-------|
-| Aset per berita | 4–7, ditulis **eksplisit per aset** (tidak ada efek per sektor) |
+| Aset per berita | 10–15, ditulis **eksplisit per aset** (tidak ada efek per sektor); efek tematis ≥ 1 %, pengisi ≤ 0,9 % |
 | Aset ganda dalam satu berita | Ditolak |
 | Aset nonaktif | Ditolak |
 | Besar efek | Tidak boleh 0 dan tidak boleh melebihi ±15 % |

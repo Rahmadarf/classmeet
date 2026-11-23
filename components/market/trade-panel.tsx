@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { tradeAsset } from "@/app/team/market/actions";
 import { Button } from "@/components/ui/button";
 import type { Game, Holding, MarketAsset } from "@/lib/market/data";
-import { formatBps, holdCap, maxBuyQty } from "@/lib/market/rules";
+import { buyTotal, formatBps, holdCap, maxBuyQty, sellTotal, type PriceModel } from "@/lib/market/rules";
 import { formatNumber, formatRupiah } from "@/lib/money";
 import { cn } from "@/lib/utils";
 
@@ -67,9 +67,28 @@ export function TradePanel({
   const buy = side === "buy";
   const held = holding?.qty ?? 0;
   const cap = holdCap(asset.initStock, game.holdCapPct);
-  const unit = buy ? asset.lastPrice : asset.sellPrice;
-  const total = qty ? unit * qty : null;
-  const maxBuy = maxBuyQty({ cash, price: asset.lastPrice, stock: asset.stock, held, cap });
+  // Harga bergerak satu langkah tekanan per unit di dalam transaksi (trading-impact.sql): total bukan unit x harga tayang.
+  const model: PriceModel = {
+    refPrice: asset.refPrice,
+    minPrice: asset.minPrice,
+    maxPrice: asset.maxPrice,
+    factorBps: asset.factorBps,
+    step: game.priceStep,
+    pressureBps: game.pressureBpsPerUnit,
+    capBps: game.pressureCapBps,
+    spreadBps: game.sellSpreadBps,
+  };
+  const total = qty ? (buy ? buyTotal(model, qty) : sellTotal(model, qty)) : null;
+  // 1 unit = harga yang tampil; lebih dari 1 unit = harga rata-rata per unit
+  const unit = qty && total !== null ? Math.round(total / qty) : buy ? asset.lastPrice : asset.sellPrice;
+  const maxBuy = maxBuyQty({
+    cash,
+    price: asset.lastPrice,
+    stock: asset.stock,
+    held,
+    cap,
+    total: (n) => buyTotal(model, n),
+  });
 
   const touch = () => {
     setQtyError(null);
@@ -234,7 +253,15 @@ export function TradePanel({
 
       <dl className="rounded-row bg-field flex flex-col gap-1.5 px-3.5 py-3">
         <Row
-          label={buy ? "Harga beli / unit" : `Harga jual / unit (−${formatBps(game.sellSpreadBps)})`}
+          label={
+            qty && qty > 1
+              ? buy
+                ? "Harga beli rata-rata / unit"
+                : `Harga jual rata-rata / unit (−${formatBps(game.sellSpreadBps)})`
+              : buy
+                ? "Harga beli / unit"
+                : `Harga jual / unit (−${formatBps(game.sellSpreadBps)})`
+          }
           value={formatRupiah(unit)}
         />
         <Row label="Jumlah" value={qty ? `${formatNumber(qty)} unit` : "–"} />
@@ -270,7 +297,7 @@ export function TradePanel({
       >
         {result ??
           (open
-            ? "Transaksi langsung terjadi pada harga di atas. Harga bisa bergeser karena berita dan tekanan stok."
+            ? "Transaksi langsung terjadi. Tiap unit menggeser harga sedikit (tekanan stok), jadi jumlah besar dibayar lebih mahal per unit. Harga juga bergeser karena berita."
             : suspended && marketOpen
               ? "Aset ini disuspensi sementara. Beli dan jual belum bisa dilakukan."
               : "Beli dan jual tidak bisa dilakukan sekarang.")}

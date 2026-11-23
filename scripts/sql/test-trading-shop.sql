@@ -55,7 +55,9 @@ begin
   perform pg_temp.sys();
   select * into a from assets where id = a.id;
   select cash into c1 from teams where id = v_team;
-  perform pg_temp.ok(tx.side = 'buy' and tx.qty = 2 and tx.unit_price = lp0 and tx.total = 2 * lp0, 'beli 2: harga satuan = harga tayang, total benar');
+  perform pg_temp.ok(tx.side = 'buy' and tx.qty = 2 and tx.list_price = lp0
+                      and tx.total = lp0 + public.shop_price(a.price, f0 + g.pressure_bps_per_unit, a.min_price, a.max_price)
+                      and tx.unit_price = round(tx.total / 2.0), 'beli 2: unit pertama harga tayang, unit kedua naik satu langkah tekanan, unit_price = rata-rata');
   perform pg_temp.ok(c0 - c1 = tx.total, 'beli: saldo turun sebesar total');
   perform pg_temp.ok((select qty from holdings where team_id = v_team and asset_id = a.id) = 2, 'beli: kepemilikan 2');
   perform pg_temp.ok((select cost_basis from holdings where team_id = v_team and asset_id = a.id) = tx.total, 'beli: cost_basis = total');
@@ -229,5 +231,86 @@ begin
   end;
   reset role;
 end $t2$;
+
+-- Tekanan harga DI DALAM transaksi (scripts/sql/trading-impact.sql): bolak-balik beli lalu jual tidak boleh menguntungkan
+do $t3$
+declare
+  v_team uuid; g public.game_settings; a public.assets; n int; cap int; c0 bigint; c1 bigint; loss bigint; paid bigint;
+  tx public.transactions; tx2 public.transactions; k int; round_no int; worst numeric := 0; checks int := 0;
+begin
+  select * into g from game_settings;
+  select id into v_team from teams order by name limit 1;
+  perform pg_temp.sys();
+  update teams set cash = 1000000000 where id = v_team;
+  delete from holdings where team_id = v_team;
+  k := g.pressure_bps_per_unit;
+  for a in select * from assets where is_active and suspended_until is null and init_stock >= 30 order by symbol limit 6 loop
+    update assets set price_factor_bps = 0 where id = a.id;
+    select * into a from assets where id = a.id;
+    cap := greatest(1, floor(a.init_stock * g.hold_cap_pct / 100.0)::int);
+    foreach n in array array[1, 2, 5, 10, 20, cap] loop
+      if n > cap or n > a.stock then continue; end if;
+      perform pg_temp.sys();
+      select * into a from assets where id = a.id;
+      select cash into c0 from teams where id = v_team;
+      perform pg_temp.as_user(v_team);
+      tx := public.buy_asset(gen_random_uuid(), a.id, n);
+      tx2 := public.sell_asset(gen_random_uuid(), a.id, n);
+      perform pg_temp.sys();
+      select cash into c1 from teams where id = v_team;
+      loss := c0 - c1; paid := tx.total;
+      perform pg_temp.ok(loss > 0, format('%s bolak-balik %s unit: selalu rugi (rugi %s)', a.symbol, n, loss));
+      perform pg_temp.ok(loss * 10000 >= paid * 150, format('%s bolak-balik %s unit: rugi >= 1,5 %% dari yang dibayar (%s dari %s)', a.symbol, n, loss, paid));
+      worst := greatest(worst, 0);
+      checks := checks + 1;
+      perform set_config('classmeet.system', 'on', true);
+      update assets set price_factor_bps = 0 where id = a.id;
+    end loop;
+    -- diulang beberapa kali pada tekanan penuh: kerugian terus bertambah, tidak ada yang bisa "diperah"
+    select * into a from assets where id = a.id;
+    select cash into c0 from teams where id = v_team;
+    for round_no in 1..3 loop
+      perform pg_temp.as_user(v_team);
+      perform public.buy_asset(gen_random_uuid(), a.id, least(cap, a.stock));
+      perform public.sell_asset(gen_random_uuid(), a.id, least(cap, a.stock));
+    end loop;
+    perform pg_temp.sys();
+    select cash into c1 from teams where id = v_team;
+    perform pg_temp.ok(c1 < c0, format('%s: 3 putaran beli-jual penuh tetap rugi (%s)', a.symbol, c0 - c1));
+    update assets set price_factor_bps = 0 where id = a.id;
+  end loop;
+  perform pg_temp.ok(checks >= 20, format('cukup banyak kombinasi aset x jumlah diuji (%s)', checks));
+
+  -- jual n unit menerima jumlah menurun per unit; beli n unit membayar jumlah naik per unit
+  select * into a from assets where is_active and suspended_until is null and init_stock >= 30 order by symbol limit 1;
+  update assets set price_factor_bps = 0 where id = a.id;
+  select * into a from assets where id = a.id;
+  perform pg_temp.as_user(v_team);
+  tx := public.buy_asset(gen_random_uuid(), a.id, 5);
+  perform pg_temp.sys();
+  perform pg_temp.ok(tx.total = (select sum(public.shop_price(a.price, i * k, a.min_price, a.max_price)) from generate_series(0, 4) i),
+                     'beli 5: total = jumlah harga tiap unit pada tingkat tekanan naik satu langkah per unit');
+  perform pg_temp.ok(tx.total > 5 * tx.list_price, 'beli 5: total lebih mahal daripada 5 x harga tayang awal');
+  select * into a from assets where id = a.id;
+  perform pg_temp.as_user(v_team);
+  tx2 := public.sell_asset(gen_random_uuid(), a.id, 5);
+  perform pg_temp.sys();
+  perform pg_temp.ok(tx2.total = (select sum(public.shop_sell_price(public.shop_price(a.price, a.price_factor_bps - j * k, a.min_price, a.max_price)))
+                                   from generate_series(0, 4) j),
+                     'jual 5: total = jumlah harga jual tiap unit pada tingkat tekanan turun satu langkah per unit');
+
+  -- pengaturan: selisih jual harus lebih besar dari tekanan per unit
+  perform set_config('classmeet.system', 'off', true);
+  perform pg_temp.as_user((select id from profiles where role = 'admin' limit 1));
+  perform pg_temp.expect_err(format('select public.admin_set_trade_settings(%s, %s, 1500, 10, 30)', k, k), 'invalid_input');
+  perform pg_temp.expect_err('select public.admin_set_trade_settings(10, 20, 1500, 10, 30)', 'invalid_input');
+  perform pg_temp.sys();
+  begin
+    update game_settings set sell_spread_bps = 10 where true;
+    raise exception 'GAGAL: constraint selisih > tekanan tidak berlaku';
+  exception when check_violation then
+    raise notice 'OK    constraint basis data: selisih jual harus > tekanan per unit';
+  end;
+end $t3$;
 
 rollback;

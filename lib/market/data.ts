@@ -13,6 +13,9 @@ export type MarketAsset = {
   sector: string;
   /** Harga acuan (hanya digeser berita). Harga tayang = acuan x faktor tekanan stok. */
   refPrice: number;
+  /** Batas harga tayang (`assets.min_price`/`max_price`), untuk menghitung total beli/jual (rules.ts). */
+  minPrice: number;
+  maxPrice: number;
   /** Harga open hari ini (harga acuan saat hari WIB itu dimulai); pembanding persen perubahan di layar. Cadangan: harga acuan. */
   dayOpen: number;
   lastPrice: number;
@@ -39,6 +42,8 @@ type AssetRow = Pick<
   Database["public"]["Tables"]["assets"]["Row"],
   "id" | "symbol" | "name" | "sector" | "price" | "last_price"
 > & {
+  min_price?: number;
+  max_price?: number;
   suspended_until?: string | null;
   stock?: number;
   init_stock?: number | null;
@@ -71,6 +76,8 @@ export function mergeMarket(
         name: a.name,
         sector: a.sector,
         refPrice,
+        minPrice: a.min_price ?? 1,
+        maxPrice: a.max_price ?? Number.MAX_SAFE_INTEGER,
         dayOpen: orNull(opens.get(a.id)) ?? refPrice,
         lastPrice,
         sellPrice: isMoney(s?.sell_price) ? s.sell_price : sellPriceOf(lastPrice, spreadBps),
@@ -95,7 +102,9 @@ export async function fetchMarket(supabase: Db, spreadBps = 200): Promise<Market
   const [assets, summary, dayOpen] = await Promise.all([
     supabase
       .from("assets")
-      .select("id,symbol,name,sector,price,last_price,suspended_until,stock,init_stock,price_factor_bps")
+      .select(
+        "id,symbol,name,sector,price,last_price,min_price,max_price,suspended_until,stock,init_stock,price_factor_bps",
+      )
       .eq("is_active", true),
     supabase.rpc("get_market_summary"),
     supabase.rpc("get_day_open_prices"),
@@ -113,12 +122,18 @@ export type Game = {
   holdCapPct: number;
   stockMidPct: number;
   stockLowPct: number;
+  /** Kelipatan harga, langkah tekanan per unit, dan batas tekanan (untuk total beli/jual, rules.ts). */
+  priceStep: number;
+  pressureBpsPerUnit: number;
+  pressureCapBps: number;
 };
 
 export async function fetchGame(supabase: Db): Promise<Game | null> {
   const { data, error } = await supabase
     .from("game_settings")
-    .select("state,sell_spread_bps,hold_cap_pct,stock_mid_pct,stock_low_pct")
+    .select(
+      "state,sell_spread_bps,hold_cap_pct,stock_mid_pct,stock_low_pct,price_step,pressure_bps_per_unit,pressure_cap_bps",
+    )
     .maybeSingle();
   if (error || !data) return null;
   return {
@@ -127,6 +142,9 @@ export async function fetchGame(supabase: Db): Promise<Game | null> {
     holdCapPct: data.hold_cap_pct,
     stockMidPct: data.stock_mid_pct,
     stockLowPct: data.stock_low_pct,
+    priceStep: data.price_step,
+    pressureBpsPerUnit: data.pressure_bps_per_unit,
+    pressureCapBps: data.pressure_cap_bps,
   };
 }
 

@@ -33,7 +33,7 @@ Urutan blok `sql` pada dokumen ini adalah urutan eksekusi migrasi, setelah semua
 | `get_market_summary()` | team, admin, display | SQL + uji | Acuan, harga tayang, harga jual, stok, tekanan, statistik transaksi per aset |
 | `get_last_transactions(limit?)` | admin, display | SQL + uji | Transaksi terbaru tanpa nama tim |
 | `admin_transaction_summary()` | admin | SQL + uji | Arus unit dan nilai per aset |
-| `admin_set_trade_settings(...)` | admin | SQL + uji | Selisih jual, tekanan, batas pegang (sebelum game dimulai) |
+| `admin_set_trade_settings(...)` | admin | SQL + uji | Selisih jual, tekanan, batas pegang (sebelum game dimulai); selisih jual harus > tekanan per unit (`invalid_input`) |
 | `get_market_index()` | team, admin, display | SQL + uji | IKC dan indeks sektor (bobot sama rata) |
 | `process_market_cycle()` | internal / `pg_cron` (tiap 10 detik) | SQL + uji | Pulihkan tekanan stok, akhiri suspensi |
 | `get_my_summary()` | team | SQL + uji | Saldo, nilai aset (harga tayang), net worth sendiri |
@@ -77,10 +77,10 @@ Menggantikan order book (20 Nov 2026; lihat [17](17-trading-toko.md)). Kode leng
 3. Idempoten: `request_id` sudah ada dengan parameter sama mengembalikan baris yang sama; parameter berbeda `request_id_conflict`.
 4. Status game `open` (`market_closed`); aset aktif (`asset_not_found`, juga untuk aset bangkrut); tidak disuspensi (`asset_suspended`).
 5. Batas pegang: `holding + qty <= max(1, floor(init_stock x hold_cap_pct / 100))` (`hold_cap_exceeded`); `qty <= stock` (`insufficient_stock`).
-6. Harga satuan = `last_price`; total = harga x qty; `cash >= total` (`insufficient_cash`).
+6. **Total = jumlah harga tiap unit** (sejak 23 Nov, `scripts/sql/trading-impact.sql`): unit ke-i (mulai 0) pada `shop_price(price, min(pressure_cap_bps, factor + i x pressure_bps_per_unit))`, jadi unit pertama = `last_price` dan tiap unit berikutnya satu langkah tekanan lebih mahal (menutup arbitrase beli lalu jual langsung). `unit_price` = total / qty (dibulatkan), `list_price` = `last_price` sebelum transaksi; `cash >= total` (`insufficient_cash`).
 7. Efek (satu transaksi): saldo turun, `holdings` naik (`cost_basis` + total), `stock` turun, `price_factor_bps` naik `qty x pressure_bps_per_unit` (maks `pressure_cap_bps`), `last_trade_at`, baris `transactions`.
 
-**`sell_asset(p_request_id, p_asset_id, p_qty)`** sama, kecuali: syarat `holding >= qty` (`insufficient_holdings`), harga satuan = harga jual, saldo naik, `cost_basis` berkurang proporsional, `stock` naik, tekanan turun.
+**`sell_asset(p_request_id, p_asset_id, p_qty)`** sama, kecuali: syarat `holding >= qty` (`insufficient_holdings`), total = jumlah harga jual tiap unit (unit ke-j pada `shop_sell_price(shop_price(price, max(-pressure_cap_bps, factor - j x pressure_bps_per_unit)))`; `qty = 1` = harga jual yang tampil), saldo naik, `cost_basis` berkurang proporsional, `stock` naik, tekanan turun.
 
 **`transactions`**: `id`, `request_id` (unik), `team_id`, `asset_id`, `side` (`buy`/`sell`), `qty`, `unit_price`, `list_price`, `total`, `created_at`. RLS: tim membaca miliknya, admin semuanya; klien tidak bisa menulis.
 

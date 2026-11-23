@@ -26,7 +26,48 @@ export function sellPriceOf(listPrice: number, spreadBps: number, step = 100): n
 }
 
 /**
+ * Model harga satu aset untuk menghitung total beli/jual (cermin `buy_asset`/`sell_asset`, scripts/sql/trading-impact.sql):
+ * harga bergerak satu langkah tekanan (`pressureBps`) per unit DI DALAM transaksi, jadi total tidak sama dengan unit x harga tayang.
+ */
+export type PriceModel = {
+  refPrice: number;
+  minPrice: number;
+  maxPrice: number;
+  factorBps: number;
+  step: number;
+  pressureBps: number;
+  capBps: number;
+  spreadBps: number;
+};
+
+/** Harga tayang pada faktor tekanan tertentu (sama dengan `shop_price`: dibulatkan ke kelipatan `step`, dibatasi min/maks). */
+export function shopPriceAt(m: PriceModel, factorBps: number): number {
+  const raw = Math.round((m.refPrice * (10_000 + factorBps)) / 10_000 / m.step) * m.step;
+  return Math.max(m.minPrice, Math.min(m.maxPrice, raw));
+}
+
+/** Total beli `qty` unit: unit ke-i (mulai 0) dibayar pada faktor min(batas, faktor + i x langkah). */
+export function buyTotal(m: PriceModel, qty: number): number {
+  let total = 0;
+  for (let i = 0; i < qty; i++) total += shopPriceAt(m, Math.min(m.capBps, m.factorBps + i * m.pressureBps));
+  return total;
+}
+
+/** Total jual `qty` unit: unit ke-j (mulai 0) diterima pada harga jual faktor maks(−batas, faktor − j x langkah). */
+export function sellTotal(m: PriceModel, qty: number): number {
+  let total = 0;
+  for (let j = 0; j < qty; j++)
+    total += sellPriceOf(
+      shopPriceAt(m, Math.max(-m.capBps, m.factorBps - j * m.pressureBps)),
+      m.spreadBps,
+      m.step,
+    );
+  return total;
+}
+
+/**
  * Jumlah beli maksimal menurut batas yang diketahui klien: saldo, stok pasar, dan sisa batas pegang.
+ * `total(qty)` (opsional) menghitung biaya sebenarnya dengan tekanan di dalam transaksi; tanpa itu dipakai `price` x unit.
  * Hanya untuk pesan bantu dan nilai awal stepper; database yang memutuskan.
  */
 export function maxBuyQty(opts: {
@@ -35,9 +76,14 @@ export function maxBuyQty(opts: {
   stock: number;
   held: number;
   cap: number;
+  total?: (qty: number) => number;
 }): number {
-  const byCash = opts.cash === null || opts.price <= 0 ? Infinity : Math.floor(opts.cash / opts.price);
-  return Math.max(0, Math.min(byCash, opts.stock, opts.cap - opts.held));
+  const limit = Math.max(0, Math.min(opts.stock, opts.cap - opts.held));
+  if (opts.cash === null) return limit;
+  if (!opts.total) return Math.min(opts.price <= 0 ? Infinity : Math.floor(opts.cash / opts.price), limit);
+  let n = 0;
+  while (n < limit && opts.total(n + 1) <= opts.cash) n++;
+  return n;
 }
 
 /** 38_300_000 → "38,3 jt"; 1_250_000_000 → "1,3 M"; di bawah sejuta ditulis penuh dengan pemisah ribuan. */

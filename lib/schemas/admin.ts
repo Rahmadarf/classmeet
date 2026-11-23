@@ -85,13 +85,18 @@ export const createPostSchema = z.object({
  * lama pemulihan (menit), dan batas pegang (% stok awal). Hanya pagar bentuk; database menegakkan rentang dan kunci
  * setelah game dimulai.
  */
-export const tradeSettingsSchema = z.object({
-  sellSpreadBps: z.number().int().min(0).max(2000),
-  pressureBpsPerUnit: z.number().int().min(0).max(500),
-  pressureCapBps: z.number().int().min(0).max(5000),
-  pressureDecayMinutes: z.number().int().min(1).max(240),
-  holdCapPct: z.number().int().min(1).max(100),
-});
+export const tradeSettingsSchema = z
+  .object({
+    sellSpreadBps: z.number().int().min(0).max(2000),
+    pressureBpsPerUnit: z.number().int().min(0).max(500),
+    pressureCapBps: z.number().int().min(0).max(5000),
+    pressureDecayMinutes: z.number().int().min(1).max(240),
+    holdCapPct: z.number().int().min(1).max(100),
+  })
+  .refine((v) => v.sellSpreadBps > v.pressureBpsPerUnit, {
+    message: "Selisih jual harus lebih besar dari tekanan per unit.",
+    path: ["sellSpreadBps"],
+  });
 
 /**
  * Pengaturan Analisa Pasar (pay to win): harga (rupiah bulat, 0 = gratis) dan saklar. Boleh diubah kapan saja, termasuk saat

@@ -102,7 +102,7 @@ Jalankan seperti hari sungguhan, dengan 4–5 laptop sekaligus.
 
 1. Penjaga memberi **hadiah** ke tim lewat pindai QR + nominal. Saldo tim di laptop harus naik **tanpa memuat ulang**. Tes juga salah nominal lalu dikoreksi admin (Koreksi saldo, alasan wajib).
 2. Tim membeli dan menjual berbagai aset: beli, jual, jumlah lebih dari batas pegang, saldo kurang, aset stok habis. Pesan galat harus jelas dan tidak membuat halaman macet.
-3. **Beli serentak:** minta semua laptop tim membeli aset yang sama dalam beberapa detik. Stok tidak boleh negatif, pesan "stok habis" muncul bagi yang kalah cepat.
+3. **Tidak ada arbitrase:** satu tim membeli aset sebanyak mungkin (batas pegang) lalu langsung menjualnya semua. Hasilnya harus RUGI sekitar 2 % (selisih jual), bukan untung; total beli lebih dari jumlah x harga tayang. Lalu **beli serentak:** minta semua laptop tim membeli aset yang sama dalam beberapa detik. Stok tidak boleh negatif, pesan "stok habis" muncul bagi yang kalah cepat.
 4. Tunggu berita berikutnya. Periksa: berita tayang, harga bergerak setelah 3–15 menit, notif bangkrut atau suspensi (bila ada) muncul lalu hilang setelah berita berikutnya diterapkan.
 5. Periksa **peringkat** di TV (5 tim teratas), **grafik IKC**, dan **Transaksi terakhir**: bergerak sesuai transaksi.
 6. Admin memeriksa halaman **Hadiah**, **Transaksi**, dan **Audit**: semua tindakan tadi tercatat.
@@ -173,6 +173,7 @@ Lakukan satu per satu; catat berapa lama pulih.
 | Mulai game           | Layar TV berganti, berita pertama tayang, tidak ada galat              |
 | Hadiah dan transaksi | Saldo berubah langsung; semua tercatat di Hadiah, Transaksi, dan Audit |
 | Beli serentak        | Stok tidak negatif, pesan galat jelas                                  |
+| Tanpa arbitrase      | Beli banyak lalu langsung jual semua selalu rugi (±2 %)                |
 | Berita               | Berita berikutnya terpilih sendiri; harga bergerak dalam 3–15 menit    |
 | Realtime dan polling | Laptop tim dan TV tetap segar tanpa muat ulang                         |
 | WiFi putus / hotspot | Pulih sendiri, tidak perlu login ulang atau paling banyak sekali       |
