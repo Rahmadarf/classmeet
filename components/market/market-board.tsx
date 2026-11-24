@@ -1,6 +1,6 @@
 "use client";
 
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AssetDetail } from "@/components/market/asset-detail";
@@ -12,24 +12,14 @@ import { NewsStrip } from "@/components/market/news-strip";
 import { SuspendNotice } from "@/components/market/suspend-notice";
 import { TradePanel } from "@/components/market/trade-panel";
 import { ErrorState } from "@/components/states";
-import type { AnalysisOffer } from "@/lib/analysis/view";
-import {
-  isSuspended,
-  type BankruptAsset,
-  type Game,
-  type Holding,
-  type MarketAsset,
-} from "@/lib/market/data";
+import { isSuspended } from "@/lib/market/data";
+import type { MarketSnapshot } from "@/lib/market/snapshot";
 import { qk } from "@/lib/query/keys";
 import { pollOptions, seed, seedMaybe } from "@/lib/query/options";
 import {
-  analysisOfferQuery,
-  bankruptQuery,
-  gameQuery,
-  holdingsQuery,
   invalidateAfterTrade,
   invalidateMarket,
-  marketQuery,
+  marketSnapshotQuery,
   newsQuery,
   summaryQuery,
 } from "@/lib/query/queries";
@@ -47,18 +37,14 @@ const CASH_POLL_MS = 10_000;
 const NEWS_POLL_MS = 30_000;
 
 export type MarketInitial = {
-  market: MarketAsset[];
-  game: Game;
+  /** Game, aset, kepemilikan, bangkrut, dan tawaran analisa (satu pengambilan; null analisa bila gagal dimuat). */
+  snapshot: MarketSnapshot;
   /** Ringkasan uang tim (saldo dipakai papan ini; kunci cache dibagi dengan Beranda dan Portofolio). */
   summary: Summary | null;
-  holdings: Record<string, Holding>;
   latestNews: NewsItem | null;
   selectedId: string;
   /** Tab awal panel (tautan dari Portofolio membuka tab Jual). */
   initialSide: "buy" | "sell";
-  bankrupt: BankruptAsset[];
-  /** Tawaran Analisa Pasar (pay to win); null bila gagal dimuat. */
-  analysis: AnalysisOffer | null;
   /** Jam server (ms) saat halaman dibuat; sesudahnya jam peramban. */
   nowMs: number;
 };
@@ -75,32 +61,13 @@ export function MarketBoard({ initial }: { initial: MarketInitial }) {
   const [now, setNow] = useState(initial.nowMs);
   const [selectedId, setSelectedId] = useState(initial.selectedId);
 
-  const gameQ = useQuery({ ...gameQuery(supabase), ...pollOptions(FAST_POLL_MS), ...seed(initial.game) });
-  const game = gameQ.data;
-  // Harga jual dihitung dari selisih jual (`sellSpreadBps`), jadi ikut ada di kunci; saat selisih berubah,
-  // daftar lama tetap tampil sampai yang baru tiba (tidak berkedip).
-  const spreadBps = game.sellSpreadBps;
-  const marketQ = useQuery({
-    ...marketQuery(supabase, spreadBps),
+  // Satu query untuk game, aset, kepemilikan, bangkrut, dan tawaran analisa (satu panggilan, satu snapshot database).
+  const snapQ = useQuery({
+    ...marketSnapshotQuery(supabase),
     ...pollOptions(FAST_POLL_MS),
-    ...(spreadBps === initial.game.sellSpreadBps ? seed(initial.market) : {}),
-    placeholderData: keepPreviousData,
+    ...seed(initial.snapshot),
   });
-  const holdingsQ = useQuery({
-    ...holdingsQuery(supabase),
-    ...pollOptions(FAST_POLL_MS),
-    ...seed(initial.holdings),
-  });
-  const bankruptQ = useQuery({
-    ...bankruptQuery(supabase),
-    ...pollOptions(FAST_POLL_MS),
-    ...seed(initial.bankrupt),
-  });
-  const analysisQ = useQuery({
-    ...analysisOfferQuery(supabase),
-    ...pollOptions(FAST_POLL_MS),
-    ...seedMaybe(initial.analysis),
-  });
+  const { game, market, holdings, bankrupt, analysis } = snapQ.data;
   const summaryQ = useQuery({
     ...summaryQuery(supabase),
     ...pollOptions(CASH_POLL_MS),
@@ -112,14 +79,10 @@ export function MarketBoard({ initial }: { initial: MarketInitial }) {
     ...seedMaybe(initial.latestNews ? [initial.latestNews] : null),
   });
 
-  const market = marketQ.data ?? initial.market;
-  const holdings = holdingsQ.data;
-  const bankrupt = bankruptQ.data;
-  const analysis = analysisQ.data ?? null;
   const cash = summaryQ.data?.cash ?? null;
   const latestNews = newsQ.data?.[0] ?? null;
   // Pengambilan yang gagal (data lama tetap tampil): pengganti penanda `stale` lama.
-  const stale = gameQ.isError || marketQ.isError || holdingsQ.isError || bankruptQ.isError;
+  const stale = snapQ.isError;
 
   // Jam untuk hitung mundur suspensi (tiap detik).
   useEffect(() => {

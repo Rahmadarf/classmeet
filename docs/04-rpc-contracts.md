@@ -91,6 +91,7 @@ Menggantikan order book (20 Nov 2026; lihat [17](17-trading-toko.md)). Kode leng
 | Fungsi | Peran | Keterangan |
 |--------|-------|-----------|
 | `get_market_summary()` | team, admin, display | Per aset aktif: `ref_price`, `last_price` (tayang), `sell_price`, `stock`, `init_stock`, `price_factor_bps`, serta open/high/low/lot/val/avg/freq dari `transactions` |
+| `get_market_snapshot()` | team | Satu `jsonb` untuk papan Pasar tim: `game` (8 kolom `game_settings`), `assets` (aset aktif), `summary` (= `get_market_summary()`), `day_open` (= `get_day_open_prices()`), `bankrupt` (= `get_bankrupt_notices()`), `holdings` (kepemilikan tim pemanggil, `qty > 0`), `analysis` (= `get_analysis_offer()`, satu baris atau `null`). *Security invoker* (RLS tetap berlaku untuk `holdings`), satu pernyataan = satu snapshot database. Menggantikan 7 panggilan polling 5 detik; `scripts/sql/market-snapshot.sql`, uji `scripts/sql/test-market-snapshot.sql`. Aplikasi jatuh ke 7 panggilan lama bila fungsi ini belum ada di database |
 | `get_last_transactions(limit)` | admin, display | Transaksi terbaru (simbol, sisi, qty, harga satuan, waktu), tanpa nama tim |
 | `admin_transaction_summary()` | admin | Per aset: unit dibeli, dijual, nilai, jumlah transaksi (seluruh transaksi) |
 | `get_my_summary()` | team | `cash`, `holdings_value`, `net_worth` (nilai aset = qty x harga tayang) |

@@ -5,11 +5,8 @@
  */
 export const qk = {
   game: ["game"] as const,
-  /** `spreadBps` ada di kunci karena harga jual dihitung darinya (lihat fetchMarket). */
-  market: (spreadBps: number) => ["market", spreadBps] as const,
-  holdings: ["holdings"] as const,
-  bankrupt: ["bankrupt"] as const,
-  analysisOffer: ["analysis-offer"] as const,
+  /** Papan Pasar tim: game, aset, kepemilikan, bangkrut, dan tawaran analisa dalam satu pengambilan (get_market_snapshot). */
+  marketSnapshot: ["market-snapshot"] as const,
   summary: ["summary"] as const,
   news: (limit: number) => ["news", limit] as const,
   portfolio: ["portfolio"] as const,

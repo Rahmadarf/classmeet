@@ -1269,6 +1269,10 @@ export type Database = {
           value: number
         }[]
       }
+      get_market_snapshot: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       get_market_summary: {
         Args: Record<PropertyKey, never>
         Returns: {

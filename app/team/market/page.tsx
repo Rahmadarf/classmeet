@@ -4,8 +4,7 @@ import { Suspense } from "react";
 import { MarketBoard } from "@/components/market/market-board";
 import { PageHeader } from "@/components/shell/page-header";
 import { Skeleton } from "@/components/states";
-import { fetchAnalysisOffer } from "@/lib/analysis/data";
-import { fetchBankruptAssets, fetchGame, fetchHoldings, fetchMarket } from "@/lib/market/data";
+import { fetchMarketSnapshot } from "@/lib/market/snapshot";
 import { createClient } from "@/lib/supabase/server";
 import { fetchNews, fetchSummary } from "@/lib/team/data";
 
@@ -36,17 +35,14 @@ async function MarketContent({ searchParams }: { searchParams: SearchParams }) {
   await connection(); // klien Supabase memakai waktu (JWT): render saat permintaan, bukan saat prerender
   const supabase = await createClient();
 
-  const game = await fetchGame(supabase);
-  const [market, summary, holdings, news, bankrupt, analysis] = await Promise.all([
-    fetchMarket(supabase, game?.sellSpreadBps),
+  // Satu RPC untuk game, aset, kepemilikan, bangkrut, dan tawaran analisa (lalu saldo dan berita terbaru).
+  const [snapshot, summary, news] = await Promise.all([
+    fetchMarketSnapshot(supabase),
     fetchSummary(supabase),
-    fetchHoldings(supabase),
     fetchNews(supabase, 1),
-    fetchBankruptAssets(supabase),
-    fetchAnalysisOffer(supabase),
   ]);
 
-  if (!market || market.length === 0 || !game) {
+  if (!snapshot) {
     return (
       <>
         <PageHeader eyebrow="Lantai perdagangan" title="Pasar Langsung" subtitle={SUBTITLE} />
@@ -56,6 +52,7 @@ async function MarketContent({ searchParams }: { searchParams: SearchParams }) {
       </>
     );
   }
+  const { market } = snapshot;
 
   // Tautan dari Portofolio: /team/market?asset=<SIMBOL>&side=sell membuka aset itu dengan tab Jual.
   const params = await searchParams;
@@ -68,15 +65,11 @@ async function MarketContent({ searchParams }: { searchParams: SearchParams }) {
       <PageHeader eyebrow="Lantai perdagangan" title="Pasar Langsung" subtitle={SUBTITLE} />
       <MarketBoard
         initial={{
-          market,
-          game,
+          snapshot,
           summary,
-          holdings: holdings ?? {},
           latestNews: news?.[0] ?? null,
           selectedId: selected.id,
           initialSide,
-          bankrupt: bankrupt ?? [],
-          analysis,
           nowMs: nowMs(),
         }}
       />

@@ -1,9 +1,9 @@
 import { queryOptions, type QueryClient } from "@tanstack/react-query";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { fetchAnalysisOffer } from "@/lib/analysis/data";
 import { fetchIndexHistory, fetchLeaderboard, fetchMarketBoard, fetchNewsBoard } from "@/lib/display/data";
 import { fetchHistory } from "@/lib/history/data";
-import { fetchBankruptAssets, fetchGame, fetchHoldings, fetchMarket } from "@/lib/market/data";
+import { fetchGame } from "@/lib/market/data";
+import { fetchMarketSnapshot } from "@/lib/market/snapshot";
 import { fetchPortfolio } from "@/lib/portfolio/data";
 import { fetchPosts } from "@/lib/posts/data";
 import { qk } from "@/lib/query/keys";
@@ -20,25 +20,15 @@ type Db = SupabaseClient<Database>;
 export const gameQuery = (db: Db) =>
   queryOptions({ queryKey: qk.game, queryFn: () => must(fetchGame(db), "game") });
 
-/** Daftar kosong dianggap gagal (sama seperti sebelumnya: pembaruan kosong tidak boleh mengosongkan layar). */
-export const marketQuery = (db: Db, spreadBps: number) =>
+/**
+ * Seluruh papan Pasar tim dalam SATU panggilan (`get_market_snapshot`; jatuh ke 7 panggilan lama bila fungsinya belum
+ * ada di database). Pemeta dan aturan "daftar kosong = gagal" ada di lib/market/snapshot.ts.
+ */
+export const marketSnapshotQuery = (db: Db) =>
   queryOptions({
-    queryKey: qk.market(spreadBps),
-    queryFn: async () => {
-      const list = await must(fetchMarket(db, spreadBps), "market");
-      if (list.length === 0) throw new Error("market: daftar aset kosong");
-      return list;
-    },
+    queryKey: qk.marketSnapshot,
+    queryFn: () => must(fetchMarketSnapshot(db), "market-snapshot"),
   });
-
-export const holdingsQuery = (db: Db) =>
-  queryOptions({ queryKey: qk.holdings, queryFn: () => must(fetchHoldings(db), "holdings") });
-
-export const bankruptQuery = (db: Db) =>
-  queryOptions({ queryKey: qk.bankrupt, queryFn: () => must(fetchBankruptAssets(db), "bankrupt") });
-
-export const analysisOfferQuery = (db: Db) =>
-  queryOptions({ queryKey: qk.analysisOffer, queryFn: () => must(fetchAnalysisOffer(db), "analysis-offer") });
 
 export const summaryQuery = (db: Db) =>
   queryOptions({ queryKey: qk.summary, queryFn: () => must(fetchSummary(db), "summary") });
@@ -81,13 +71,7 @@ export const postsQuery = (db: Db) =>
 
 /** Pasar berubah (status, jeda/buka, berita baru): harga, stok, kepemilikan, bangkrut, tawaran analisa. */
 export function invalidateMarket(queryClient: QueryClient) {
-  return Promise.all([
-    queryClient.invalidateQueries({ queryKey: qk.game }),
-    queryClient.invalidateQueries({ queryKey: ["market"] }),
-    queryClient.invalidateQueries({ queryKey: qk.holdings }),
-    queryClient.invalidateQueries({ queryKey: qk.bankrupt }),
-    queryClient.invalidateQueries({ queryKey: qk.analysisOffer }),
-  ]);
+  return queryClient.invalidateQueries({ queryKey: qk.marketSnapshot });
 }
 
 /**

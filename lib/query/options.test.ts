@@ -47,8 +47,7 @@ describe("queryClientConfig", () => {
 
 describe("qk", () => {
   it("kunci stabil dan terpisah menurut parameter", () => {
-    expect(qk.market(200)).toEqual(["market", 200]);
-    expect(qk.market(200)).not.toEqual(qk.market(300));
+    expect(qk.marketSnapshot).toEqual(["market-snapshot"]);
     expect(qk.history("t1")).toEqual(["history", "t1"]);
     expect(qk.display.newsBoard(6)).toEqual(["display", "news-board", 6]);
     expect(qk.admin("teams")).toEqual(["admin", "teams"]);

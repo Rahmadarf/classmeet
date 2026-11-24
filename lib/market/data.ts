@@ -136,6 +136,23 @@ export async function fetchGame(supabase: Db): Promise<Game | null> {
     )
     .maybeSingle();
   if (error || !data) return null;
+  return toGame(data);
+}
+
+/** Baris `game_settings` yang dibaca fetchGame (dan `get_market_snapshot`) → `Game`. */
+export type GameRow = Pick<
+  Database["public"]["Tables"]["game_settings"]["Row"],
+  | "state"
+  | "sell_spread_bps"
+  | "hold_cap_pct"
+  | "stock_mid_pct"
+  | "stock_low_pct"
+  | "price_step"
+  | "pressure_bps_per_unit"
+  | "pressure_cap_bps"
+>;
+
+export function toGame(data: GameRow): Game {
   return {
     state: data.state,
     sellSpreadBps: data.sell_spread_bps,
@@ -154,8 +171,14 @@ export type Holding = { qty: number; costBasis: number; avgCost: number };
 export async function fetchHoldings(supabase: Db): Promise<Record<string, Holding> | null> {
   const { data, error } = await supabase.from("holdings").select("asset_id,qty,cost_basis").gt("qty", 0);
   if (error || !data) return null;
+  return toHoldings(data);
+}
+
+export function toHoldings(
+  rows: { asset_id: string; qty: number; cost_basis: number }[],
+): Record<string, Holding> {
   return Object.fromEntries(
-    data.map((h) => [
+    rows.map((h) => [
       h.asset_id,
       { qty: h.qty, costBasis: h.cost_basis, avgCost: h.qty > 0 ? Math.round(h.cost_basis / h.qty) : 0 },
     ]),
@@ -185,7 +208,13 @@ export async function fetchBankruptAssets(supabase: Db): Promise<BankruptAsset[]
   // RPC, bukan tabel `assets`: notif hanya tampil sampai efek berita berikutnya diterapkan (scripts/sql/bankrupt-notice.sql).
   const { data, error } = await supabase.rpc("get_bankrupt_notices");
   if (error || !data) return null;
-  return data.map((a) => ({
+  return toBankruptAssets(data);
+}
+
+export function toBankruptAssets(
+  rows: Database["public"]["Functions"]["get_bankrupt_notices"]["Returns"],
+): BankruptAsset[] {
+  return rows.map((a) => ({
     id: a.asset_id,
     symbol: a.symbol,
     name: a.name,

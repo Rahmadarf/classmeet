@@ -2,10 +2,12 @@
  * Uji beban ringan (meniru klien sungguhan). Dijalankan LOKAL terhadap Supabase uji; memakai akun seed
  * (scripts/.seed-output.local.json, tidak dicetak) dan butuh game berstatus `open` serta saldo tim > 0.
  *
- *   node --env-file=.env.local scripts/load-test.mjs [--clients 30] [--seconds 180] [--displays 2] [--url http://localhost:8000] [--spike]
+ *   node --env-file=.env.local scripts/load-test.mjs [--clients 30] [--seconds 180] [--displays 2] [--url http://localhost:8000] [--spike] [--snapshot]
  *
  * Tiap klien tim meniru aplikasi: polling pasar 5 dtk (ringkasan pasar, aset, game_settings, kepemilikan, aset bangkrut,
  * harga pembuka), saldo 10 dtk, berita 30 dtk, satu koneksi Realtime, dan beli/jual acak 1 unit tiap ±20 dtk.
+ * `--snapshot`: polling pasar memakai SATU panggilan `get_market_snapshot()` (scripts/sql/market-snapshot.sql, harus sudah dimuat)
+ * sebagai ganti 7 panggilan di atas, seperti aplikasi sekarang; tanpa flag = perilaku lama (untuk pembanding).
  * Klien display: peringkat, indeks, aset, transaksi terakhir tiap 5 dtk. `--spike`: di tengah uji semua klien tim membeli
  * aset yang sama dan membeli Analisa Pasar bersamaan (hanya satu pembelian per tim yang boleh terjadi). Hasil: median / p95 / maks (ms) dan jumlah galat per jenis panggilan.
  */
@@ -23,6 +25,7 @@ const CLIENTS = Number(arg("clients", 30));
 const SECONDS = Number(arg("seconds", 180));
 const DISPLAYS = Number(arg("displays", 2));
 const SPIKE = process.argv.includes("--spike");
+const SNAPSHOT = process.argv.includes("--snapshot");
 const URL_ = arg("url", "http://localhost:8000");
 const KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 if (!KEY) throw new Error("NEXT_PUBLIC_SUPABASE_ANON_KEY kosong (jalankan dengan --env-file=.env.local)");
@@ -92,6 +95,11 @@ function teamClient(token, idx) {
   const c = clientWith(token);
   let assets = [];
   every(5000, async () => {
+    if (SNAPSHOT) {
+      const r = await timed("pasar: get_market_snapshot", c.rpc("get_market_snapshot"));
+      if (r?.data?.assets) assets = r.data.assets;
+      return;
+    }
     await Promise.all([
       timed("pasar: get_market_summary", c.rpc("get_market_summary")),
       timed(
@@ -178,7 +186,7 @@ const pct = (a, p) => a[Math.min(a.length - 1, Math.floor((a.length * p) / 100))
 
 async function main() {
   console.log(
-    `Uji beban: ${CLIENTS} klien tim + ${DISPLAYS} display, ${SECONDS} dtk, ${URL_}${SPIKE ? ", dengan lonjakan" : ""}`,
+    `Uji beban: ${CLIENTS} klien tim + ${DISPLAYS} display, ${SECONDS} dtk, ${URL_}${SPIKE ? ", dengan lonjakan" : ""}${SNAPSHOT ? ", pasar: snapshot" : ""}`,
   );
   const teams = seed.teams;
   const tokens = [];

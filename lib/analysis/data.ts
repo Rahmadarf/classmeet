@@ -28,6 +28,12 @@ export async function fetchAnalysisOffer(supabase: Db): Promise<AnalysisOffer | 
   const { data, error } = await supabase.rpc("get_analysis_offer");
   const row = data?.[0];
   if (error || !row) return null;
+  return toAnalysisOffer(row);
+}
+
+export function toAnalysisOffer(
+  row: Database["public"]["Functions"]["get_analysis_offer"]["Returns"][number],
+): AnalysisOffer {
   const reason = (REASONS as string[]).includes(row.reason) ? (row.reason as AnalysisReason) : "no_live_news";
   return {
     price: row.price,
