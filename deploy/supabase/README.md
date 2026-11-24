@@ -53,7 +53,7 @@ rahasia acak, dan mematikan pendaftaran mandiri. Skrip menolak bila `stack/` sud
 ./10-up.sh --tunnel   # mode B (Supabase + cloudflared; lihat bagian Cloudflare Tunnel)
 ```
 
-Pertama kali mengunduh beberapa GB image. Berhenti: `./10-up.sh down` (data tetap di `stack/volumes/db/data`).
+Pertama kali mengunduh beberapa GB image. Dari akar repo, `npm run dev` otomatis menjalankan `./10-up.sh --tunnel` dulu (`npm run stack:up`; aman diulang, tidak apa bila sudah jalan) lalu `next dev`; bila gagal (mis. Docker belum nyala) hanya muncul peringatan dan `next dev` tetap jalan. Berhenti: `./10-up.sh down` atau `npm run stack:down` (data tetap di `stack/volumes/db/data`).
 
 ### 3. Dump dari cloud (hanya baca terhadap cloud)
 

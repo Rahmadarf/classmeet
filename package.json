@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "bash scripts/start-with-stack.sh",
+    "start:next": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -14,7 +15,9 @@
     "load-test": "node --env-file=.env.local scripts/load-test.mjs",
     "load-test:k6": "bash scripts/k6/run-tunnel.sh",
     "print-qr": "tsx scripts/print-qr.ts",
-    "predev": "node scripts/copy-zxing-wasm.mjs",
+    "stack:up": "bash deploy/supabase/10-up.sh --tunnel",
+    "stack:down": "bash deploy/supabase/10-up.sh down",
+    "predev": "node scripts/copy-zxing-wasm.mjs && (npm run stack:up || echo '[dev] Supabase + tunnel gagal jalan (lihat galat di atas); next dev tetap dilanjutkan.')",
     "prebuild": "node scripts/copy-zxing-wasm.mjs",
     "generate-news": "tsx scripts/generate-news-pool.ts",
     "load-news": "bash scripts/load-news-pool.sh"
