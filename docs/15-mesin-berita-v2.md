@@ -146,7 +146,7 @@ kenaikannya beragam (−9 % sampai +37 %), terbanyak pada kondisi naik, sesuai r
    - Cloud: tempel di SQL Editor. Aman dijalankan ulang.
 2. **Kumpulan berita** (HANYA sebelum game dibuka): `npm run generate-news` (tinjau `docs/14-kumpulan-berita.md`), lalu `npm run seed`.
 3. Buka papan **Admin → Berita**: periksa kartu "Cakupan event per aset" (semua aset harus punya bangkrut, suspensi, dan dividen).
-4. Restart `npm run dev:https` bila halaman admin belum menampilkan kartu jenis berita (modul server lama masih terpasang).
+4. Restart `npm run dev` bila halaman admin belum menampilkan kartu jenis berita (modul server lama masih terpasang).
 5. Game yang **sudah berjalan** memakai mesin baru langsung (skrip mengisi `market_opened_at` = saat skrip dijalankan), tetapi kumpulan berita harus sudah berisi
    berita `ready`; berita baru tidak bisa dimasukkan sesudah game dibuka.
 

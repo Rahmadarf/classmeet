@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # Jalankan layanan Supabase yang dipakai Classmeet dan tunggu sampai database sehat.
-#   ./10-up.sh            jalankan (HTTP; gerbang API di port 8000)
-#   ./10-up.sh --https    jalankan dengan Caddy (HTTPS LAN; lihat README, bagian HTTPS)
+#   ./10-up.sh            jalankan (HTTP; gerbang API di port 8000; hanya untuk mencoba di satu laptop)
 #   ./10-up.sh --tunnel   jalankan dengan Cloudflare Tunnel (butuh internet; lihat README, bagian Cloudflare Tunnel)
 #   ./10-up.sh --server   seperti --tunnel, ditambah aplikasi Classmeet sebagai kontainer di port 8111 (server sekolah)
 #   ./10-up.sh down       hentikan (data tetap di stack/volumes/db/data)
@@ -15,20 +14,10 @@ MODE="${1:-up}"
 case "$MODE" in
   down) dc down; exit 0 ;;
   logs) dc logs -f --tail 100 "${SERVICES[@]}"; exit 0 ;;
-  up|--https|--tunnel|--server) ;;
-  *) die "pilihan: up | --https | --tunnel | --server | down | logs" ;;
+  up|--tunnel|--server) ;;
+  --https) die "mode HTTPS LAN (Caddy) sudah dihapus; pakai --tunnel (Cloudflare Tunnel). Lihat README." ;;
+  *) die "pilihan: up | --tunnel | --server | down | logs" ;;
 esac
-
-if [ "$MODE" = "--https" ]; then
-  [ "$(get_env SUPABASE_PUBLIC_URL | cut -c1-8)" = "https://" ] \
-    || die "SUPABASE_PUBLIC_URL harus https://... (jalankan ./00-setup-stack.sh dengan URL https, mis. https://192.168.1.10)."
-  cp "$HERE/Caddyfile.classmeet" "$STACK/volumes/proxy/caddy/Caddyfile"
-  cp "$HERE/docker-compose.https.yml" "$STACK/docker-compose.https.yml"
-  # PROXY_DOMAIN = host dari SUPABASE_PUBLIC_URL (tanpa skema/port).
-  set_env PROXY_DOMAIN "$(get_env SUPABASE_PUBLIC_URL | sed -E 's#^https?://##; s#[:/].*$##')"
-  set_env COMPOSE_FILE "docker-compose.yml:docker-compose.caddy.yml:docker-compose.https.yml"
-  SERVICES+=(caddy)
-fi
 
 if [ "$MODE" = "--tunnel" ] || [ "$MODE" = "--server" ]; then
   [ "$(get_env SUPABASE_PUBLIC_URL | cut -c1-8)" = "https://" ] \
@@ -36,7 +25,7 @@ if [ "$MODE" = "--tunnel" ] || [ "$MODE" = "--server" ]; then
   [ -n "$(get_env TUNNEL_TOKEN)" ] || die "TUNNEL_TOKEN belum diisi di stack/.env (lihat README, bagian Cloudflare Tunnel)."
   cp "$HERE/docker-compose.tunnel.yml" "$STACK/docker-compose.tunnel.yml"
   set_env COMPOSE_FILE "docker-compose.yml:docker-compose.tunnel.yml"
-  # Caddy (bila pernah dipakai) tidak dipakai lagi; hentikan supaya tidak menahan port 443/3443.
+  # Kontainer Caddy lama (mode HTTPS LAN yang sudah dihapus), bila masih ada, dihentikan supaya tidak menahan port 443/3443.
   docker stop supabase-caddy >/dev/null 2>&1 || true
   SERVICES+=(cloudflared)
 fi

@@ -15,8 +15,6 @@ URL="$(get_env SUPABASE_PUBLIC_URL)"
 # Skrip seed menolak project selain staging kecuali SEED_ALLOW_ANY_PROJECT=1 (database ini memang bukan staging cloud).
 # Variabel yang sudah ada di lingkungan didahulukan atas .env.local (perilaku `node --env-file`).
 cd "$ROOT"
-# HTTPS lokal: percayai CA internal Caddy bila sudah diekspor (./15-export-ca.sh).
-[ -f "$STACK/caddy-root.crt" ] && export NODE_EXTRA_CA_CERTS="$STACK/caddy-root.crt"
 NEXT_PUBLIC_SUPABASE_URL="$URL" \
 NEXT_PUBLIC_SUPABASE_ANON_KEY="$(get_env ANON_KEY)" \
 SUPABASE_SERVICE_ROLE_KEY="$(get_env SERVICE_ROLE_KEY)" \

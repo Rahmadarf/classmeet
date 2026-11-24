@@ -10,7 +10,7 @@ tujuh layanan yang dijalankan: `db meta studio api-gw auth rest realtime`.
 
 > **Status (18 Nov):** tumpukan sudah dijalankan dan direstore dari cloud (`--with-data`) di laptop pengembang; inventaris,
 > hak akses, dan jumlah baris cocok dengan cloud, login semua peran dan batas RPC lewat gerbang lokal lolos, cron berjalan.
-> Yang belum diuji: aplikasi Next di atasnya, mode HTTPS/Caddy, Realtime dari peramban, dan cadangan/pulihkan. Coba lagi di
+> Yang belum diuji: aplikasi Next di atasnya, Realtime dari peramban, dan cadangan/pulihkan. Coba lagi di
 > mesin acara sebelum hari H.
 
 ## Prasyarat
@@ -21,13 +21,16 @@ tujuh layanan yang dijalankan: `db meta studio api-gw auth rest realtime`.
 
 ## Pilih mode
 
-|                   | Alamat                                        | Kamera pemindai                              | Cocok untuk                                              |
-| ----------------- | --------------------------------------------- | -------------------------------------------- | -------------------------------------------------------- |
-| **A. HTTP lokal** | `http://localhost:8000`                       | Hanya di `localhost`                         | Mencoba di satu laptop                                   |
-| **B. HTTPS LAN**  | `https://<IP laptop>` (+ aplikasi di `:3443`) | Jalan di semua perangkat yang mempercayai CA | Acara dengan laptop kiosk, ponsel penjaga, layar display |
+|                          | Alamat                                            | Kamera pemindai                                     | Cocok untuk                |
+| ------------------------ | ------------------------------------------------- | --------------------------------------------------- | -------------------------- |
+| **A. HTTP lokal**        | `http://localhost:8000`                           | Hanya di `localhost`                                | Mencoba di satu laptop     |
+| **B. Cloudflare Tunnel** | `https://app.<domain>` dan `https://api.<domain>` | Jalan di semua perangkat, tanpa sertifikat tambahan | **Acara** (butuh internet) |
 
 Kamera (kiosk dan penjaga) butuh HTTPS atau `localhost`, dan halaman HTTPS tidak boleh memanggil API HTTP (mixed content).
-Jadi untuk acara, pakai mode B: **API Supabase dan aplikasi sama-sama lewat HTTPS**.
+Untuk acara pakai mode B: Cloudflare memegang sertifikat HTTPS publik, jadi **API Supabase dan aplikasi sama-sama lewat HTTPS**
+tanpa memasang CA di perangkat. Mode HTTPS LAN dengan Caddy (untuk acara tanpa internet) sudah dihapus; kodenya terakhir ada
+di commit `0740fe9`. **Tanpa internet di lokasi, kamera tidak akan jalan di perangkat selain `localhost`**, jadi pastikan
+ada koneksi (mis. hotspot cadangan) sebelum acara.
 
 ## Langkah
 
@@ -36,8 +39,7 @@ Semua perintah dijalankan dari folder ini (`deploy/supabase`).
 ### 1. Siapkan tumpukan
 
 ```bash
-./00-setup-stack.sh                                          # mode A (localhost)
-./00-setup-stack.sh https://192.168.1.10 https://192.168.1.10:3443   # mode B (ganti dengan IP laptop)
+./00-setup-stack.sh          # alamat awal localhost; untuk mode B lanjutkan dengan ./55-tunnel-env.sh (lihat bagian Cloudflare Tunnel)
 ```
 
 Mengunduh berkas resmi `supabase/supabase` (folder `docker/`, commit yang dipin di `lib.sh`), membuat `stack/.env` berisi
@@ -48,7 +50,7 @@ rahasia acak, dan mematikan pendaftaran mandiri. Skrip menolak bila `stack/` sud
 
 ```bash
 ./10-up.sh            # mode A
-./10-up.sh --https    # mode B (menambah Caddy; Studio di https://<IP> dengan kata sandi dasbor)
+./10-up.sh --tunnel   # mode B (Supabase + cloudflared; lihat bagian Cloudflare Tunnel)
 ```
 
 Pertama kali mengunduh beberapa GB image. Berhenti: `./10-up.sh down` (data tetap di `stack/volumes/db/data`).
@@ -102,61 +104,18 @@ Salin dua baris itu ke `.env.local` aplikasi (gantikan nilai cloud). Variabel `N
 jalankan ulang `npm run build` (atau restart `npm run dev`). `DISPLAY_USERNAME`/`DISPLAY_PASSWORD` tetap seperti semula.
 **Jangan** menaruh `SERVICE_ROLE_KEY` di `.env.local`.
 
-Mode B juga butuh aplikasi dilayani lewat Caddy: jalankan `npm run build && npm start` (port 3000) di laptop yang sama;
-Caddy meneruskan `https://<IP>:3443` ke sana. Ganti `allowedDevOrigins` hanya bila memakai `npm run dev`.
-
-## HTTPS LAN: mempercayai CA Caddy
-
-Caddy menerbitkan sertifikat dari CA internalnya untuk alamat IP/nama lokal. Perangkat harus mempercayai CA itu, kalau
-tidak peramban menolak (dan kamera tidak jalan).
-
-```bash
-./15-export-ca.sh       # menyimpan stack/caddy-root.crt (sertifikat PUBLIK)
-```
-
-Pasang `caddy-root.crt` di tiap perangkat:
-
-- **macOS:** `sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain deploy/supabase/stack/caddy-root.crt` (minta kata sandi macOS; atau Keychain Access > impor ke "System" > Get Info > Trust > Always Trust). Tutup dan buka ulang peramban.
-- **Windows:** `certmgr.msc` > Trusted Root Certification Authorities > Import.
-- **Android:** Pengaturan > Keamanan > Enkripsi & kredensial > Instal sertifikat > Sertifikat CA.
-- **iOS:** buka berkasnya, instal profil, lalu Pengaturan > Umum > Tentang > Pengaturan Kepercayaan Sertifikat > aktifkan.
-- **Node (skrip seed):** `60-seed-local.sh` memakai `NODE_EXTRA_CA_CERTS` otomatis bila berkas itu ada.
-
-Alamat IP laptop harus tetap sama selama acara (atur IP statis/reservasi DHCP); mengubahnya membuat sertifikat dan
-`SUPABASE_PUBLIC_URL` tidak cocok.
-
-### Menjalankan aplikasi di mode HTTPS
-
-```bash
-npm run dev:https      # = NODE_EXTRA_CA_CERTS=deploy/supabase/stack/caddy-root.crt npm run dev
-npm run start:https    # untuk build produksi (npm run build dulu)
-```
-
-Server Next memanggil Supabase lewat `https://<IP>` dari sisi server juga, jadi proses Node-nya harus mempercayai CA Caddy.
-`NODE_EXTRA_CA_CERTS` hanya dibaca saat Node mulai (tidak bisa lewat `.env.local`), itu sebabnya ada skrip npm khusus.
-Tanpa itu `/display`, login, dan semua halaman server gagal dengan `UNABLE_TO_GET_ISSUER_CERT_LOCALLY`.
-Buka aplikasi di **`https://<IP>:3443`** (bukan `localhost:3000`) supaya kamera dan cookie sesuai. Di mode HTTPS,
-`http://localhost:8000` tidak lagi dibuka (Caddy mengambil alih; port gerbang API dilepas).
-
 ### Studio (dasbor Supabase) dan kata sandinya
 
-Studio ada di `http://localhost:8000` (mode A) atau `https://<IP>` (mode B) dan meminta nama pengguna + kata sandi
-(HTTP Basic). Lihat nilainya sendiri (jangan ditempel ke chat):
+Studio ada di `http://localhost:8000` di laptop (tidak didaftarkan ke tunnel, jadi tidak terbuka dari internet) dan meminta
+nama pengguna + kata sandi (HTTP Basic). Lihat nilainya sendiri (jangan ditempel ke chat):
 
 ```bash
 grep -E '^(DASHBOARD_USERNAME|DASHBOARD_PASSWORD)=' deploy/supabase/stack/.env
 ```
 
-### Alamat IP yang berubah
+## Cloudflare Tunnel (mode B: ada internet, tanpa memasang sertifikat)
 
-Sertifikat Caddy dan `SUPABASE_PUBLIC_URL` terikat ke satu alamat. Bila IP laptop berubah (DHCP), peramban menolak
-sertifikat. Atur IP statis/reservasi DHCP selama acara. Bila terpaksa berubah: ubah `SUPABASE_PUBLIC_URL`,
-`API_EXTERNAL_URL`, `SITE_URL` di `stack/.env` (lihat `00-setup-stack.sh`), `NEXT_PUBLIC_SUPABASE_URL` di `.env.local`,
-jalankan `./10-up.sh --https`, `docker restart supabase-caddy`, ekspor ulang CA bila perlu, dan pasang ulang di perangkat.
-
-## Cloudflare Tunnel (mode C: ada internet, tanpa memasang sertifikat)
-
-Menggantikan Caddy. Laptop tetap menjalankan semuanya; `cloudflared` (kontainer) membuka sambungan keluar ke Cloudflare,
+Laptop tetap menjalankan semuanya; `cloudflared` (kontainer) membuka sambungan keluar ke Cloudflare,
 dan Cloudflare memegang sertifikat HTTPS publik. Perangkat tim/penjaga cukup membuka alamat, tanpa CA, tanpa satu
 jaringan WiFi dengan laptop. **Butuh internet** di laptop dan di perangkat pemakai.
 
@@ -182,11 +141,11 @@ jaringan WiFi dengan laptop. **Butuh internet** di laptop dan di perangkat pemak
 cd deploy/supabase
 ./55-tunnel-env.sh app.<domain> api.<domain>   # mengubah stack/.env, mencetak baris untuk .env.local
 echo 'TUNNEL_TOKEN=<token dari langkah 3>' >> stack/.env   # stack/ diabaikan git
-./10-up.sh --tunnel                            # menjalankan Supabase + cloudflared (Caddy dihentikan)
+./10-up.sh --tunnel                            # menjalankan Supabase + cloudflared
 ```
 
 Salin tiga baris dari `55-tunnel-env.sh` ke `.env.local` (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
-`CLASSMEET_PUBLIC_HOSTS`), lalu jalankan aplikasi dengan **`npm run dev`** (bukan `dev:https`; tidak ada CA internal,
+`CLASSMEET_PUBLIC_HOSTS`), lalu jalankan aplikasi dengan **`npm run dev`** (tidak ada CA internal,
 jadi `NODE_EXTRA_CA_CERTS` tidak perlu). Buka **`https://app.<domain>`**. Akun yang sudah ada tetap berlaku.
 `CLASSMEET_PUBLIC_HOSTS` memberi izin Next dev untuk host itu (tanpa ini JS halaman 403).
 
@@ -252,16 +211,16 @@ Cloud tidak disentuh oleh skrip ini. Kembalikan `NEXT_PUBLIC_SUPABASE_URL` dan `
 ## Hal yang berubah dibanding cloud
 
 - **Kunci baru:** `JWT_SECRET`, anon key, dan service-role key dibuat baru. Sesi login lama tidak berlaku.
-- **Tanggung jawab di tanganmu:** cadangan, pembaruan image (versi di `stack/versions.md`), firewall (port 80/443/3443
-  hanya di jaringan acara; `5432` tidak dipublikasikan), dan penyimpanan `stack/.env`.
+- **Tanggung jawab di tanganmu:** cadangan, pembaruan image (versi di `stack/versions.md`), firewall (tunnel hanya membuka
+  sambungan KELUAR, tidak ada port masuk yang perlu dibuka; `5432` tidak dipublikasikan), dan penyimpanan `stack/.env`.
 - **pg_safeupdate:** di cloud, `UPDATE` tanpa `WHERE` ditolak. Di Docker pengaturan ini bisa berbeda; semua kode proyek
   sudah memakai `WHERE`, jadi tidak berpengaruh.
-- **Studio** (dasbor) ada di mode B pada `https://<IP>` dengan kata sandi `DASHBOARD_PASSWORD`; jangan dibuka ke internet.
+- **Studio** (dasbor) ada di `http://localhost:8000` dengan kata sandi `DASHBOARD_PASSWORD`; jangan didaftarkan ke tunnel.
 - **Tidak ada email:** pembuatan akun hanya lewat seed (service role); tidak ada surel konfirmasi atau reset kata sandi.
 
 ## Yang belum teruji
 
 Seluruh alur di atas belum dijalankan sungguhan: unduhan image, `./10-up.sh`, restore, `pg_cron` di image
 `supabase/postgres`, Realtime terhadap tabel hasil restore, restore `auth.users` dengan `--column-inserts` antar versi
-GoTrue, HTTPS Caddy + CA di ponsel, dan aplikasi di atas Supabase Docker. Jalankan `./40-verify.sh` dan uji login tiap
+GoTrue, Cloudflare Tunnel dari ponsel, dan aplikasi di atas Supabase Docker. Jalankan `./40-verify.sh` dan uji login tiap
 peran (admin, penjaga, display, tim lewat kartu QR) sebelum dipakai.

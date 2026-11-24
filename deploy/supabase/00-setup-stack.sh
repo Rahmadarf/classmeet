@@ -2,8 +2,8 @@
 # Siapkan tumpukan Supabase self-hosted (Docker) di deploy/supabase/stack.
 #
 #   ./00-setup-stack.sh [URL_PUBLIK_SUPABASE] [URL_APLIKASI]
-#   contoh LAN:  ./00-setup-stack.sh https://192.168.1.10 https://192.168.1.10:3443
 #   contoh lokal (bawaan): ./00-setup-stack.sh http://localhost:8000 http://localhost:3000
+#   untuk acara (Cloudflare Tunnel): jalankan tanpa argumen, lalu ./55-tunnel-env.sh app.<domain> api.<domain> (lihat README)
 #
 # Mengunduh berkas resmi supabase/supabase (folder docker/, commit yang dipin), membuat .env dengan rahasia acak
 # memakai skrip resmi utils/generate-keys.sh (keluarannya dibuang, tidak dicetak), lalu menyesuaikan beberapa nilai.

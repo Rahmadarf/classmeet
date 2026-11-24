@@ -6,12 +6,6 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 3000
-    },
-    {
-      "name": "classmeet-dev-https",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev:https"],
-      "port": 3000
     }
   ]
 }

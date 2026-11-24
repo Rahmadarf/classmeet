@@ -1,4 +1,4 @@
-# Tambahan untuk Cloudflare Tunnel (menggantikan Caddy bila ada internet). Dipakai BERSAMA docker-compose.yml resmi:
+# Tambahan untuk Cloudflare Tunnel (mode acara; butuh internet). Dipakai BERSAMA docker-compose.yml resmi:
 #   COMPOSE_FILE=docker-compose.yml:docker-compose.tunnel.yml
 # (10-up.sh --tunnel menyetel ini dan menyalin berkas ini ke stack/).
 #
