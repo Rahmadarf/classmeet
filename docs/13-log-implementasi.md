@@ -1243,3 +1243,10 @@ Permintaan: tombol skip berita di dasbor admin untuk testing; "skip" berarti ter
 - **UI:** tombol "Lewati berita (untuk uji)" di kartu "Berita saat ini" (`components/admin/news-board.tsx`), tampil hanya bila berita berstatus "Belum berlaku"; dialog konfirmasi menyebut judul berita; server action `skipNews`; ringkasan audit "Berita dilewati (efek diterapkan sekarang): <judul>" (kategori Berita).
 - **Uji:** `scripts/sql/test-news-skip.sql` (11 pemeriksaan OK: bukan admin ditolak, berita jadi applied, tepat satu berita ikut terpakai, riwayat harga dan audit tercatat, berita berikutnya tayang, tolak saat tak ada berita tayang dan saat game bukan open; ROLLBACK). Tes audit baru di Vitest (38 tes admin lolos), `tsc`, ESLint, build bersih; server `npm start` dijalankan ulang. **Uji klik di peramban belum dilakukan** (login admin di panel tidak tersedia).
 - Catatan: efek tidak bisa dibatalkan dan tombol aktif juga saat acara sungguhan (sesuai permintaan tanpa env). Ini juga mengubah aturan docs/07 §3.7 (dicatat di sana).
+
+## Ganti nama indeks IKC menjadi IHAI (24 Nov)
+
+Permintaan: nama indeks di Display pasar diganti dengan nama yang memuat ISSC; dipilih **IHAI** (Indeks Harga Aset ISSC; kepanjangan ini kutetapkan sendiri dari singkatannya, mudah diubah di satu baris `components/display/market-screen.tsx`).
+- **Berubah (hanya teks):** judul kartu menjadi "IHAI · Indeks Harga Aset ISSC (N aset, basis 1.000)", `aria-label` grafik "Grafik IHAI", teks reset game (kartu dan dialog di Status game, komentar `app/admin/state/actions.ts`), komentar kode, `PANDUAN-TRADING.md`, `PANDUAN-GLADI-RESIK.md`, dan docs 03, 04, 05, 07, 17.
+- **Tidak berubah:** pengenal di database dan kode (`scope = 'IKC'` di `get_market_index()`, `index_history`, berkas dan fungsi `ikc*`) serta isi log lama dan docs 12 (riwayat); tidak ada migrasi. Entri log di atas yang menyebut "IKC" merujuk nama lama indeks yang sama.
+- **Uji:** 218 tes `lib` lolos, `tsc` dan ESLint bersih, build bersih, server dijalankan ulang; layar `/display/market` diperiksa di peramban (judul satu baris, grafik terbaca).

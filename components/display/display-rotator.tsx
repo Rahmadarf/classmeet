@@ -17,7 +17,7 @@ const ORDER: ScreenKey[] = ["leaderboard", "market", "news", "posts"];
 
 /**
  * Layar ruang publik yang bergilir (docs/07 §2.4): 5 tim teratas → Display pasar → Display berita → Daftar Pos. Keempatnya tetap
- * terpasang (data dan grafik IKC tidak hilang saat berganti); yang tidak tampil disembunyikan dan disembunyikan
+ * terpasang (data dan grafik IHAI tidak hilang saat berganti); yang tidak tampil disembunyikan dan disembunyikan
  * juga dari teknologi bantu. Berhenti berputar bila `pin` diisi (mis. /display?screen=market untuk uji).
  */
 export function DisplayRotator({

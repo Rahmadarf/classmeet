@@ -79,7 +79,7 @@ describe("mergeSeries", () => {
 });
 
 describe("valueDomain", () => {
-  it("sumbu mengikuti data: IKC di sekitar 1.087 tidak memaksa garis dasar 1.000 masuk", () => {
+  it("sumbu mengikuti data: IHAI di sekitar 1.087 tidak memaksa garis dasar 1.000 masuk", () => {
     const d = valueDomain([1077, 1087]);
     expect(d.baselineInside).toBe(false);
     expect(d.lo).toBeGreaterThan(1050);

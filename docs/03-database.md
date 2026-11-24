@@ -243,7 +243,7 @@ create table assets (
   last_price     bigint check (last_price > 0),       -- harga transaksi terakhir; null sebelum ada transaksi/berita. Inilah harga yang tampil dan dihitung
   rank_price     bigint check (rank_price > 0),       -- harga PERINGKAT: VWAP jendela waktu (game_settings.rank_window_minutes), dilapis harga peringkat sebelumnya bila volume tipis. Dipakai net worth dan leaderboard; null sebelum ada transaksi
   last_trade_at  timestamptz,
-  base_price     bigint check (base_price > 0),       -- harga acuan saat pasar pertama dibuka, penyebut indeks IKC
+  base_price     bigint check (base_price > 0),       -- harga acuan saat pasar pertama dibuka, penyebut indeks IHAI
   init_stock     int check (init_stock >= 0),         -- stok awal bandar, dasar lot per level kuotasi
   is_active      boolean not null default true,
   created_at     timestamptz not null default now(),

@@ -104,7 +104,7 @@ Jalankan seperti hari sungguhan, dengan 4–5 laptop sekaligus.
 2. Tim membeli dan menjual berbagai aset: beli, jual, jumlah lebih dari batas pegang, saldo kurang, aset stok habis. Pesan galat harus jelas dan tidak membuat halaman macet.
 3. **Tidak ada arbitrase:** satu tim membeli aset sebanyak mungkin (batas pegang) lalu langsung menjualnya semua. Hasilnya harus RUGI sekitar 2 % (selisih jual), bukan untung; total beli lebih dari jumlah x harga tayang. Lalu **beli serentak:** minta semua laptop tim membeli aset yang sama dalam beberapa detik. Stok tidak boleh negatif, pesan "stok habis" muncul bagi yang kalah cepat.
 4. Tunggu berita berikutnya. Periksa: berita tayang, harga bergerak setelah 3–15 menit, notif bangkrut atau suspensi (bila ada) muncul lalu hilang setelah berita berikutnya diterapkan.
-5. Periksa **peringkat** di TV (5 tim teratas), **grafik IKC**, dan **Transaksi terakhir**: bergerak sesuai transaksi.
+5. Periksa **peringkat** di TV (5 tim teratas), **grafik IHAI**, dan **Transaksi terakhir**: bergerak sesuai transaksi.
 6. Admin memeriksa halaman **Hadiah**, **Transaksi**, dan **Audit**: semua tindakan tadi tercatat.
 7. **Analisa Pasar:** saat satu berita tayang, satu tim membeli analisa di Pasar. Periksa: saldo turun sebesar harga, laporan 4 paragraf tampil dan tersimpan di Riwayat, tombol berubah menjadi "Lihat laporan", dan tim lain tidak melihat laporan itu. Admin melihat pembelian di Transaksi (tanpa isi laporan). Bandingkan isi laporan dengan pergerakan harga sesudahnya: ciri yang disebut naik harus benar naik. Coba juga mengubah harga di Admin > Aset saat game berjalan dan beli dengan tim lain (harga baru dipakai), serta mematikan saklar (tombol tim mati, laporan lama tetap bisa dibuka).
 8. Tombol **Tutup pasar**, lalu **Buka pasar**: tim tidak bisa beli/jual saat tutup, dan berita berhenti. Buka lagi dan pastikan kembali normal.
@@ -124,7 +124,7 @@ Lakukan satu per satu; catat berapa lama pulih.
 1. Admin: **Bekukan leaderboard** lalu **Lepas pembekuan** (uji tombolnya; jangan tekan Akhiri game).
 2. Buat **cadangan** (`./70-backup.sh`) dan salin keluar laptop. Ini juga latihan cadangan akhir hari.
 3. **Reset game** (ketik `RESET`). Periksa:
-   - Status SETUP, semua saldo Rp 0, Transaksi dan Hadiah kosong, grafik IKC kosong.
+   - Status SETUP, semua saldo Rp 0, Transaksi dan Hadiah kosong, grafik IHAI kosong.
    - Layar TV kembali menampilkan "Game belum di mulai".
    - Tim, pos, aset, dan berita utuh (berita kembali ke kumpulan).
 4. Catat daftar temuan dan perbaiki sebelum hari H.

@@ -144,7 +144,7 @@ Layout admin: **sidebar tetap** (§0.1) berisi menu di atas; tiap halaman memaka
 
 ### 2.4 Layar ruang publik (`display`)
 
-> **Tambahan 17 Nov:** akun `display` juga mendapat layar **Display pasar** (indeks gabungan IKC, indeks sektor, terbaik/terlemah, berita, transaksi terakhir; Figma `Layar publik — Display pasar`), bergilir dengan layar 5 tim teratas. Keduanya hanya baca. Tidak memuat saldo tim.
+> **Tambahan 17 Nov:** akun `display` juga mendapat layar **Display pasar** (indeks gabungan IHAI, indeks sektor, terbaik/terlemah, berita, transaksi terakhir; Figma `Layar publik — Display pasar`), bergilir dengan layar 5 tim teratas. Keduanya hanya baca. Tidak memuat saldo tim.
 
 Satu halaman penuh layar, tanpa interaksi, **tanpa bilah atas dan laci**. Peringkat memakai pola baris daftar yang diperbesar. **Badge peringkat 1–5 adalah kolom tersendiri yang tetap** (elemen terpisah dari kartu), dan **kartu tim di sebelah kanannya adalah daftar yang bergeser dengan animasi** saat urutan berubah; badge tidak ikut bergerak, jadi warnanya mengikuti posisi, bukan tim. Isi: nama acara dan **5 tim teratas** (kartu, §3.6). Tidak ada ticker berita, lencana pembekuan, maupun status pasar. Dimuat ulang tiap ±5 detik lewat `get_leaderboard()`. Saat leaderboard dibekukan, layar menampilkan snapshot beku tanpa penanda apa pun; saat disembunyikan (`leaderboard_hidden`), tampilkan layar tunggu bertema.
 
@@ -344,7 +344,7 @@ Admin membuka pasar tiap pagi (08.00) dan menutupnya tiap malam (19.00) dengan *
 
 > **Tambahan 19 Nov (2):** kartu "Kumpulan berita terkunci" punya tombol **Mulai ulang berita** (dengan konfirmasi) yang mengembalikan berita terpakai ke kumpulan; ini mengubah aturan §3.7 bahwa admin tidak punya tombol untuk berita.
 
-> **Tambahan 21 Nov:** halaman Status Game punya kartu **Reset game** (konfirmasi dengan mengetik `RESET`) yang mengembalikan game ke keadaan sebelum dimulai: saldo semua tim Rp 0; transaksi, kepemilikan, hadiah pos, dividen, riwayat harga, grafik IKC, dan daftar berita dihapus; harga dan stok aset kembali ke awal (aset bangkrut aktif lagi); berita kembali ke kumpulan; status `setup`. Tim, pos, aset, isi berita, pengaturan, dan log audit tidak diubah (`scripts/sql/game-reset.sql`).
+> **Tambahan 21 Nov:** halaman Status Game punya kartu **Reset game** (konfirmasi dengan mengetik `RESET`) yang mengembalikan game ke keadaan sebelum dimulai: saldo semua tim Rp 0; transaksi, kepemilikan, hadiah pos, dividen, riwayat harga, grafik IHAI, dan daftar berita dihapus; harga dan stok aset kembali ke awal (aset bangkrut aktif lagi); berita kembali ke kumpulan; status `setup`. Tim, pos, aset, isi berita, pengaturan, dan log audit tidak diubah (`scripts/sql/game-reset.sql`).
 
 > **Tambahan 21 Nov (2):** saat status `setup`, Status Game hanya menampilkan satu tombol **Mulai game** (menggantikan Buka pasar dan Akhiri game; memulai game dan berita dari awal), dan semua layar publik menampilkan "Game belum di mulai" (`DisplayGate`).
 

@@ -1,8 +1,8 @@
 /**
- * Seri waktu IKC untuk grafik di layar Display pasar.
+ * Seri waktu IHAI untuk grafik di layar Display pasar.
  *
- * Riwayat utama ada di SERVER (`index_history`, dicatat pg_cron tiap 30 detik bila IKC berubah; dibaca lewat
- * `get_index_history()`), jadi grafik lengkap sejak game dimulai di perangkat mana pun. Layar tetap mencuplik nilai IKC
+ * Riwayat utama ada di SERVER (`index_history`, dicatat pg_cron tiap 30 detik bila IHAI berubah; dibaca lewat
+ * `get_index_history()`), jadi grafik lengkap sejak game dimulai di perangkat mana pun. Layar tetap mencuplik nilai IHAI
  * sendiri tiap 5 detik (localStorage) untuk bagian paling baru di antara dua catatan server dan sebagai cadangan bila
  * riwayat server belum ada (SQL belum dijalankan); `mergeSeries` menyambung keduanya.
  */

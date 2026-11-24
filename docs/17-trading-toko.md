@@ -72,8 +72,8 @@ Kolom lama dibuang atau tidak dipakai: `fee_bps`, `sell_fee_bps`, `band_bps`, `h
 | `holdings.locked_qty`, `teams.locked_cash`, `v_team_net_worth`, `get_leaderboard`, `get_my_summary` | kunci dihapus; nilai aset = harga tayang |
 | `assets.stock` | tetap sebagai sisa stok pasar; tambah `price_factor_bps` |
 | `market_state()` (mesin berita) | `trades_10m` dihitung dari `transactions` (jumlah transaksi 10 menit); sisanya tidak berubah |
-| `award_payout`, hadiah pos, berita, event, cron berita dan IKC | tidak berubah |
-| `index_history` (IKC) | tetap; IKC memakai harga tayang |
+| `award_payout`, hadiah pos, berita, event, cron berita dan IHAI | tidak berubah |
+| `index_history` (IHAI) | tetap; IHAI memakai harga tayang |
 
 Migrasi database laptop: cadangan `pg_dump` sebelum SQL dijalankan; saldo dan kepemilikan tim dipertahankan; kunci (`locked_cash`, `locked_qty`) dikembalikan ke saldo/kepemilikan sebelum kolomnya dibuang; stok pasar tidak diubah.
 
@@ -81,7 +81,7 @@ Migrasi database laptop: cadangan `pg_dump` sebelum SQL dijalankan; saldo dan ke
 
 1. Spesifikasi ini (selesai, menunggu tinjauan).
 2. SQL: `buy_asset`, `sell_asset`, tekanan stok, batas pegang, migrasi data, pembuangan order book; tes SQL (beli, jual, batas, tekanan, invarian, idempoten, suspensi, bangkrut).
-3. Penyesuaian mesin berita (`market_state`), peringkat, IKC; simulasi 3 hari.
+3. Penyesuaian mesin berita (`market_state`), peringkat, IHAI; simulasi 3 hari.
 4. UI tim: Market (daftar dipertahankan + detail + panel Beli/Jual), Portofolio, History; hapus Orders.
 5. Display dan admin (Transaksi).
 6. Dokumen (`04`, `05`, `07`, `PANDUAN-TRADING.md`), tes vitest dan Playwright, ringkasan hasil.
@@ -94,7 +94,7 @@ Migrasi database laptop: cadangan `pg_dump` sebelum SQL dijalankan; saldo dan ke
 
 ## 8. Catatan tahap 2 (SQL, 20 Nov)
 
-- **Harga tayang disimpan di `assets.last_price`** (dan `rank_price`) oleh trigger `assets_tayang` setiap `price` atau `price_factor_bps` berubah. Akibatnya kode lama yang membaca `last_price`/`rank_price` (peringkat, IKC, `process_news_cycle`) tetap benar tanpa diubah. `price` tetap harga acuan dari berita.
+- **Harga tayang disimpan di `assets.last_price`** (dan `rank_price`) oleh trigger `assets_tayang` setiap `price` atau `price_factor_bps` berubah. Akibatnya kode lama yang membaca `last_price`/`rank_price` (peringkat, IHAI, `process_news_cycle`) tetap benar tanpa diubah. `price` tetap harga acuan dari berita.
 - **RPC**: `buy_asset(request_id, asset_id, qty)`, `sell_asset(request_id, asset_id, qty)` (mengembalikan baris `transactions`), `get_market_summary()` (kolom baru: `sell_price`, `stock`, `init_stock`, `price_factor_bps`; open/high/low/lot/val/avg/freq dari `transactions`), `admin_set_trade_settings(...)` (dikunci setelah game dimulai). Kode galat: `forbidden`, `invalid_input`, `team_not_found`, `request_id_conflict`, `market_closed`, `asset_not_found` (juga untuk aset bangkrut), `asset_suspended`, `hold_cap_exceeded`, `insufficient_stock`, `insufficient_cash`, `insufficient_holdings`.
 - **Pemulihan tekanan** di `process_market_cycle` (tiap 10 dtk): faktor turun `ceil(cap x detik / (menit x 60))` bps per siklus menuju 0; jam pemulihan di tabel `shop_clock` (bukan `game_settings`, supaya Realtime tidak berbunyi tiap 10 dtk); saat jeda jam tetap berjalan sehingga tidak ada lompatan sesudahnya.
 - **Migrasi**: `locked_cash` dikembalikan ke saldo (total kas sebelum dan sesudah sama: Rp 310.316.320), `locked_qty` direset, tabel `orders` (183.906 baris) dan `trades` dibuang (cadangan penuh sebelum migrasi di `~/classmeet-recovery/db-pre-shop-*.dump`). Dua aset sudah punya invarian stok yang tidak utuh sebelum migrasi (aset bangkrut yang dilikuidasi); tidak berubah.

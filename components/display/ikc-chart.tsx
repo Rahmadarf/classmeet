@@ -5,8 +5,8 @@ import { valueDomain, type IkcSample } from "@/lib/display/ikc";
 import { formatNumber } from "@/lib/money";
 
 /**
- * Grafik IKC memakai Recharts (menggantikan SVG buatan sendiri). Ukuran tetap (panggung 1920×1080 sudah diskalakan oleh
- * `ScaledStage`), kurva halus antar titik (`monotone`: halus tanpa melampaui nilai asli; `stepAfter` dulu membuat grafik berkotak-kotak karena titik hanya dicatat saat IKC berubah), tanpa animasi dan tanpa tooltip (layar publik tanpa interaksi). Sumbu Y mengikuti data (`valueDomain`);
+ * Grafik IHAI memakai Recharts (menggantikan SVG buatan sendiri). Ukuran tetap (panggung 1920×1080 sudah diskalakan oleh
+ * `ScaledStage`), kurva halus antar titik (`monotone`: halus tanpa melampaui nilai asli; `stepAfter` dulu membuat grafik berkotak-kotak karena titik hanya dicatat saat IHAI berubah), tanpa animasi dan tanpa tooltip (layar publik tanpa interaksi). Sumbu Y mengikuti data (`valueDomain`);
  * garis dasar 1.000 hanya digambar bila berada dalam rentang. Warna memakai token yang sama dengan sebelumnya.
  */
 export function IkcChart({

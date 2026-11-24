@@ -24,7 +24,7 @@ import { cn } from "@/lib/utils";
 
 const POLL_MS = 5_000;
 const STORAGE_KEY = "classmeet:display:ikc:v1";
-const CHART_W = 1184; // lebar dalam kartu IKC
+const CHART_W = 1184; // lebar dalam kartu IHAI
 const CHART_H = 400;
 
 const ikcFormat = new Intl.NumberFormat("id-ID", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
@@ -32,9 +32,9 @@ const ikc = (n: number) => ikcFormat.format(n);
 
 /**
  * Layar publik "Display pasar" (Figma `Layar publik — Display pasar`, 1123:612; docs/12 §9, docs/07 §2.4):
- * IKC dengan grafik garis, indeks sektor, terbaik/terlemah, berita terbaru, dan transaksi terakhir. Hanya baca,
+ * IHAI dengan grafik garis, indeks sektor, terbaik/terlemah, berita terbaru, dan transaksi terakhir. Hanya baca,
  * tanpa interaksi, tanpa saldo tim dan tanpa order book. Data diambil ulang tiap 5 dtk.
- * Grafik IKC dicuplik oleh layar ini sendiri dan disimpan di perangkatnya (lihat lib/display/ikc.ts).
+ * Grafik IHAI dicuplik oleh layar ini sendiri dan disimpan di perangkatnya (lihat lib/display/ikc.ts).
  */
 export function MarketScreen({ initial, live = true }: { initial: MarketBoardData | null; live?: boolean }) {
   const supabase = useMemo(() => createClient(), []);
@@ -59,7 +59,7 @@ export function MarketScreen({ initial, live = true }: { initial: MarketBoardDat
     }
   }, []);
 
-  // Setiap pengambilan yang berhasil juga dicatat sebagai cuplikan grafik IKC (sama seperti polling sebelumnya;
+  // Setiap pengambilan yang berhasil juga dicatat sebagai cuplikan grafik IHAI (sama seperti polling sebelumnya;
   // dilakukan di dalam queryFn supaya tiap ketukan tercatat walau isinya tidak berubah).
   const marketQ = useQuery({
     ...marketBoardQuery(supabase),
@@ -75,7 +75,7 @@ export function MarketScreen({ initial, live = true }: { initial: MarketBoardDat
   const data: MarketBoardData | null = marketQ.data ?? null;
   const offline = marketQ.isError;
 
-  // Riwayat IKC dari server (seluruh game); kosong bila belum ada / gagal dimuat. Dimuat saat layar menyala
+  // Riwayat IHAI dari server (seluruh game); kosong bila belum ada / gagal dimuat. Dimuat saat layar menyala
   // lalu disegarkan tiap menit (catatan baru bertambah tiap ±30 detik).
   const historyQ = useQuery({
     ...indexHistoryQuery(supabase),
@@ -137,7 +137,7 @@ export function MarketScreen({ initial, live = true }: { initial: MarketBoardDat
                 <div className="flex items-center gap-5">
                   <div className="flex flex-col gap-0.5">
                     <p className="text-brand-text text-[13px] font-semibold tracking-[0.12em] uppercase">
-                      IKC · Indeks Classmeet ({data.assetCount} aset, basis 1.000)
+                      IHAI · Indeks Harga Aset ISSC ({data.assetCount} aset, basis 1.000)
                     </p>
                     <div className="flex items-center gap-4">
                       <p className="tnum text-ink text-[64px] leading-tight font-bold">
@@ -161,7 +161,7 @@ export function MarketScreen({ initial, live = true }: { initial: MarketBoardDat
                   width={CHART_W}
                   height={CHART_H}
                   axisTime={axisTime}
-                  label={value === null ? "Grafik IKC" : `Grafik IKC, sekarang ${ikc(value)}`}
+                  label={value === null ? "Grafik IHAI" : `Grafik IHAI, sekarang ${ikc(value)}`}
                 />
 
                 <div className="flex gap-3">

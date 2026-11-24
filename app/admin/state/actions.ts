@@ -62,7 +62,7 @@ export async function setLeaderboardFrozen(input: unknown): Promise<ActionResult
 
 /**
  * Reset game (`admin_reset_game`): kembalikan game ke keadaan sebelum dimulai. Saldo, transaksi, kepemilikan, hadiah pos,
- * dividen, riwayat harga, grafik IKC, dan daftar berita dikosongkan; harga dan stok aset kembali ke awal; berita kembali ke
+ * dividen, riwayat harga, grafik IHAI, dan daftar berita dikosongkan; harga dan stok aset kembali ke awal; berita kembali ke
  * kumpulan; status `setup`. Tim, pos, aset, dan isi berita tetap. Tidak bisa dibatalkan.
  */
 export async function resetGame(): Promise<ActionResult> {

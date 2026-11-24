@@ -30,7 +30,7 @@ export async function fetchLeaderboard(supabase: Db): Promise<LeaderboardResult 
   return { hidden: false, rows: topFive(data) };
 }
 
-/** Riwayat IKC dari server (`get_index_history`), terlama dulu; null bila gagal (layar memakai cuplikan lokalnya). */
+/** Riwayat IHAI dari server (`get_index_history`), terlama dulu; null bila gagal (layar memakai cuplikan lokalnya). */
 export async function fetchIndexHistory(supabase: Db): Promise<IkcSample[] | null> {
   const { data, error } = await supabase.rpc("get_index_history");
   if (error || !data) return null;

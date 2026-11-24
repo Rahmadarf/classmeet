@@ -302,7 +302,7 @@ export function StateBoard({ initial }: { initial: { game: AdminGame; pool: News
           </h2>
           <p className="text-ink-muted text-base">
             Mulai ulang dari nol: semua saldo jadi Rp 0, transaksi, kepemilikan, hadiah pos, riwayat harga,
-            dan grafik IKC dihapus; harga dan stok aset kembali ke awal; berita kembali ke kumpulan. Tim, pos,
+            dan grafik IHAI dihapus; harga dan stok aset kembali ke awal; berita kembali ke kumpulan. Tim, pos,
             aset, dan isi berita tetap. Status kembali ke setup.
           </p>
           <Button
@@ -382,7 +382,7 @@ export function StateBoard({ initial }: { initial: { game: AdminGame; pool: News
         open={pending === "reset"}
         onOpenChange={(o) => !o && setPending(null)}
         title="Reset game dari awal?"
-        description="Semua saldo tim jadi Rp 0, dan transaksi, kepemilikan, hadiah pos, dividen, riwayat harga, grafik IKC, serta daftar berita dihapus. Harga dan stok aset kembali ke awal. Ini tidak bisa dibatalkan."
+        description="Semua saldo tim jadi Rp 0, dan transaksi, kepemilikan, hadiah pos, dividen, riwayat harga, grafik IHAI, serta daftar berita dihapus. Harga dan stok aset kembali ke awal. Ini tidak bisa dibatalkan."
         confirmLabel="Reset game"
         tone="danger"
         loading={busy}

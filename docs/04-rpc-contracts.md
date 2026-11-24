@@ -34,7 +34,7 @@ Urutan blok `sql` pada dokumen ini adalah urutan eksekusi migrasi, setelah semua
 | `get_last_transactions(limit?)` | admin, display | SQL + uji | Transaksi terbaru tanpa nama tim |
 | `admin_transaction_summary()` | admin | SQL + uji | Arus unit dan nilai per aset |
 | `admin_set_trade_settings(...)` | admin | SQL + uji | Selisih jual, tekanan, batas pegang (sebelum game dimulai); selisih jual harus > tekanan per unit (`invalid_input`) |
-| `get_market_index()` | team, admin, display | SQL + uji | IKC dan indeks sektor (bobot sama rata) |
+| `get_market_index()` | team, admin, display | SQL + uji | IHAI dan indeks sektor (bobot sama rata) |
 | `process_market_cycle()` | internal / `pg_cron` (tiap 10 detik) | SQL + uji | Pulihkan tekanan stok, akhiri suspensi |
 | `get_my_summary()` | team | SQL + uji | Saldo, nilai aset (harga tayang), net worth sendiri |
 | `get_leaderboard()` | admin, display | SQL + uji | Peringkat. **Ditolak untuk tim dan penjaga** |
