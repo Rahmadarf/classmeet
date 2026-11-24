@@ -26,6 +26,46 @@ describe("categoryOf", () => {
     expect(categoryOf("reset_game")).toBe("status");
     expect(categoryOf("kiosk_idle_logout")).toBe("perangkat");
     expect(categoryOf("aneh")).toBe("lainnya");
+    expect(categoryOf("delete_team")).toBe("koreksi");
+    expect(categoryOf("delete_post")).toBe("pos");
+  });
+});
+
+describe("buildAuditRows: hapus tim dan pos", () => {
+  it("meringkas dari payload (tim/pos sudah tidak ada di daftar nama)", () => {
+    const [t, p, p2] = buildAuditRows(
+      [
+        row("delete_team", { team_id: "x", name: "Tim Elang", username: "tim3" }, "ad"),
+        row(
+          "delete_post",
+          { post_id: "x", name: "Pos 3 · Merakit", guard_deleted: true, guard_username: "guard3" },
+          "ad",
+        ),
+        row(
+          "delete_post",
+          { post_id: "x", name: "Pos 4 · Lompat", guard_deleted: false, guard_username: "guard4" },
+          "ad",
+        ),
+      ],
+      lookup,
+    );
+    expect(t.summary).toBe("Tim dihapus: Tim Elang (tim3)");
+    expect(p.summary).toBe("Pos dihapus: Pos 3 · Merakit + penjaga guard3");
+    expect(p2.summary).toBe("Pos dihapus: Pos 4 · Lompat");
+    expect(t.actor).toBe("admin1");
+  });
+  it("pelaku akun yang sudah dihapus dibaca dari payload.actor_deleted, bukan 'sistem'", () => {
+    const [a, b, c] = buildAuditRows(
+      [
+        row("kiosk_login", { actor_deleted: { id: "t1", username: "tim1", name: "Tim Elang" } }, null),
+        row("guard_set_post_open", { actor_deleted: { id: "g1", username: "guard1", role: "guard" } }, null),
+        row("kiosk_login", {}, null),
+      ],
+      lookup,
+    );
+    expect(a.actor).toBe("Tim Elang (akun dihapus)");
+    expect(b.actor).toBe("guard1 (akun dihapus)");
+    expect(c.actor).toBe("sistem");
   });
 });
 

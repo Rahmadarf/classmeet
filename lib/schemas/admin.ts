@@ -17,6 +17,12 @@ export type AdjustCashInput = z.infer<typeof adjustCashSchema>;
 /** Lihat kartu QR tim (server action `getTeamQr`). */
 export const viewTeamQrSchema = z.object({ teamId: uuidSchema });
 
+/** Hapus tim (`admin_delete_team`, hanya saat status `setup`). */
+export const deleteTeamSchema = z.object({ teamId: uuidSchema });
+
+/** Hapus pos beserta akun penjaganya (`admin_delete_post`, hanya saat status `setup`). */
+export const deletePostSchema = z.object({ postId: uuidSchema });
+
 /** Stok pasar (`admin_set_stock`): bilangan bulat ≥ 0 + alasan wajib. */
 export const setStockSchema = z.object({
   assetId: uuidSchema,

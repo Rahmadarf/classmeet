@@ -32,5 +32,5 @@ async function Content() {
       </>
     );
   }
-  return <PostsBoard initial={posts} finished={game.state === "finished"} />;
+  return <PostsBoard initial={posts} initialGame={game} />;
 }

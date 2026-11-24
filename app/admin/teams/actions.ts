@@ -7,7 +7,7 @@ import { qrDataUrl } from "@/lib/admin/qr-png";
 import { mapRpcError } from "@/lib/errors";
 import { authEmail, formatTeamQr } from "@/lib/qr";
 import type { ActionResult } from "@/lib/schemas/common";
-import { adjustCashSchema, createTeamSchema, viewTeamQrSchema } from "@/lib/schemas/admin";
+import { adjustCashSchema, createTeamSchema, deleteTeamSchema, viewTeamQrSchema } from "@/lib/schemas/admin";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient, ServiceKeyMissing } from "@/lib/supabase/service";
 
@@ -170,4 +170,24 @@ export async function getTeamQr(input: unknown): Promise<ActionResult<TeamQrView
   });
   const qr = await qrDataUrl(formatTeamQr({ username: profile.username, token: team.qr_token }));
   return { ok: true, data: { teamId: parsed.data.teamId, name: team.name, username: profile.username, qr } };
+}
+
+/**
+ * Hapus tim (`admin_delete_team`): HANYA saat status game `setup` (`game_not_setup` selain itu), hanya admin, dan ditolak bila tim
+ * masih punya saldo/aset/riwayat (`team_has_activity`). Database menghapus tim, profil, dan akun Auth-nya dalam satu transaksi
+ * serta mencatat `delete_team` di audit; tidak perlu kunci service role. Tidak bisa dibatalkan.
+ */
+export async function deleteTeam(input: unknown): Promise<ActionResult> {
+  const parsed = deleteTeamSchema.safeParse(input);
+  if (!parsed.success)
+    return { ok: false, message: "Tim tidak valid.", code: "invalid_input", retryable: false };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_delete_team", { p_team_id: parsed.data.teamId });
+  if (error) {
+    const mapped = mapRpcError(error);
+    if (!mapped.code && !mapped.retryable)
+      console.error("[admin_delete_team] galat tak terduga:", error.message);
+    return { ok: false, ...mapped };
+  }
+  return { ok: true, data: undefined };
 }

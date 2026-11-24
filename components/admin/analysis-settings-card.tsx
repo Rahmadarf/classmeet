@@ -90,7 +90,7 @@ export function AnalysisSettingsCard({ initial }: { initial: AnalysisSettings })
           <span
             aria-hidden
             className={cn(
-              "rounded-control grid size-7 shrink-0 place-items-center border-2 transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[color:var(--blue-text)]",
+              "rounded-control grid size-7 shrink-0 place-items-center border-2 transition-colors",
               enabled ? "border-primary bg-primary text-on-primary" : "border-line-strong bg-card",
             )}
           >

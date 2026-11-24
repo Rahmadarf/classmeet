@@ -148,11 +148,16 @@ body {
   font-feature-settings: "tnum" 1;
 }
 
-/* Cincin fokus terlihat untuk semua kontrol (DESIGN.md §5). */
-:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+/* Cincin fokus terlihat untuk tautan dan tombol (DESIGN.md §5). Isian formulir sengaja tanpa outline/cincin (permintaan 24 Nov);
+   penanda fokusnya hanya perubahan warna garis tepi (`focus:border-brand-text` di tiap kelas isian). */
+:where(a, button, [tabindex]):focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
   border-radius: var(--radius-control);
+}
+:where(input, select, textarea):is(:focus, :focus-visible) {
+  outline: none;
+  box-shadow: none;
 }
 
 /* DESIGN.md §7: isian otomatis, bilah gulir, seleksi — tanpa kilat gelap atau kuning. */

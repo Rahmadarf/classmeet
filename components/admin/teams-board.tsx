@@ -1,21 +1,29 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { HandCoins, Plus, QrCode, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { deleteTeam } from "@/app/admin/teams/actions";
 import { CorrectionDialog } from "@/components/admin/correction-dialog";
 import { TeamCreateDialog } from "@/components/admin/team-create-dialog";
 import { TeamQrDialog } from "@/components/admin/team-qr-dialog";
-import { Button } from "@/components/ui/button";
+import { IconButton } from "@/components/ui/icon-button";
 import { Card } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DataTable } from "@/components/ui/data-table";
 import { fetchTeamsPage, type TeamRow } from "@/lib/admin/data";
+import { canDeleteInState, deleteBlockedReason } from "@/lib/admin/delete-guard";
+import { fetchAdminGame, type AdminGame } from "@/lib/admin/state";
+import type { ActionResult } from "@/lib/schemas/common";
 import { formatRupiah } from "@/lib/money";
 import { qk } from "@/lib/query/keys";
 import { useLivePage } from "@/lib/query/use-live-page";
+import { useRealtime } from "@/lib/query/use-realtime";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
 const POLL_MS = 10_000;
+const GAME_POLL_MS = 5_000;
 
 /** Warna lencana menurut posisi: 1 emas, 2 biru muda, 3 oranye, 4+ abu-abu (docs/07 §2.3). */
 const RANK = ["bg-accent-2", "bg-brand-light", "bg-accent"] as const;
@@ -23,9 +31,11 @@ const RANK = ["bg-accent-2", "bg-brand-light", "bg-accent"] as const;
 /**
  * Tim (Figma `Admin — Tim`, 1104:660): peringkat langsung semua tim (`get_leaderboard()` untuk admin selalu data
  * langsung, bukan snapshot), saldo, nilai aset (harga peringkat), total; Koreksi saldo (dialog) dan Lihat QR (dialog
- * kartu QR + unduh PNG, tampilan sama dengan dialog "Tambah tim"; menggantikan tombol "Ganti QR" lama).
+ * kartu QR + unduh PNG, tampilan sama dengan dialog "Tambah tim"; menggantikan tombol "Ganti QR" lama), dan Hapus
+ * (konfirmasi; HANYA saat status game Setup. Status dibaca langsung (kunci `admin/game`, sama dengan halaman Status Game);
+ * selain Setup tombol diblokir dengan alasan. Database menegakkan aturan yang sama: `admin_delete_team`).
  */
-export function TeamsBoard({ initial }: { initial: TeamRow[] }) {
+export function TeamsBoard({ initial, initialGame }: { initial: TeamRow[]; initialGame: AdminGame }) {
   const supabase = useMemo(() => createClient(), []);
   const {
     data: rows,
@@ -38,9 +48,44 @@ export function TeamsBoard({ initial }: { initial: TeamRow[] }) {
     pollMs: POLL_MS,
     fetch: () => fetchTeamsPage(supabase),
   });
+  const { data: game, refresh: refreshGame } = useLivePage({
+    key: qk.admin("game"),
+    label: "game",
+    initial: initialGame,
+    pollMs: GAME_POLL_MS,
+    fetch: () => fetchAdminGame(supabase),
+  });
+  useRealtime("admin-teams-game", [
+    { event: "UPDATE", table: "game_settings", onEvent: () => void refreshGame() },
+  ]);
+  const canDelete = canDeleteInState(game.state);
+  const blockedReason = deleteBlockedReason(game.state, "tim");
+  const [deleting, setDeleting] = useState<{ id: string; name: string } | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [correct, setCorrect] = useState<string | null>(null);
   const [qrTeam, setQrTeam] = useState<TeamRow | null>(null);
   const [creating, setCreating] = useState(false);
+
+  const runDelete = async () => {
+    if (!deleting) return;
+    setDeleteBusy(true);
+    setDeleteError(null);
+    const res = await deleteTeam({ teamId: deleting.id }).catch((): ActionResult => ({
+      ok: false,
+      message: "Koneksi bermasalah. Coba lagi.",
+      code: null,
+      retryable: true,
+    }));
+    setDeleteBusy(false);
+    if (res.ok) {
+      toast.success(`${deleting.name} dihapus.`);
+      setDeleting(null);
+    } else {
+      setDeleteError(res.message);
+    }
+    void Promise.all([refresh(), refreshGame()]);
+  };
 
   const teams = rows.map((r) => ({ id: r.teamId, name: r.name, cash: r.freeCash }));
 
@@ -59,13 +104,13 @@ export function TeamsBoard({ initial }: { initial: TeamRow[] }) {
           <h2 id="tim-judul" className="text-ink text-2xl font-bold">
             {rows.length} tim
           </h2>
-          <Button onClick={() => setCreating(true)}>Tambah tim</Button>
+          <IconButton icon={Plus} size="icon" label="Tambah tim" onClick={() => setCreating(true)} />
         </div>
         <DataTable
           caption="Peringkat langsung semua tim"
           head={["#", "Tim", "Saldo", "Nilai aset (harga tayang)", "Total", ""]}
           widths={[72, 220, 150, 230, 160]}
-          minWidth={980}
+          minWidth={900}
           align={["left", "left", "right", "right", "right"]}
         >
           {rows.map((r, i) => (
@@ -86,22 +131,32 @@ export function TeamsBoard({ initial }: { initial: TeamRow[] }) {
               <td className="money text-ink text-right text-base font-bold">{formatRupiah(r.total)}</td>
               <td>
                 <div className="flex justify-end gap-2">
-                  <Button
+                  <IconButton
                     variant="secondary"
-                    size="sm"
+                    icon={HandCoins}
+                    label={`Koreksi saldo ${r.name}`}
+                    tooltip="Koreksi saldo"
                     onClick={() => setCorrect(r.teamId)}
-                    aria-label={`Koreksi saldo ${r.name}`}
-                  >
-                    Koreksi saldo
-                  </Button>
-                  <Button
+                  />
+                  <IconButton
                     variant="secondary"
-                    size="sm"
+                    icon={QrCode}
+                    label={`Lihat QR ${r.name}`}
+                    tooltip="Lihat QR"
                     onClick={() => setQrTeam(r)}
-                    aria-label={`Lihat QR ${r.name}`}
-                  >
-                    Lihat QR
-                  </Button>
+                  />
+                  <IconButton
+                    variant="danger"
+                    icon={Trash2}
+                    label={`Hapus ${r.name}`}
+                    tooltip={blockedReason ?? "Hapus tim"}
+                    disabled={!canDelete}
+                    aria-describedby={canDelete ? undefined : "hapus-tim-alasan"}
+                    onClick={() => {
+                      setDeleteError(null);
+                      setDeleting({ id: r.teamId, name: r.name });
+                    }}
+                  />
                 </div>
               </td>
             </tr>
@@ -110,8 +165,14 @@ export function TeamsBoard({ initial }: { initial: TeamRow[] }) {
         <p className="text-ink-muted text-sm">
           Total = saldo + nilai aset menurut harga tayang saat ini. Koreksi saldo mengubah saldo bebas, wajib
           beralasan, dan tercatat di audit. Lihat QR menampilkan kartu tim untuk diunduh ulang; setiap
-          pembukaan tercatat di audit.
+          pembukaan tercatat di audit. Hapus menghilangkan tim beserta akun login dan kartu QR-nya; hanya bisa
+          saat status game Setup dan untuk tim tanpa saldo atau riwayat (Reset game mengosongkannya).
         </p>
+        {blockedReason ? (
+          <p id="hapus-tim-alasan" className="text-bad-text text-sm font-medium">
+            {blockedReason}
+          </p>
+        ) : null}
       </Card>
 
       <TeamCreateDialog
@@ -131,6 +192,29 @@ export function TeamsBoard({ initial }: { initial: TeamRow[] }) {
           toast.success("Koreksi saldo tersimpan.");
           void refresh();
         }}
+      />
+
+      <ConfirmDialog
+        open={deleting !== null}
+        onOpenChange={(o) => {
+          if (!o) {
+            setDeleting(null);
+            setDeleteError(null);
+          }
+        }}
+        title={`Hapus ${deleting?.name ?? "tim"}?`}
+        description={
+          <>
+            Tim <strong className="text-ink">{deleting?.name}</strong> akan dihapus beserta akun login dan
+            kartu QR-nya. Kartu yang sudah dicetak tidak berlaku lagi. Ini tidak bisa dibatalkan.
+          </>
+        }
+        confirmLabel="Hapus tim"
+        tone="danger"
+        loading={deleteBusy}
+        error={deleteError}
+        confirmDisabled={!canDelete}
+        onConfirm={() => void runDelete()}
       />
 
       <TeamQrDialog

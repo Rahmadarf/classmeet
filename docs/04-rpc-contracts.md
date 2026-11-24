@@ -56,6 +56,8 @@ Urutan blok `sql` pada dokumen ini adalah urutan eksekusi migrasi, setelah semua
 | `admin_set_leaderboard_visible(visible)` | admin | SQL + uji | Tampil/sembunyikan di layar publik |
 | `check_news_effects(news_id)` | internal | SQL + uji | Validasi aturan efek berita |
 | `process_news_cycle()` | internal / `pg_cron` (tiap 10 detik) | SQL + uji | Terapkan harga saat `effect_at` tiba, pilih berita acak dari kumpulan, undi jeda 3–15 menit. **Satu-satunya jalur yang mengubah harga setelah game dibuka** |
+| `admin_delete_team(team_id)` | admin | SQL + uji | Hapus tim beserta akun Auth-nya (satu transaksi). **Hanya saat status `setup`** (`game_not_setup` selain itu); ditolak `team_has_activity` bila tim punya saldo, aset, transaksi, hadiah, dividen, atau analisa. Audit `delete_team`. Lihat [3.10](#310-hapus-tim-dan-hapus-pos-admin) |
+| `admin_delete_post(post_id)` | admin | SQL + uji | Hapus pos beserta akun penjaganya (satu transaksi). **Hanya saat status `setup`**; ditolak `post_has_payouts` bila pos pernah memberi hadiah. Audit `delete_post`. Lihat [3.10](#310-hapus-tim-dan-hapus-pos-admin) |
 | `admin_set_stock`, `admin_set_post_open`, `admin_upsert_asset`, `admin_upsert_post`, `admin_set_news_settings` | admin | **Spesifikasi saja** | Lihat [3.9](#39-fungsi-admin-yang-baru-berupa-spesifikasi) |
 
 Fungsi yang dihapus dari versi sebelumnya: `grant_post_payout` (diganti `award_payout`; alur pengajuan + ACC sempat ada lalu dihapus) dan `list_teams_for_guard` (penjaga tidak perlu daftar tim; ia memindai QR).
@@ -821,6 +823,32 @@ Belum ditulis dan belum diuji. Perilakunya:
 | `admin_upsert_asset` / `admin_upsert_post` | Validasi sesuai constraint tabel. **`admin_upsert_asset` hanya sebelum game dibuka** (harga, batas harga, aktif/nonaktif terkunci sesudahnya) | Insert/update, `audit_log` |
 | `admin_set_news_settings(delay_min, delay_max, gap, min_assets, max_assets, max_effect_bps)` | `delay_min ≥ 1`, `delay_max ≥ delay_min`, `gap ≥ 0`. **Hanya sebelum game dibuka** | Update `game_settings` |
 
+### 3.10 Hapus tim dan hapus pos (admin)
+
+`scripts/sql/admin-delete-team-post.sql` (fungsi), `scripts/sql/test-admin-delete.sql` (tes; transaksi di-ROLLBACK). Dipanggil lewat server action `deleteTeam` / `deletePost` memakai sesi admin (tanpa kunci service role: akun Auth dihapus di dalam fungsi, sehingga satu transaksi, tidak ada akun yatim).
+
+**Aturan:** hanya status game `setup`. `open`, `paused`, dan `finished` ditolak `game_not_setup`; ini penegakan di database, tombol yang diblokir di UI hanya kemudahan. Urutan pemeriksaan: peran admin (`forbidden`) → `invalid_input` → status (`game_not_setup`) → keberadaan (`team_not_found` / `post_not_found`) → blokir riwayat. Status dibaca `for share` supaya `admin_set_game_state` menunggu penghapusan yang sedang berjalan.
+
+| Relasi | Perlakuan | Alasan |
+|--------|-----------|--------|
+| `auth.users` → `profiles` → `teams` (tim) / `posts` (penjaga) | **Dihapus** dalam fungsi yang sama (cascade lewat `auth.users`) | Akun tim dan akun penjaga dibuat bersama tim/pos; tidak ada akun yatim. Hanya profil berperan `team` (tim) dan `guard` (pos) yang bisa terhapus; akun admin tidak pernah |
+| Saldo tim (`cash` ≠ 0) | **Diblokir** `team_has_activity` | Menghapus berarti uang hilang tanpa jejak |
+| `holdings` qty > 0, `transactions`, `payouts`, `dividends`, `analysis_purchases` milik tim | **Diblokir** `team_has_activity` | Riwayat keuangan. Setelah **Reset game** semuanya kosong dan saldo 0 |
+| `holdings` qty 0, `leaderboard_snapshot` milik tim | **Dibersihkan** | Data turunan, tidak berarti tanpa tim |
+| `payouts` pada pos (`payouts.post_id`) | **Diblokir** `post_has_payouts` | Riwayat hadiah; bersihkan lewat Reset game |
+| Akun penjaga | **Dihapus** bersama pos, kecuali masih memegang pos lain atau punya `payouts` (tidak mungkin lewat aplikasi) | Satu penjaga satu pos |
+| `audit_log.actor_id` akun terhapus | **Dilepas ke NULL**; identitas disimpan di `payload.actor_deleted` (`id`, `username`, `name`) | FK ke `profiles` menghalangi hapus; isi log tidak boleh hilang. UI Audit menampilkan "Nama (akun dihapus)" |
+| Catatan penghapusan | `audit_log` `delete_team` (`team_id`, `name`, `username`, `audit_rows_detached`) / `delete_post` (`post_id`, `name`, `location`, `guard_id`, `guard_username`, `guard_deleted`, `audit_rows_detached`), pelaku = admin | Jejak siapa menghapus apa |
+
+Kode galat baru: `game_not_setup`, `team_has_activity`, `post_has_payouts` (dipetakan di `lib/errors.ts`).
+
+Terapkan (oleh pemilik database; sekali, aman diulang):
+
+```bash
+docker exec -i supabase-db psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 < scripts/sql/admin-delete-team-post.sql
+docker exec -i supabase-db psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -q < scripts/sql/test-admin-delete.sql
+```
+
 ## 4. Contoh pemanggilan dari Next.js
 
 ```ts
@@ -941,6 +969,9 @@ Pemeriksaan peran di dalam setiap fungsi tetap wajib; hak `execute` hanya lapisa
 | `news_not_found` | Berita tidak ada | "Berita tidak ditemukan." |
 | `news_wrong_status` | Aksi tidak cocok dengan status berita (mis. mengubah berita yang sudah tayang) | "Berita ini tidak bisa diubah pada statusnya sekarang." |
 | `game_started_locked` | Mengubah harga, kumpulan berita, atau pengaturan berita setelah game dibuka | "Game sudah dimulai. Harga dan berita tidak bisa diubah lagi." |
+| `game_not_setup` | Hapus tim/pos saat status bukan `setup` | "Hanya bisa dilakukan saat status game Setup (sebelum pasar dibuka)." |
+| `team_has_activity` | Hapus tim yang masih punya saldo, aset, atau riwayat | "Tim ini masih punya saldo, aset, atau riwayat (transaksi, hadiah, dividen, analisa). Reset game dulu agar bersih, lalu hapus." |
+| `post_has_payouts` | Hapus pos yang pernah memberi hadiah | "Pos ini sudah pernah memberi hadiah. Reset game dulu agar riwayat hadiah bersih, lalu hapus." |
 | `news_invalid_effects` | Efek melanggar aturan (jumlah aset bukan 4–7, aset ganda/nonaktif, persen nol atau melebihi batas) | "Efek berita tidak memenuhi aturan." |
 | `news_pending` | Menutup game saat ada berita live | "Masih ada berita yang belum selesai berjalan." |
 | `invalid_state_transition` | Perpindahan status tidak sah | "Perpindahan status tidak diizinkan." |

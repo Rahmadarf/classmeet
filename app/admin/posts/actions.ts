@@ -5,7 +5,7 @@ import { requireAdmin } from "@/lib/admin/require-admin";
 import { mapRpcError } from "@/lib/errors";
 import { authEmail } from "@/lib/qr";
 import type { ActionResult } from "@/lib/schemas/common";
-import { createPostSchema, setPostOpenSchema } from "@/lib/schemas/admin";
+import { createPostSchema, deletePostSchema, setPostOpenSchema } from "@/lib/schemas/admin";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient, ServiceKeyMissing } from "@/lib/supabase/service";
 
@@ -118,4 +118,24 @@ export async function createPost(input: unknown): Promise<ActionResult<NewPost>>
     payload: { guard_id: guardId, username: guardUsername, post_id: postId },
   });
   return { ok: true, data: { postId, name, guardUsername } };
+}
+
+/**
+ * Hapus pos beserta akun penjaganya (`admin_delete_post`): HANYA saat status game `setup` (`game_not_setup` selain itu), hanya admin,
+ * dan ditolak bila pos pernah memberi hadiah (`post_has_payouts`). Database menghapus pos, profil, dan akun Auth penjaga dalam satu
+ * transaksi serta mencatat `delete_post` di audit. Tidak bisa dibatalkan.
+ */
+export async function deletePost(input: unknown): Promise<ActionResult> {
+  const parsed = deletePostSchema.safeParse(input);
+  if (!parsed.success)
+    return { ok: false, message: "Pos tidak valid.", code: "invalid_input", retryable: false };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("admin_delete_post", { p_post_id: parsed.data.postId });
+  if (error) {
+    const mapped = mapRpcError(error);
+    if (!mapped.code && !mapped.retryable)
+      console.error("[admin_delete_post] galat tak terduga:", error.message);
+    return { ok: false, ...mapped };
+  }
+  return { ok: true, data: undefined };
 }

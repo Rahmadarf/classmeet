@@ -995,6 +995,14 @@ export type Database = {
           value: number
         }[]
       }
+      admin_delete_post: {
+        Args: { p_post_id: string }
+        Returns: undefined
+      }
+      admin_delete_team: {
+        Args: { p_team_id: string }
+        Returns: undefined
+      }
       admin_freeze_leaderboard: {
         Args: Record<PropertyKey, never>
         Returns: undefined

@@ -266,7 +266,7 @@ export function StateBoard({ initial }: { initial: { game: AdminGame; pool: News
               <span
                 aria-hidden
                 className={cn(
-                  "rounded-control grid size-7 shrink-0 place-items-center border-2 transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-[color:var(--blue-text)]",
+                  "rounded-control grid size-7 shrink-0 place-items-center border-2 transition-colors",
                   game.leaderboardVisible
                     ? "border-primary bg-primary text-on-primary"
                     : "border-line-strong bg-card",
@@ -400,7 +400,7 @@ export function StateBoard({ initial }: { initial: { game: AdminGame; pool: News
             autoComplete="off"
             spellCheck={false}
             disabled={busy}
-            className="rounded-control border-line-strong bg-card text-ink focus-visible:outline-primary min-h-11 border-2 px-3 text-lg focus-visible:outline-2"
+            className="rounded-control border-line-strong bg-card text-ink focus:border-brand-text min-h-11 border-2 px-3 text-lg outline-none"
           />
         </label>
       </ConfirmDialog>

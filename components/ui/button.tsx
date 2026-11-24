@@ -27,6 +27,9 @@ export const buttonVariants = cva(
         sm: "min-h-9 px-3 text-sm",
         md: "min-h-11 px-4 text-base",
         lg: "min-h-14 px-5 text-lg",
+        // Tombol ikon persegi (lihat IconButton): target sentuh 44 px, versi tabel 36 px.
+        icon: "size-11 p-0",
+        iconSm: "size-9 p-0",
       },
       block: { true: "w-full", false: "" },
     },

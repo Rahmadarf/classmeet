@@ -30,6 +30,11 @@ const MESSAGES: Record<string, string> = {
   post_not_found: "Pos tidak ditemukan.",
   symbol_taken: "Kode aset sudah dipakai.",
   guard_invalid: "Penjaga tidak valid atau sudah memegang pos lain.",
+  game_not_setup: "Hanya bisa dilakukan saat status game Setup (sebelum pasar dibuka).",
+  team_has_activity:
+    "Tim ini masih punya saldo, aset, atau riwayat (transaksi, hadiah, dividen, analisa). Reset game dulu agar bersih, lalu hapus.",
+  post_has_payouts:
+    "Pos ini sudah pernah memberi hadiah. Reset game dulu agar riwayat hadiah bersih, lalu hapus.",
   rate_limited: "Terlalu banyak permintaan, tunggu sebentar.",
   feature_disabled: "Analisa Pasar sedang dimatikan panitia.",
   no_live_news: "Belum ada berita yang tayang untuk dianalisa.",

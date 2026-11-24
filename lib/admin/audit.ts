@@ -36,6 +36,7 @@ export function categoryOf(action: string): AuditCategory {
     action === "adjust_cash" ||
     action === "rotate_qr" ||
     action === "create_team" ||
+    action === "delete_team" ||
     action === "view_team_qr"
   )
     return "koreksi";
@@ -45,7 +46,8 @@ export function categoryOf(action: string): AuditCategory {
     )
   )
     return "status";
-  if (["guard_set_post_open", "set_post_open", "upsert_post", "create_guard"].includes(action)) return "pos";
+  if (["guard_set_post_open", "set_post_open", "upsert_post", "create_guard", "delete_post"].includes(action))
+    return "pos";
   if (
     [
       "save_news",
@@ -106,6 +108,10 @@ export function summarize(row: AuditRaw, lookup: Lookup): string {
       return `Tim baru: ${str(p.name)} (${str(p.username)})`;
     case "create_guard":
       return `Penjaga baru: ${str(p.username)} + ${post}`;
+    case "delete_team":
+      return `Tim dihapus: ${str(p.name)} (${str(p.username)})`;
+    case "delete_post":
+      return `Pos dihapus: ${str(p.name)}${p.guard_deleted === true ? ` + penjaga ${str(p.guard_username)}` : ""}`;
     case "view_team_qr":
       return `${team}: kartu QR dilihat`;
     case "rotate_qr":
@@ -181,13 +187,25 @@ export function summarize(row: AuditRaw, lookup: Lookup): string {
   }
 }
 
+/** Pelaku baris log. Akun yang sudah dihapus (hapus tim/pos) dilepas dari `actor_id`; identitasnya ada di `payload.actor_deleted`. */
+function actorLabel(r: AuditRaw, lookup: Lookup): string {
+  if (r.actorId) return lookup.actors[r.actorId] ?? "—";
+  const gone = r.payload.actor_deleted;
+  if (gone && typeof gone === "object") {
+    const g = gone as Record<string, unknown>;
+    const who = str(g.name) || str(g.username);
+    if (who) return `${who} (akun dihapus)`;
+  }
+  return "sistem";
+}
+
 export function buildAuditRows(rows: AuditRaw[], lookup: Lookup): AuditRow[] {
   return rows.map((r) => ({
     id: r.id,
     at: r.createdAt,
     action: r.action,
     category: categoryOf(r.action),
-    actor: r.actorId ? (lookup.actors[r.actorId] ?? "—") : "sistem",
+    actor: actorLabel(r, lookup),
     summary: summarize(r, lookup),
   }));
 }
