@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { restartNews, setNewsReady } from "@/app/admin/news/actions";
+import { restartNews, setNewsReady, skipNews } from "@/app/admin/news/actions";
 import { DraftEffectsToggle, NewsEffects } from "@/components/admin/news-effects";
 import { NewsHistory } from "@/components/admin/news-history";
 import { NewsEventDialog } from "@/components/admin/news-event-dialog";
@@ -77,6 +77,26 @@ export function NewsBoard({ initial }: { initial: NewsPage }) {
       void refresh();
     } else setRestartError(res.message);
   };
+  const [skipOpen, setSkipOpen] = useState(false);
+  const [skipping, setSkipping] = useState(false);
+  const [skipError, setSkipError] = useState<string | null>(null);
+  const liveNow = page.currentEffects?.status === "live";
+
+  const skip = async () => {
+    if (skipping) return;
+    setSkipping(true);
+    setSkipError(null);
+    const res = await skipNews().catch(() => ({
+      ok: false as const,
+      message: "Koneksi bermasalah. Coba lagi.",
+    }));
+    setSkipping(false);
+    if (res.ok) {
+      setSkipOpen(false);
+      toast.success("Berita dilewati: efeknya berlaku sekarang dan berita berikutnya tayang.");
+      void refresh();
+    } else setSkipError(res.message);
+  };
   const kindLabel: Record<string, string> = {
     price: "Harga saja",
     bankrupt: "Bangkrut",
@@ -95,6 +115,13 @@ export function NewsBoard({ initial }: { initial: NewsPage }) {
           <>
             <p className="text-ink text-2xl font-bold">{page.current.title}</p>
             <p className="text-ink-muted text-lg leading-[1.6] whitespace-pre-line">{page.current.body}</p>
+            {liveNow ? (
+              <div>
+                <Button variant="soft" size="sm" onClick={() => setSkipOpen(true)}>
+                  Lewati berita (untuk uji)
+                </Button>
+              </div>
+            ) : null}
             {page.currentEffects ? (
               <div className="border-line mt-2 flex flex-col gap-3 border-t pt-4">
                 <div className="flex flex-wrap items-center gap-3">
@@ -272,6 +299,24 @@ export function NewsBoard({ initial }: { initial: NewsPage }) {
           )}
         </Card>
       )}
+      <ConfirmDialog
+        open={skipOpen}
+        onOpenChange={(o) => {
+          setSkipOpen(o);
+          if (!o) setSkipError(null);
+        }}
+        title="Lewati berita ini?"
+        description={
+          <>
+            Efek <strong>{page.current?.title}</strong> langsung diterapkan ke harga sekarang, tanpa menunggu
+            waktunya, lalu berita berikutnya tayang. Harga tidak bisa dikembalikan. Gunakan untuk pengujian.
+          </>
+        }
+        confirmLabel="Lewati"
+        loading={skipping}
+        error={skipError}
+        onConfirm={() => void skip()}
+      />
       <ConfirmDialog
         open={restartOpen}
         onOpenChange={(o) => {

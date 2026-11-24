@@ -43,6 +43,22 @@ export async function restartNews(): Promise<ActionResult<number>> {
 }
 
 /**
+ * Lewati berita (`admin_skip_news`, untuk pengujian): efek berita yang sedang tayang diterapkan SEKARANG lewat jalur mesin yang
+ * sama, lalu berita berikutnya tayang dengan jeda normal. Mengembalikan judul berita yang dilewati. Hanya saat game `open`.
+ */
+export async function skipNews(): Promise<ActionResult<string>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("admin_skip_news");
+  if (error) {
+    const mapped = mapRpcError(error);
+    if (!mapped.code && !mapped.retryable)
+      console.error("[admin_skip_news] galat tak terduga:", error.message);
+    return { ok: false, ...mapped };
+  }
+  return { ok: true, data: typeof data === "string" ? data : "" };
+}
+
+/**
  * Pasang/lepas aset bangkrut pada berita draf (`admin_set_news_bankruptcy`). Hanya SEBELUM game dibuka.
  * Mengembalikan jumlah berita LAIN yang masih punya efek harga pada aset itu (berita itu akan gagal terbit).
  */

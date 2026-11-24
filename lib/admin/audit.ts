@@ -55,6 +55,7 @@ export function categoryOf(action: string): AuditCategory {
       "news_launch_failed",
       "set_news_settings",
       "restart_news",
+      "skip_news",
       "set_news_bankruptcy",
       "set_news_event",
     ].includes(action)
@@ -150,6 +151,8 @@ export function summarize(row: AuditRaw, lookup: Lookup): string {
       return "Pengaturan berita diubah";
     case "reset_game":
       return `Game di-reset: saldo ${num(p.teams)} tim jadi Rp 0, ${num(p.transactions)} transaksi dan ${num(p.payouts)} hadiah pos dihapus, ${num(p.news_ready)} berita kembali ke kumpulan`;
+    case "skip_news":
+      return `Berita dilewati (efek diterapkan sekarang): ${str(p.title)}`;
     case "restart_news":
       return `Berita dimulai ulang: ${num(p.restored)} berita kembali ke kumpulan`;
     case "set_news_bankruptcy":

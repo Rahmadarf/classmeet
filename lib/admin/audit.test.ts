@@ -128,6 +128,12 @@ describe("aksi dari fungsi admin baru (scripts/sql/admin-functions-missing.sql)"
     ]);
   });
 
+  it("lewati berita: kategori berita dan ringkasan", () => {
+    expect(categoryOf("skip_news")).toBe("berita");
+    const [a] = buildAuditRows([row("skip_news", { news_id: "n1", title: "Harga naik" }, "ad")], lookup);
+    expect(a.summary).toBe("Berita dilewati (efek diterapkan sekarang): Harga naik");
+  });
+
   it("lihat QR tim: kategori koreksi dan ringkasan", () => {
     expect(categoryOf("view_team_qr")).toBe("koreksi");
     const [a] = buildAuditRows([row("view_team_qr", { team_id: "t1" }, "ad")], lookup);
