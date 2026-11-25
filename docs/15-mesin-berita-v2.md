@@ -50,6 +50,8 @@ Untuk tiap aset dalam berita: bernilai tinggi bila arah efek **berlawanan** deng
 terakhir, dan dikurangi bila harga akan menabrak batas. Dirata-ratakan per berita.
 
 ## 3. Kumpulan berita
+
+> **Diganti 25 Nov:** kumpulan kini 650 berita TULIS TANGAN ([21](21-berita-650.md), format [20](20-gaya-bahasa-berita.md)), dibangun dengan `npm run build-news`. Bagian ini menjelaskan pembuat otomatis lama (`npm run generate-news`, kini ke `news-pool.auto.json`).
 - Dibuat `npm run generate-news` dari tema di `scripts/data/news-themes*.ts`: **1100 berita** =
   **620 berita harga** (155 tema × 2 arah × 2 varian) dan **480 berita event** (30 aset × [1 bangkrut + 5 suspensi + 10 dividen]);
   hasilnya `scripts/data/news-pool.json` dan `docs/14-kumpulan-berita.md` untuk ditinjau. Teks fiksi; nama perusahaan memakai nama aset.

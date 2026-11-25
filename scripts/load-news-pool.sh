@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Muat kumpulan berita (scripts/data/news-pool.json via generator) LANGSUNG ke database Docker, berstatus `ready`.
+# Muat kumpulan berita TULIS TANGAN (docs/berita-650/*.md via scripts/build-news-from-markdown.ts) LANGSUNG ke database Docker, berstatus `ready`.
 #   npm run load-news               menambah berita yang judulnya belum ada
 #   npm run load-news -- --replace  MENGGANTI semua berita ready/draft dengan kumpulan terbaru (isi + efek); yang sudah terbit tidak disentuh
 # Untuk database Docker lokal saja. Melewati penguncian game (classmeet.system = on), jadi bisa dipakai juga saat game
@@ -9,7 +9,7 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 SQL="$(mktemp -t newspool.XXXXXX).sql"
 trap 'rm -f "$SQL"' EXIT
-npx tsx scripts/generate-news-pool.ts --sql "$SQL" "$@" >/dev/null
+npx tsx scripts/build-news-from-markdown.ts --sql "$SQL" "$@" >/dev/null
 {
   echo "select set_config('classmeet.system','on',false);"
   cat "$SQL"

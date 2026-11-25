@@ -20,6 +20,7 @@
     "predev": "node scripts/copy-zxing-wasm.mjs && (npm run stack:up || echo '[dev] Supabase + tunnel gagal jalan (lihat galat di atas); next dev tetap dilanjutkan.')",
     "prebuild": "node scripts/copy-zxing-wasm.mjs",
     "generate-news": "tsx scripts/generate-news-pool.ts",
+    "build-news": "tsx scripts/build-news-from-markdown.ts",
     "load-news": "bash scripts/load-news-pool.sh"
   },
   "dependencies": {

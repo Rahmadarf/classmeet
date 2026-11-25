@@ -351,6 +351,8 @@ export function analysisParagraphs(
   kind: PoolKind,
   effects: PoolEffect[],
   event: { symbol: string; amount: number } | null,
+  /** Berita tulis tangan (docs/21): pengecoh sifat yang benar-benar ada di teks, menggantikan bangkitan `decoysOf`. */
+  decoyOverride?: { symbol: string; phrase: string }[],
 ): string[] {
   const h = hashOf(`analisa|${title}`);
   const meaningful = effects.filter((e) => Math.abs(e.pct_bps) >= HINT_MIN_BPS);
@@ -397,7 +399,7 @@ export function analysisParagraphs(
     parts.push(
       `Sebanyak ${tiny} perusahaan lain hanya bergerak tipis (di bawah 1 %), jadi tidak layak dikejar.`,
     );
-  const decoys = decoysOf(title, effects, event ? [event.symbol] : []);
+  const decoys = decoyOverride ?? decoysOf(title, effects, event ? [event.symbol] : []);
   if (decoys.length)
     parts.push(
       `Ciri ${listSerta(decoys.map((d) => `perusahaan yang ${d.phrase}`))}, yang sempat disebut di berita, hanyalah pengecoh: tidak ada efek harga yang berarti.`,
@@ -636,6 +638,11 @@ export function validatePool(
   pool: PoolNews[],
   assets: PoolAsset[],
   cfg: PoolConfig = DEFAULT_CONFIG,
+  /**
+   * `hand`: kumpulan tulis tangan (docs/21). Isi boleh satu paragraf, dan petunjuk tidak dituntut memakai frasa kamus sifat
+   * persis di paragraf kedua (teks ditulis bebas; lihat `handHintWarnings` di news-hand-lib.ts untuk pemeriksaan petunjuk).
+   */
+  opts: { hand?: boolean } = {},
 ): string[] {
   const problems: string[] = [];
   const symbols = new Set(assets.map((a) => a.symbol));
@@ -652,7 +659,7 @@ export function validatePool(
     const tag = `"${n.title}"`;
     if (!n.title.trim() || !n.body.trim()) problems.push(`${tag}: judul/isi kosong`);
     const paragraphs = n.body.split(/\n{2,}/).filter((p) => p.trim());
-    if (paragraphs.length < 2) problems.push(`${tag}: isi kurang dari 2 paragraf`);
+    if (paragraphs.length < (opts.hand ? 1 : 2)) problems.push(`${tag}: isi kurang dari ${opts.hand ? 1 : 2} paragraf`);
     // nama perusahaan: berita harga tidak menyebut satu pun; berita event hanya menyebut subjeknya
     for (const a of assets) {
       const mentioned = nameRe.get(a.symbol)!.test(n.body) || nameRe.get(a.symbol)!.test(n.title);
@@ -661,7 +668,7 @@ export function validatePool(
     if (n.event && !nameRe.get(n.event.symbol)!.test(n.body))
       problems.push(`${tag}: paragraf event tidak menyebut perusahaan subjek`);
     // petunjuk: aset naik dan turun terbesar (selain subjek) harus punya frasa sifatnya di paragraf kedua
-    {
+    if (!opts.hand) {
       const second = paragraphs[1] ?? "";
       const rest = n.effects.filter(
         (e) => e.symbol !== n.event?.symbol && Math.abs(e.pct_bps) >= HINT_MIN_BPS,

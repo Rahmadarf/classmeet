@@ -1,9 +1,11 @@
 /**
- * Membangkitkan kumpulan berita (harga + event) dari `scripts/data/news-themes.ts`.
- *   npm run generate-news            -> scripts/data/news-pool.json + docs/14-kumpulan-berita.md
+ * [LAMA] Membangkitkan kumpulan berita OTOMATIS (harga + event) dari `scripts/data/news-themes.ts`.
+ * Sejak 25 Nov kumpulan yang dipakai adalah berita TULIS TANGAN (`npm run build-news`, docs/21); pembuat ini tetap ada untuk
+ * perbandingan dan menulis ke `news-pool.auto.json` supaya tidak menimpa `news-pool.json`.
+ *   npm run generate-news            -> scripts/data/news-pool.auto.json + docs/14-kumpulan-berita.md
  *   npm run generate-news -- --sql /tmp/pool.sql [--replace]   (juga tulis SQL; --replace mengganti berita ready/draft)
  *   opsi: --seed teks  --min 10  --max 15  --cap 1500  --scale 1 (pengali besar efek, docs/19)
- * Tidak menyentuh database. Berkas JSON dibaca `npm run seed` (seed-dev.ts).
+ * Tidak menyentuh database.
  */
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -44,14 +46,14 @@ if (problems.length) {
   process.exit(1);
 }
 
-const jsonPath = resolve(here, "data/news-pool.json");
+const jsonPath = resolve(here, "data/news-pool.auto.json");
 const mdPath = resolve(here, "../docs/14-kumpulan-berita.md");
 mkdirSync(dirname(jsonPath), { recursive: true });
 writeFileSync(
   jsonPath,
   JSON.stringify(
     {
-      _catatan: `Dibangkitkan oleh scripts/generate-news-pool.ts (seed "${cfg.seed}", ${cfg.minAssets}-${cfg.maxAssets} aset per berita). Jangan disunting tangan; ubah news-themes.ts lalu bangkitkan ulang.`,
+      _catatan: `Dibangkitkan oleh scripts/generate-news-pool.ts (seed "${cfg.seed}", ${cfg.minAssets}-${cfg.maxAssets} aset per berita). Kumpulan LAMA (otomatis); yang dipakai seed adalah news-pool.json dari build-news.`,
       news: pool,
     },
     null,

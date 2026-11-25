@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Simulasi mesin berita v2 di database Docker (TIDAK mengubah data: semuanya di-ROLLBACK).
-#   scripts/sim-news-engine.sh [hari=3] [suhu_milli=80] [benih=0.42] [intensitas_persen=100] [skala_efek=bawaan]
-# Perlu: docker (supabase-db jalan), kumpulan berita di scripts/data/news-pool.json (npm run generate-news -- --sql ...).
+#   scripts/sim-news-engine.sh [hari=3] [suhu_milli=80] [benih=0.42] [intensitas_persen=100] [pengali_efek=1]
+# Perlu: docker (supabase-db jalan), berita tulis tangan di docs/berita-650 (dibaca langsung oleh scripts/build-news-from-markdown.ts).
 # Menahan kunci baris game_settings selama simulasi (beberapa detik): jangan dijalankan saat acara berlangsung.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
@@ -9,7 +9,7 @@ DAYS="${1:-3}"; TEMP="${2:-80}"; SEED="${3:-0.42}"; INT="${4:-100}"; SCALE="${5:
 POOL="$(mktemp -t newspool.XXXXXX).sql"
 trap 'rm -f "$POOL"' EXIT
 # --replace: ganti berita siap yang ada (di dalam transaksi yang di-ROLLBACK) supaya efek memakai pengali skala yang diminta
-npx tsx scripts/generate-news-pool.ts --sql "$POOL" --replace ${SCALE:+--scale "$SCALE"} >/dev/null
+npx tsx scripts/build-news-from-markdown.ts --sql "$POOL" --replace ${SCALE:+--scale "$SCALE"} >/dev/null
 {
   echo "begin;"
   echo "select set_config('classmeet.system','on',true);"
