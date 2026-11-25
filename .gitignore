@@ -64,3 +64,9 @@ next-env.d.ts
 
 # paket migrasi database (berisi hash kata sandi akun; jangan di-commit)
 /deploy/supabase/bundle/
+
+# isi berita (teks, efek, event): tidak di-commit
+/docs/berita-650/
+/docs/14-kumpulan-berita.md
+/scripts/data/news-pool.json
+/scripts/data/news-pool.auto.json
