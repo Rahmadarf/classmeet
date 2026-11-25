@@ -6,6 +6,7 @@ export type AppRole = Enums<"app_role">;
 export const ROLE_HOME: Record<AppRole, string> = {
   team: "/team",
   guard: "/guard/scan",
+  pic: "/pic/scan",
   admin: "/admin/state",
   display: "/display",
 };
@@ -14,6 +15,7 @@ export const ROLE_HOME: Record<AppRole, string> = {
 export const ROLE_PREFIX: Record<AppRole, string> = {
   team: "/team",
   guard: "/guard",
+  pic: "/pic",
   admin: "/admin",
   display: "/display",
 };
@@ -49,5 +51,5 @@ export function signedOutDestination(pathname: string): string {
 }
 
 export function isAppRole(value: unknown): value is AppRole {
-  return value === "team" || value === "guard" || value === "admin" || value === "display";
+  return value === "team" || value === "guard" || value === "pic" || value === "admin" || value === "display";
 }

@@ -11,17 +11,24 @@ export function nextNumber(prefix: string, names: readonly string[]): number {
   return max + 1;
 }
 
-/** Nomor pos terbesar + 1 dari nama "Pos 3 · Estafet Balon". */
-export function nextPostNumber(postNames: readonly string[]): number {
+/** Jenis pos: `rally` (dijaga guard) atau `lomba` (dijaga PIC lomba). Sama dengan `posts.kind`. */
+export type PostKind = "rally" | "lomba";
+
+const KIND_PREFIX: Record<PostKind, string> = { rally: "Pos", lomba: "Lomba" };
+
+/** Nomor terbesar + 1 dari nama "Pos 3 · Estafet Balon" (rally) atau "Lomba 2 · Futsal" (lomba); tiap jenis dinomori sendiri. */
+export function nextPostNumber(postNames: readonly string[], kind: PostKind = "rally"): number {
+  const re = new RegExp(`^\\s*${KIND_PREFIX[kind]}\\s*(\\d{1,3})\\b`, "i");
   let max = 0;
   for (const n of postNames) {
-    const m = /^\s*Pos\s*(\d{1,3})\b/i.exec(n);
+    const m = re.exec(n);
     if (m) max = Math.max(max, Number(m[1]));
   }
   return max + 1;
 }
 
-export const postDisplayName = (number: number, gameName: string) => `Pos ${number} · ${gameName.trim()}`;
+export const postDisplayName = (number: number, gameName: string, kind: PostKind = "rally") =>
+  `${KIND_PREFIX[kind]} ${number} · ${gameName.trim()}`;
 
 /** Kode cadangan 6 karakter tanpa 0/O/1/I (docs/03 §3.2); unik terhadap `taken`. */
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";

@@ -46,7 +46,16 @@ export function categoryOf(action: string): AuditCategory {
     )
   )
     return "status";
-  if (["guard_set_post_open", "set_post_open", "upsert_post", "create_guard", "delete_post"].includes(action))
+  if (
+    [
+      "guard_set_post_open",
+      "set_post_open",
+      "upsert_post",
+      "create_guard",
+      "create_pic",
+      "delete_post",
+    ].includes(action)
+  )
     return "pos";
   if (
     [
@@ -109,6 +118,8 @@ export function summarize(row: AuditRaw, lookup: Lookup): string {
       return `Tim baru: ${str(p.name)} (${str(p.username)})`;
     case "create_guard":
       return `Penjaga baru: ${str(p.username)} + ${post}`;
+    case "create_pic":
+      return `PIC lomba baru: ${str(p.username)} + ${post}`;
     case "delete_team":
       return `Tim dihapus: ${str(p.name)} (${str(p.username)})`;
     case "delete_post":

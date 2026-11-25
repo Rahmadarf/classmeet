@@ -14,7 +14,7 @@ type Db = SupabaseClient<Database>;
 async function fetchDirectory(supabase: Db) {
   const [teams, posts, profiles] = await Promise.all([
     supabase.from("teams").select("id,name,cash"),
-    supabase.from("posts").select("id,name,location,guard_id,is_open"),
+    supabase.from("posts").select("id,name,location,guard_id,is_open,kind"),
     supabase.from("profiles").select("id,username,display_name,role"),
   ]);
   if (teams.error || !teams.data || posts.error || !posts.data || profiles.error || !profiles.data)
@@ -161,6 +161,8 @@ export type AdminPost = {
   guard: string;
   total: number;
   open: boolean;
+  /** `rally` = pos dengan penjaga; `lomba` = lomba dengan PIC (tanpa saklar buka/tutup). */
+  kind: "rally" | "lomba";
 };
 
 export async function fetchPostsPage(supabase: Db): Promise<AdminPost[] | null> {
@@ -181,6 +183,7 @@ export async function fetchPostsPage(supabase: Db): Promise<AdminPost[] | null> 
       guard: p.guard_id ? (guards[p.guard_id] ?? "—") : "—",
       total: totals.get(p.id) ?? 0,
       open: p.is_open,
+      kind: p.kind === "lomba" ? ("lomba" as const) : ("rally" as const),
     }))
     .sort((a, b) =>
       a.number && b.number

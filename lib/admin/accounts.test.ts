@@ -14,6 +14,13 @@ describe("nextPostNumber / postDisplayName", () => {
     expect(nextPostNumber(["Pos 1 · A", "Pos 6 · B", "Pos 3 · C", "Tanpa nomor"])).toBe(7);
     expect(nextPostNumber([])).toBe(1);
     expect(postDisplayName(7, "  Lompat Tali ")).toBe("Pos 7 · Lompat Tali");
+    expect(postDisplayName(2, " Futsal ", "lomba")).toBe("Lomba 2 · Futsal");
+  });
+  it("menomori rally dan lomba sendiri-sendiri", () => {
+    const names = ["Pos 1 · A", "Pos 6 · B", "Lomba 2 · C", "Lomba 1 · D"];
+    expect(nextPostNumber(names, "rally")).toBe(7);
+    expect(nextPostNumber(names, "lomba")).toBe(3);
+    expect(nextPostNumber(["Pos 4 · A"], "lomba")).toBe(1);
   });
 });
 

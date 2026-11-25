@@ -720,6 +720,7 @@ export type Database = {
           guard_id: string
           id: string
           is_open: boolean
+          kind: string
           location: string
           name: string
         }
@@ -728,6 +729,7 @@ export type Database = {
           guard_id: string
           id?: string
           is_open?: boolean
+          kind?: string
           location: string
           name: string
         }
@@ -736,6 +738,7 @@ export type Database = {
           guard_id?: string
           id?: string
           is_open?: boolean
+          kind?: string
           location?: string
           name?: string
         }
@@ -1124,6 +1127,7 @@ export type Database = {
       admin_upsert_post: {
         Args: {
           p_guard_id: string
+          p_kind?: string
           p_location: string
           p_name: string
           p_post_id: string
@@ -1135,6 +1139,30 @@ export type Database = {
         Returns: Database["public"]["Enums"]["app_role"]
       }
       award_payout: {
+        Args: {
+          p_amount: number
+          p_note?: string
+          p_request_id: string
+          p_team_id: string
+        }
+        Returns: {
+          amount: number
+          created_at: string
+          guard_id: string
+          id: number
+          note: string | null
+          post_id: string
+          request_id: string
+          team_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "payouts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      award_pic_payout: {
         Args: {
           p_amount: number
           p_note?: string
@@ -1353,6 +1381,7 @@ export type Database = {
         Returns: {
           id: string
           is_open: boolean
+          kind: string
           location: string
           name: string
         }[]
@@ -1482,7 +1511,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "guard" | "team" | "display"
+      app_role: "admin" | "guard" | "team" | "display" | "pic"
       game_state: "setup" | "open" | "paused" | "finished"
       news_status: "draft" | "ready" | "live" | "applied" | "cancelled"
     }
@@ -1635,7 +1664,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "guard", "team", "display"],
+      app_role: ["admin", "guard", "team", "display", "pic"],
       game_state: ["setup", "open", "paused", "finished"],
       news_status: ["draft", "ready", "live", "applied", "cancelled"],
     },

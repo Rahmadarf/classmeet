@@ -28,19 +28,21 @@ export async function setPostOpen(input: unknown): Promise<ActionResult> {
   return { ok: true, data: undefined };
 }
 
-export type NewPost = { postId: string; name: string; guardUsername: string };
+export type NewPost = { postId: string; name: string; guardUsername: string; kind: "rally" | "lomba" };
 
 /**
- * Tambah pos baru beserta akun penjaganya. Akun penjaga (Supabase Auth, username `guardN`) dibuat dengan service role setelah
- * peran admin diperiksa; pos dibuat lewat `admin_upsert_post` memakai sesi admin sendiri (divalidasi dan diaudit database).
- * Pos baru mulai Tidak tersedia. Kata sandi awal penjaga diisi admin dan tidak dikembalikan atau dicatat.
+ * Tambah pos (rally) atau lomba beserta akunnya. Pos rally: akun role `guard`, username `guardN`, nama "Pos N · ...".
+ * Lomba: akun role `pic`, username `picN`, nama "Lomba N · ..." (tanpa saklar buka/tutup). Akun (Supabase Auth) dibuat dengan
+ * service role setelah peran admin diperiksa; barisnya dibuat lewat `admin_upsert_post` memakai sesi admin sendiri
+ * (divalidasi dan diaudit database; ia mencocokkan jenis dengan role pemegang). Pos baru mulai Tidak tersedia.
+ * Kata sandi awal diisi admin dan tidak dikembalikan atau dicatat.
  */
 export async function createPost(input: unknown): Promise<ActionResult<NewPost>> {
   const parsed = createPostSchema.safeParse(input);
   if (!parsed.success)
     return {
       ok: false,
-      message: "Nama game dan lokasi 2+ huruf, kata sandi penjaga minimal 8 karakter.",
+      message: "Nama game dan lokasi 2+ huruf, kata sandi minimal 8 karakter.",
       code: "invalid_input",
       retryable: false,
     };
@@ -63,17 +65,23 @@ export async function createPost(input: unknown): Promise<ActionResult<NewPost>>
     throw e;
   }
 
+  const kind = parsed.data.kind;
+  const isLomba = kind === "lomba";
+  const prefix = isLomba ? "pic" : "guard";
   const [{ data: guards }, { data: posts }] = await Promise.all([
-    svc.from("profiles").select("username").like("username", "guard%"),
+    svc.from("profiles").select("username").like("username", `${prefix}%`),
     svc.from("posts").select("name"),
   ]);
   const n = nextNumber(
-    "guard",
+    prefix,
     (guards ?? []).map((g) => g.username),
   );
-  const guardUsername = `guard${n}`;
-  const postNo = nextPostNumber((posts ?? []).map((p) => p.name));
-  const name = postDisplayName(postNo, parsed.data.gameName);
+  const guardUsername = `${prefix}${n}`;
+  const postNo = nextPostNumber(
+    (posts ?? []).map((p) => p.name),
+    kind,
+  );
+  const name = postDisplayName(postNo, parsed.data.gameName, kind);
 
   const created = await svc.auth.admin.createUser({
     email: authEmail(guardUsername),
@@ -84,7 +92,7 @@ export async function createPost(input: unknown): Promise<ActionResult<NewPost>>
     console.error("[createPost] createUser gagal:", created.error?.message);
     return {
       ok: false,
-      message: "Akun penjaga gagal dibuat (kata sandi terlalu lemah?).",
+      message: `Akun ${isLomba ? "PIC" : "penjaga"} gagal dibuat (kata sandi terlalu lemah?).`,
       code: null,
       retryable: false,
     };
@@ -94,18 +102,27 @@ export async function createPost(input: unknown): Promise<ActionResult<NewPost>>
     await svc.from("profiles").delete().eq("id", guardId);
     await svc.auth.admin.deleteUser(guardId);
   };
-  const profile = await svc
-    .from("profiles")
-    .insert({ id: guardId, username: guardUsername, role: "guard", display_name: `Penjaga Pos ${postNo}` });
+  const profile = await svc.from("profiles").insert({
+    id: guardId,
+    username: guardUsername,
+    role: isLomba ? "pic" : "guard",
+    display_name: isLomba ? `PIC Lomba ${postNo}` : `Penjaga Pos ${postNo}`,
+  });
   if (profile.error) {
     await rollback();
-    return { ok: false, message: "Profil penjaga gagal dibuat.", code: null, retryable: true };
+    return {
+      ok: false,
+      message: `Profil ${isLomba ? "PIC" : "penjaga"} gagal dibuat.`,
+      code: null,
+      retryable: true,
+    };
   }
   const { data: postId, error } = await supabase.rpc("admin_upsert_post", {
     p_post_id: null as unknown as string,
     p_name: name,
     p_location: parsed.data.location,
     p_guard_id: guardId,
+    p_kind: kind,
   });
   if (error || !postId) {
     await rollback();
@@ -114,10 +131,10 @@ export async function createPost(input: unknown): Promise<ActionResult<NewPost>>
   }
   await svc.from("audit_log").insert({
     actor_id: adminId,
-    action: "create_guard",
+    action: isLomba ? "create_pic" : "create_guard",
     payload: { guard_id: guardId, username: guardUsername, post_id: postId },
   });
-  return { ok: true, data: { postId, name, guardUsername } };
+  return { ok: true, data: { postId, name, guardUsername, kind } };
 }
 
 /**

@@ -110,6 +110,7 @@ Sebelum hari-H, jalankan di **staging**:
 - [ ] ±100 berita dimasukkan, diperiksa, dan ditandai *siap*; jumlah *boleh terbit* ≥ 30 pada awal hari 1.
 - [ ] Semua penjaga login sekali dan mengetes pindai + kirim hadiah dengan tim uji, lalu **data uji dikoreksi** (saldo tim kembali ke **Rp 0** lewat `admin_adjust_cash` negatif, atau pakai akun tim uji khusus yang dihapus setelahnya). Hadiah uji **langsung** mengubah saldo, jadi jangan sampai tim sungguhan ikut terisi. Lebih aman: buat akun tim uji khusus dan hapus setelahnya.
 - [ ] Setiap kartu QR tim berhasil dipindai oleh akun penjaga **dan** berhasil masuk di minimal satu laptop trading.
+- [ ] PIC lomba (hari 1 dan 3) dan penjaga rally (hari 2) diberi briefing dan PIN masing-masing (`PIC_PIN` dan `GUARD_PIN` berbeda); `PIC_PIN` sudah diubah di `.env.local` dari bawaan 54321.
 - [ ] Admin sudah mencoba `admin_adjust_cash` negatif untuk membatalkan hadiah uji, dan semua penjaga diberi briefing: **nominal langsung masuk, periksa dua kali sebelum menekan kirim**.
 - [ ] Layar publik sudah login sebagai `display`, menampilkan berita dan leaderboard, dan terbaca dari jarak terjauh penonton.
 - [ ] Cadangan awal dibuat dan salinannya ada di luar server.

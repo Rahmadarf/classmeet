@@ -16,6 +16,7 @@ const MESSAGES: Record<string, string> = {
   hold_cap_exceeded: "Melebihi batas kepemilikan per aset untuk satu tim.",
   request_id_conflict: "Permintaan bentrok, muat ulang halaman.",
   post_closed: "Pos sedang tidak tersedia.",
+  not_applicable: "Lomba tidak punya saklar buka/tutup.",
   invalid_amount: "Nominal tidak valid.",
   team_not_found: "Tim tidak ditemukan.",
   news_not_found: "Berita tidak ditemukan.",

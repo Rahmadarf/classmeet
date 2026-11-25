@@ -95,7 +95,7 @@ export type HistoryItem = TradeItem | PayoutItem | DividendItem | AnalysisItem;
 
 /** "Pos 3 · Estafet Balon" → "03". */
 export function postNumber(name: string): string | null {
-  const m = /^Pos\s*(\d{1,3})\b/i.exec(name.trim());
+  const m = /^(?:Pos|Lomba)\s*(\d{1,3})\b/i.exec(name.trim());
   return m ? m[1].padStart(2, "0") : null;
 }
 

@@ -136,7 +136,7 @@ erDiagram
 ## 2. Tipe dan helper
 
 ```sql
-create type app_role      as enum ('admin', 'guard', 'team', 'display');
+create type app_role      as enum ('admin', 'guard', 'team', 'display', 'pic');  -- 'pic' ditambah lewat scripts/sql/pic-role.sql
 create type game_state    as enum ('setup', 'open', 'paused', 'finished');
 -- draft: bisa disunting | ready: masuk kumpulan, dipilih acak oleh sistem | live: sudah tampil,
 -- efek harga menunggu | applied: harga sudah berubah | cancelled: tidak dipakai lagi (tidak ada jalur yang membatalkan)
@@ -161,6 +161,7 @@ create type post_payout_row as (
 |-------|--------------|-----|
 | `admin` | Panitia pusat | Semua fungsi admin, melihat semua data |
 | `guard` | Penjaga pos | Pindai QR tim, mengajukan hadiah untuk **posnya sendiri** |
+| `pic` | PIC lomba (hari 1 dan 3, di luar rally) | Pindai QR tim dan beri hadiah atas **lombanya sendiri** (`award_pic_payout`); **tanpa** saklar buka/tutup. Lomba adalah baris `posts` berjenis `lomba` |
 | `team` | Satu akun per tim | Beli/jual, melihat data milik sendiri. **Tidak** bisa melihat leaderboard |
 | `display` | Layar ruang publik | Hanya membaca leaderboard dan data pasar publik |
 
@@ -224,7 +225,8 @@ create table posts (
 );
 ```
 
-- `guard_id` unik: satu penjaga memegang satu pos.
+- `guard_id` unik: satu penjaga memegang satu pos. Untuk PIC lomba kolom ini berisi id akun `pic` (satu PIC satu lomba).
+- `kind` (`rally` default | `lomba`, ditambah `scripts/sql/pic-lomba.sql`): jenis baris. Hanya untuk menyaring tampilan (layar publik hanya `rally`) dan menolak saklar buka/tutup untuk `lomba` (`not_applicable`). Pemegang `rally` harus role `guard`, pemegang `lomba` harus role `pic` (`admin_upsert_post`). Hadiah lomba ditulis ke tabel `payouts` yang sama.
 - **Tidak ada batas kunjungan per tim per pos.** Tim boleh mengunjungi pos yang sama berkali-kali.
 - **Tidak ada batas nominal hadiah per pos** (diputuskan: tanpa pengaman). Nominal yang diketik penjaga langsung masuk saldo; kesalahan hanya bisa dikoreksi admin sesudahnya lewat `admin_adjust_cash`.
 

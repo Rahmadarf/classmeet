@@ -357,6 +357,16 @@ Diisi panitia. Kolom `penjaga` menjadi akun `guard`.
 | 1 | *(isi)* | *(isi)* | *(isi)* | 100.000 – 500.000 |
 | … | | | | |
 
+### 6.5 PIC lomba (hari 1 dan 3)
+
+Acara berlangsung 3 hari dengan trading setiap hari, tetapi **rally (pos game) hanya di hari ke-2**. Di hari 1 dan 3 ada lomba yang tidak masuk rally; pesertanya tetap mendapat uang (poin sama dengan uang tunai tim, satu saldo).
+
+- Hadiah lomba tidak lewat guard, melainkan **PIC lomba**: akun role `pic` di halaman `/pic/scan`. Tugasnya sama dengan penjaga: memindai kartu QR tim, mengetik nominal, memasukkan PIN, lalu saldo tim langsung bertambah.
+- **Tidak ada tombol buka/tutup** untuk lomba.
+- Satu PIC memegang satu lomba. Lomba dibuat admin di halaman Pos (pilih jenis **Lomba**): akun `picN`, nama "Lomba N · ...". Hadiah tercatat di `payouts` seperti hadiah pos, jadi tampil di riwayat tim, papan Hadiah admin, dan audit.
+- PIC memakai **PIN sendiri** (`PIC_PIN`, bawaan 54321), berbeda dari PIN penjaga (`GUARD_PIN`).
+- Pembagian hari (rally hanya hari ke-2; lomba hari 1 dan 3) adalah **aturan lapangan**: sistem tidak menolak hadiah berdasarkan hari. Pengawasannya lewat papan Hadiah admin dan koreksi `admin_adjust_cash`, sama seperti penjaga.
+
 ## 7. Penilaian dan penentuan juara
 
 1. Peringkat berdasarkan **net worth** pada saat status `finished`. Net worth = saldo + Σ jumlah unit × **harga tayang** saat itu. Beranda tim menampilkan tiga angka: **total**, **saldo saat ini**, dan **nilai seluruh aset menurut harga tayang**. **Konsekuensi:** naik-turun harga langsung memengaruhi peringkat tanpa perlu menjual. **Risiko kolusi:** dua tim yang rela membayar selisih jual 2 % dan terus membeli-menjual masih bisa mendorong harga tayang naik (tekanan stok) sampai +15 % dari harga acuan; batas pegang 30 % stok awal, selisih jual, dan pemulihan tekanan dalam 10 menit membatasinya, dan semua transaksi terlihat di halaman admin Transaksi.

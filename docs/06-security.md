@@ -21,7 +21,7 @@ Aturan: **setiap pengecekan penting harus ada di lapis 3.** Lapis 1 dan 2 hanya 
 - Password dibuat acak (misalnya 10 karakter tanpa karakter yang mudah tertukar) oleh skrip `create-accounts.ts` dan dicetak di **kartu akses** per tim. Kartu dibagikan langsung, bukan lewat grup chat umum.
 - Panitia bisa mereset password lewat skrip admin (service role, lokal).
 - Peran disimpan di `profiles.role`, **bukan** di `user_metadata` yang bisa diubah pengguna sendiri.
-- Ada empat peran: `admin`, `guard`, `team`, `display`. Akun `display` (layar ruang publik) dibuat sama seperti akun lain, hanya bisa membaca, dan sebaiknya login di perangkat yang tidak dipegang peserta. Password-nya tidak dicetak di kartu tim.
+- Ada lima peran: `admin`, `guard`, `pic`, `team`, `display`. `pic` (PIC lomba) memindai kartu dan memberi hadiah atas lombanya sendiri lewat `award_pic_payout` dengan PIN sendiri (`PIC_PIN`, berbeda dari `GUARD_PIN`); guard tidak bisa memanggil `award_pic_payout` dan PIC tidak bisa memanggil `award_payout`. Akun `display` (layar ruang publik) dibuat sama seperti akun lain, hanya bisa membaca, dan sebaiknya login di perangkat yang tidak dipegang peserta. Password-nya tidak dicetak di kartu tim.
 - Akun admin memakai password yang lebih panjang dan **tidak** dibagikan lewat kartu akses umum.
 - Sesi memakai cookie bawaan `@supabase/ssr`. Middleware menyegarkan sesi.
 

@@ -55,6 +55,7 @@ export function PostsBoard({ initial, initialGame }: { initial: AdminPost[]; ini
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [filter, setFilter] = useState<"all" | "rally" | "lomba">("all");
 
   useRealtime("admin-posts", [
     { event: "*", table: "posts", onEvent: () => void refresh() },
@@ -97,19 +98,27 @@ export function PostsBoard({ initial, initialGame }: { initial: AdminPost[]; ini
     }
   };
 
-  const open = posts.filter((p) => p.open).length;
+  // Ringkasan Tersedia/Tidak tersedia hanya untuk pos rally; lomba tidak punya status buka/tutup.
+  const rally = posts.filter((p) => p.kind === "rally");
+  const open = rally.filter((p) => p.open).length;
+  const shown = filter === "all" ? posts : posts.filter((p) => p.kind === filter);
 
   return (
     <>
       <PageHeader
         eyebrow="Stasiun aktivitas"
         title="Pos"
-        subtitle="Penjaga, total hadiah, dan status tiap pos."
+        subtitle="Penjaga atau PIC, total hadiah, dan status tiap pos dan lomba."
         actions={
           <>
             <StatusPill tone="ok">{open} Tersedia</StatusPill>
-            <StatusPill tone="bad">{posts.length - open} Tidak tersedia</StatusPill>
-            <IconButton icon={Plus} size="icon" label="Tambah pos" onClick={() => setCreating(true)} />
+            <StatusPill tone="bad">{rally.length - open} Tidak tersedia</StatusPill>
+            <IconButton
+              icon={Plus}
+              size="icon"
+              label="Tambah pos atau lomba"
+              onClick={() => setCreating(true)}
+            />
           </>
         }
       />
@@ -118,45 +127,83 @@ export function PostsBoard({ initial, initialGame }: { initial: AdminPost[]; ini
           Ketersediaan saat ini
         </p>
         <h2 id="pos-judul" className="text-ink text-2xl font-bold">
-          {posts.length} pos
+          {rally.length} pos, {posts.length - rally.length} lomba
         </h2>
+        <div role="group" aria-label="Filter jenis" className="flex gap-2">
+          {(
+            [
+              ["all", "Semua"],
+              ["rally", "Pos rally"],
+              ["lomba", "Lomba"],
+            ] as const
+          ).map(([k, label]) => (
+            <button
+              key={k}
+              type="button"
+              aria-pressed={filter === k}
+              onClick={() => setFilter(k)}
+              className={
+                filter === k
+                  ? "bg-nav-active text-brand-text min-h-10 rounded-full px-4 text-base font-semibold"
+                  : "text-ink-muted hover:bg-tint min-h-10 rounded-full px-4 text-base font-medium"
+              }
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <DataTable
           caption="Daftar pos"
-          head={["No", "Game", "Lokasi", "Penjaga", "Total hadiah", "Status", ""]}
+          head={["No", "Game", "Lokasi", "Penjaga / PIC", "Total hadiah", "Status", ""]}
           widths={[64, 170, 170, 150, 150, 160, 140]}
           minWidth={960}
         >
-          {posts.map((p) => (
+          {shown.map((p) => (
             <tr key={p.id}>
               <td>
                 <span className="rounded-control bg-tint text-ink grid h-9 w-11 place-items-center text-base font-bold">
                   {p.number ?? "–"}
                 </span>
               </td>
-              <td className="text-ink text-base font-semibold">{p.title}</td>
+              <td className="text-ink text-base font-semibold">
+                {p.title}
+                {p.kind === "lomba" ? (
+                  <span className="text-brand-text ml-2 text-xs font-semibold tracking-[0.1em] uppercase">
+                    Lomba
+                  </span>
+                ) : null}
+              </td>
               <td>{p.location}</td>
               <td>{p.guard}</td>
               <td className="money text-ink text-right font-bold">{formatRupiah(p.total)}</td>
               <td>
-                <StatusPill tone={p.open ? "ok" : "bad"}>{p.open ? "Tersedia" : "Tidak tersedia"}</StatusPill>
+                {p.kind === "lomba" ? (
+                  <span className="text-ink-muted text-base">–</span>
+                ) : (
+                  <StatusPill tone={p.open ? "ok" : "bad"}>
+                    {p.open ? "Tersedia" : "Tidak tersedia"}
+                  </StatusPill>
+                )}
               </td>
               <td className="text-right">
                 <div className="flex justify-end gap-2">
-                  <IconButton
-                    variant={p.open ? "danger" : "secondary"}
-                    icon={p.open ? DoorClosed : DoorOpen}
-                    label={`${p.open ? "Jadikan tidak tersedia" : "Jadikan tersedia"}: ${p.title}`}
-                    tooltip={
-                      finished
-                        ? "Game selesai: status pos tidak bisa diubah"
-                        : p.open
-                          ? "Jadikan tidak tersedia"
-                          : "Jadikan tersedia"
-                    }
-                    disabled={finished || busyId !== null}
-                    loading={busyId === p.id}
-                    onClick={() => void toggle(p)}
-                  />
+                  {p.kind === "lomba" ? null : (
+                    <IconButton
+                      variant={p.open ? "danger" : "secondary"}
+                      icon={p.open ? DoorClosed : DoorOpen}
+                      label={`${p.open ? "Jadikan tidak tersedia" : "Jadikan tersedia"}: ${p.title}`}
+                      tooltip={
+                        finished
+                          ? "Game selesai: status pos tidak bisa diubah"
+                          : p.open
+                            ? "Jadikan tidak tersedia"
+                            : "Jadikan tersedia"
+                      }
+                      disabled={finished || busyId !== null}
+                      loading={busyId === p.id}
+                      onClick={() => void toggle(p)}
+                    />
+                  )}
                   <IconButton
                     variant="danger"
                     icon={Trash2}
@@ -177,7 +224,7 @@ export function PostsBoard({ initial, initialGame }: { initial: AdminPost[]; ini
         <p className="text-ink-muted text-sm">
           Pos baru selalu mulai Tidak tersedia. Tersedia = pos masih kurang tim atau belum ada tim untuk
           memulai permainan; Tidak tersedia = pos penuh atau permainan sedang dimulai. Penjaga dan admin bisa
-          mengubahnya.
+          mengubahnya. Lomba (dijaga PIC lomba) tidak punya status buka/tutup.
           {finished ? " Game selesai: status pos tidak bisa diubah." : ""} Total hadiah mengikuti halaman
           Hadiah. Hapus menghilangkan pos beserta akun penjaganya; hanya bisa saat status game Setup dan untuk
           pos yang belum pernah memberi hadiah (Reset game mengosongkan hadiah).
@@ -199,8 +246,8 @@ export function PostsBoard({ initial, initialGame }: { initial: AdminPost[]; ini
         title={`Hapus ${deleting?.title ?? "pos"}?`}
         description={
           <>
-            <strong className="text-ink">{deleting?.title}</strong> akan dihapus beserta akun penjaganya (
-            {deleting?.guard}). Penjaga tidak bisa masuk lagi. Ini tidak bisa dibatalkan.
+            <strong className="text-ink">{deleting?.title}</strong> akan dihapus beserta akunnya (
+            {deleting?.guard}). Akun itu tidak bisa masuk lagi. Ini tidak bisa dibatalkan.
           </>
         }
         confirmLabel="Hapus pos"

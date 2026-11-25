@@ -25,12 +25,12 @@ async function Shell({ children }: { children: React.ReactNode }) {
       : Promise.resolve({ data: null }),
     userId ? fetchMyPost(supabase, userId) : Promise.resolve(null),
   ]);
-  const number = post ? splitPostName(post.name).number : null;
+  const label = post ? splitPostName(post.name).label : null;
   return (
     <QueryProvider>
       <GuardShell
         name={profile?.display_name || profile?.username || "Penjaga"}
-        postLabel={number ? `Pos ${number}` : "Penjaga"}
+        postLabel={label ?? "Penjaga"}
       >
         {children}
       </GuardShell>

@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_GUARD_PIN, expectedPin, MAX_PIN_FAILURES, PIN_LOCK_MS, PinLimiter, pinMatches } from "./pin";
+import {
+  DEFAULT_GUARD_PIN,
+  DEFAULT_PIC_PIN,
+  expectedPicPin,
+  expectedPin,
+  MAX_PIN_FAILURES,
+  PIN_LOCK_MS,
+  PinLimiter,
+  pinMatches,
+} from "./pin";
 
 describe("expectedPin", () => {
   it("memakai 12345 bila tidak diatur atau tidak valid", () => {
@@ -10,6 +19,19 @@ describe("expectedPin", () => {
   });
   it("memakai nilai lingkungan yang valid", () => {
     expect(expectedPin(" 987654 ")).toBe("987654");
+  });
+});
+
+describe("expectedPicPin", () => {
+  it("memakai 54321 bila tidak diatur atau tidak valid, berbeda dari PIN penjaga", () => {
+    expect(expectedPicPin(undefined)).toBe(DEFAULT_PIC_PIN);
+    expect(expectedPicPin("")).toBe("54321");
+    expect(expectedPicPin("abc")).toBe("54321");
+    expect(expectedPicPin("123")).toBe("54321");
+    expect(DEFAULT_PIC_PIN).not.toBe(DEFAULT_GUARD_PIN);
+  });
+  it("memakai nilai lingkungan yang valid", () => {
+    expect(expectedPicPin(" 246810 ")).toBe("246810");
   });
 });
 

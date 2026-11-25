@@ -8,6 +8,14 @@ export function expectedPin(env: string | undefined = process.env.GUARD_PIN): st
   return pin && /^\d{4,8}$/.test(pin) ? pin : DEFAULT_GUARD_PIN;
 }
 
+/** PIN sementara PIC lomba, sengaja BERBEDA dari PIN penjaga. Diganti lewat variabel lingkungan `PIC_PIN` di server. */
+export const DEFAULT_PIC_PIN = "54321";
+
+export function expectedPicPin(env: string | undefined = process.env.PIC_PIN): string {
+  const pin = env?.trim();
+  return pin && /^\d{4,8}$/.test(pin) ? pin : DEFAULT_PIC_PIN;
+}
+
 /** Banding waktu-tetap supaya panjang awalan yang cocok tidak bocor lewat waktu respons. */
 export function pinMatches(input: string, expected: string): boolean {
   const a = Buffer.from(input);

@@ -51,6 +51,8 @@ export function failureText(job: Pick<PayoutJob, "amount" | "teamName" | "reason
 }
 
 export const STORAGE_KEY = "classmeet.guard.payouts";
+/** Antrean PIC lomba disimpan terpisah dari antrean penjaga. */
+export const PIC_STORAGE_KEY = "classmeet.pic.payouts";
 
 /** Antrean yang disimpan di peramban supaya muat ulang halaman tidak menghilangkan hadiah yang belum terkirim. */
 export function serializeJobs(jobs: PayoutJob[]): string {

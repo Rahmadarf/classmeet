@@ -10,6 +10,7 @@ describe("postTitle", () => {
     expect(postTitle("Pos 7: Susun Menara")).toBe("Susun Menara");
     expect(postTitle("Lompat Tali")).toBe("Lompat Tali");
     expect(postTitle("Pos 5")).toBe("Pos 5"); // tak ada judul tersisa → apa adanya
+    expect(postTitle("Lomba 2 · Futsal Antarkelas")).toBe("Futsal Antarkelas");
   });
 });
 

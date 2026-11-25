@@ -3,7 +3,7 @@
  *
  *   SUPABASE_SERVICE_ROLE_KEY=... npm run seed
  *
- * Membuat: 1 admin, 1 display, 6 penjaga (+6 pos; skema membatasi satu penjaga = satu pos),
+ * Membuat: 1 admin, 1 display, 6 penjaga (+6 pos; skema membatasi satu penjaga = satu pos), 2 PIC lomba (+2 lomba),
  * 5 tim (kata sandi akun tim = qr_token), 30 aset, dan 12 berita (lewat RPC admin, status `ready`).
  *
  * Aturan keras:
@@ -54,6 +54,12 @@ const POSTS = [
   { name: "Menara Kartu", location: "Perpustakaan", open: true },
   { name: "Tarik Tambang", location: "Lapangan Voli", open: false },
   { name: "Cerdas Cermat", location: "Ruang Multimedia", open: false },
+];
+
+// PIC lomba (role `pic`, hari 1 dan 3): satu PIC memegang satu lomba (`posts.kind = 'lomba'`), tanpa saklar buka/tutup.
+const LOMBAS = [
+  { name: "Futsal Antarkelas", location: "Lapangan Futsal" },
+  { name: "Cerdas Cermat Umum", location: "Aula Utama" },
 ];
 
 function die(message: string): never {
@@ -168,6 +174,11 @@ async function main() {
       role: "guard" as Role,
       display: `Penjaga Pos ${i + 1}`,
     })),
+    ...LOMBAS.map((_, i) => ({
+      username: `pic${i + 1}`,
+      role: "pic" as Role,
+      display: `PIC Lomba ${i + 1}`,
+    })),
   ];
   const ids: Record<string, string> = {};
   for (const acct of plain) {
@@ -197,6 +208,27 @@ async function main() {
       `pos ${i + 1}`,
     );
     console.log(`• pos dibuat: Pos ${i + 1} · ${POSTS[i].name}`);
+  }
+
+  // --- lomba: satu per PIC; `is_open` tidak dipakai (tanpa saklar) ---
+  for (let i = 0; i < LOMBAS.length; i++) {
+    const picId = ids[`pic${i + 1}`];
+    const existing = must(
+      await admin.from("posts").select("id").eq("guard_id", picId).maybeSingle(),
+      "cek lomba",
+    );
+    if (existing) continue;
+    must(
+      await admin.from("posts").insert({
+        name: `Lomba ${i + 1} · ${LOMBAS[i].name}`,
+        location: LOMBAS[i].location,
+        guard_id: picId,
+        is_open: false,
+        kind: "lomba",
+      }),
+      `lomba ${i + 1}`,
+    );
+    console.log(`• lomba dibuat: Lomba ${i + 1} · ${LOMBAS[i].name}`);
   }
 
   // --- tim: kata sandi akun = qr_token ---

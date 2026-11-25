@@ -11,7 +11,7 @@ export type PostRow = Post & {
 
 /** "Pos 3 · Estafet Balon" / "Pos 3 — Estafet Balon" → "Estafet Balon". Nama tanpa awalan dikembalikan apa adanya. */
 export function postTitle(name: string): string {
-  const stripped = name.replace(/^\s*Pos\s*\d{1,3}\s*[·—–\-:.]?\s*/i, "").trim();
+  const stripped = name.replace(/^\s*(?:Pos|Lomba)\s*\d{1,3}\s*[·—–\-:.]?\s*/i, "").trim();
   return stripped || name.trim();
 }
 

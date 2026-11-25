@@ -15,11 +15,17 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/
 export function GuardShell({
   name,
   postLabel,
+  subtitle = "Penjaga",
+  scanHref = "/guard/scan",
   children,
 }: {
   name: string;
-  /** Mis. "Pos 3"; ditampilkan sebagai peran di kartu akun. */
+  /** Mis. "Pos 3" atau "Lomba 2"; ditampilkan sebagai peran di kartu akun. */
   postLabel: string;
+  /** Subjudul merek; PIC lomba memakai "PIC Lomba". */
+  subtitle?: string;
+  /** Tujuan menu "Pindai" (halaman pindai peran ini). */
+  scanHref?: string;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -34,19 +40,19 @@ export function GuardShell({
         >
           <Menu className="size-5" aria-hidden />
         </button>
-        <Brand subtitle="Penjaga" />
+        <Brand subtitle={subtitle} />
       </header>
 
       <main className="mx-auto flex w-full max-w-[520px] flex-1 flex-col px-5 py-5">{children}</main>
 
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent side="left">
-          <SheetTitle className="sr-only">Menu penjaga</SheetTitle>
-          <SheetDescription className="sr-only">Navigasi dan keluar dari akun penjaga.</SheetDescription>
-          <Brand subtitle="Penjaga" />
+          <SheetTitle className="sr-only">Menu {subtitle.toLowerCase()}</SheetTitle>
+          <SheetDescription className="sr-only">Navigasi dan keluar dari akun.</SheetDescription>
+          <Brand subtitle={subtitle} />
           <nav aria-label="Navigasi" className="flex-1">
             <Link
-              href="/guard/scan"
+              href={scanHref}
               aria-current="page"
               onClick={() => setOpen(false)}
               className="rounded-row bg-nav-active text-brand-text flex min-h-12 items-center gap-3 px-4 text-lg font-semibold"

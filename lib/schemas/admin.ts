@@ -82,8 +82,10 @@ export const setNewsEventSchema = z
 /** Tim baru (akun tim dibuat di server): hanya nama; username, QR, dan kode cadangan dibuat otomatis. */
 export const createTeamSchema = z.object({ name: z.string().trim().min(2).max(40) });
 
-/** Pos baru + akun penjaganya: nama game, lokasi, dan kata sandi awal penjaga (username dibuat otomatis, mis. guard7). */
+/** Pos/lomba baru + akunnya: nama game, lokasi, dan kata sandi awal (username dibuat otomatis, mis. guard7 atau pic2). */
 export const createPostSchema = z.object({
+  /** `rally` = pos dengan akun guard; `lomba` = lomba dengan akun PIC (tanpa saklar buka/tutup). */
+  kind: z.enum(["rally", "lomba"]).default("rally"),
   gameName: z.string().trim().min(2).max(60),
   location: z.string().trim().min(2).max(80),
   password: z.string().min(8).max(72),

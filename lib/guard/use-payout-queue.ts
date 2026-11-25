@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { awardPayout } from "@/app/guard/actions";
+import { awardPicPayout } from "@/app/pic/actions";
 import type { ActionResult } from "@/lib/schemas/common";
 import {
   backoffMs,
   failureReason,
   MAX_AUTO_ATTEMPTS,
   parseJobs,
+  PIC_STORAGE_KEY,
   serializeJobs,
   STORAGE_KEY,
   successText,
@@ -15,6 +17,9 @@ import {
 } from "./queue";
 
 export type SuccessNotice = { id: string; text: string };
+
+/** Penjaga pos memakai `award_payout`; PIC lomba memakai `award_pic_payout` dengan antrean tersimpan terpisah. */
+export type QueueVariant = "guard" | "pic";
 
 const SUCCESS_MS = 8_000;
 
@@ -24,7 +29,9 @@ const SUCCESS_MS = 8_000;
  * naik (maks. 5 kali); galat tetap (pos tidak tersedia, game selesai, dst.): langsung gagal dan menunggu "Kirim ulang".
  * Yang belum terkirim disimpan di peramban dan dilanjutkan saat halaman dibuka lagi.
  */
-export function usePayoutQueue() {
+export function usePayoutQueue(variant: QueueVariant = "guard") {
+  const award = variant === "pic" ? awardPicPayout : awardPayout;
+  const storageKey = variant === "pic" ? PIC_STORAGE_KEY : STORAGE_KEY;
   const [jobs, setJobs] = useState<PayoutJob[]>([]);
   const [notices, setNotices] = useState<SuccessNotice[]>([]);
   const inflight = useRef(new Set<string>());
@@ -42,7 +49,7 @@ export function usePayoutQueue() {
       inflight.current.add(job.requestId);
       let res: ActionResult;
       try {
-        res = await awardPayout({ requestId: job.requestId, teamId: job.teamId, amount: job.amount });
+        res = await award({ requestId: job.requestId, teamId: job.teamId, amount: job.amount });
       } catch {
         res = { ok: false, message: "Koneksi bermasalah. Coba lagi.", code: null, retryable: true };
       }
@@ -72,7 +79,7 @@ export function usePayoutQueue() {
       }
       patch(job.requestId, { status: "failed", reason: failureReason(res.code, res.message) });
     },
-    [patch],
+    [patch, award],
   );
 
   useEffect(() => {
@@ -82,7 +89,7 @@ export function usePayoutQueue() {
   // Muat antrean tersimpan (hadiah yang belum terkirim sebelum halaman ditutup) lalu lanjutkan pengirimannya.
   useEffect(() => {
     const id = window.setTimeout(() => {
-      const saved = parseJobs(window.localStorage.getItem(STORAGE_KEY));
+      const saved = parseJobs(window.localStorage.getItem(storageKey));
       loaded.current = true;
       if (saved.length === 0) return;
       setJobs((prev) => [...saved.filter((s) => !prev.some((p) => p.requestId === s.requestId)), ...prev]);
@@ -94,16 +101,16 @@ export function usePayoutQueue() {
       pending.forEach((t) => window.clearTimeout(t));
       pending.clear();
     };
-  }, []);
+  }, [storageKey]);
 
   useEffect(() => {
     if (!loaded.current) return;
     try {
-      window.localStorage.setItem(STORAGE_KEY, serializeJobs(jobs));
+      window.localStorage.setItem(storageKey, serializeJobs(jobs));
     } catch {
       // penyimpanan penuh/dinonaktifkan: antrean tetap berjalan di memori
     }
-  }, [jobs]);
+  }, [jobs, storageKey]);
 
   // Jangan tutup halaman diam-diam saat masih ada hadiah yang sedang dikirim.
   const sending = jobs.some((j) => j.status === "sending");

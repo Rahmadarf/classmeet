@@ -38,12 +38,13 @@ Urutan blok `sql` pada dokumen ini adalah urutan eksekusi migrasi, setelah semua
 | `process_market_cycle()` | internal / `pg_cron` (tiap 10 detik) | SQL + uji | Pulihkan tekanan stok, akhiri suspensi |
 | `get_my_summary()` | team | SQL + uji | Saldo, nilai aset (harga tayang), net worth sendiri |
 | `get_leaderboard()` | admin, display | SQL + uji | Peringkat. **Ditolak untuk tim dan penjaga** |
-| `resolve_team_qr(qr_token)` | guard, admin | SQL + uji | QR → id, nama, dan **saldo** tim (saldo ditampilkan di form hadiah, diputuskan 16 Nov) |
-| `resolve_team_code(code)` | guard, admin | SQL + uji | Kode cadangan → id, nama, dan saldo tim (tidak dipakai UI) |
+| `resolve_team_qr(qr_token)` | guard, pic, admin | SQL + uji | QR → id, nama, dan **saldo** tim (saldo ditampilkan di form hadiah, diputuskan 16 Nov) |
+| `resolve_team_code(code)` | guard, pic, admin | SQL + uji | Kode cadangan → id, nama, dan saldo tim (tidak dipakai UI) |
 | `award_payout(request_id, team_id, amount, note?)` | guard | SQL + uji | Beri hadiah: **saldo tim langsung bertambah**, tanpa persetujuan |
-| `get_post_payouts(limit?)` | guard | SQL + uji | Riwayat hadiah yang diberikan pos sendiri |
+| `award_pic_payout(request_id, team_id, amount, note?)` | pic | SQL + uji | Hadiah lomba oleh PIC: salinan `award_payout` yang hanya menerima role `pic` (lomba dicari dari `posts.guard_id = auth.uid()` dengan `kind = 'lomba'`); tabel `payouts` yang sama. `scripts/sql/pic-lomba.sql`, uji `test-pic-lomba.sql` |
+| `get_post_payouts(limit?)` | guard, pic | SQL + uji | Riwayat hadiah yang diberikan pos atau lomba sendiri |
 | `guard_set_post_open(open)` | guard | SQL + uji | Penjaga membuka/menutup posnya sendiri (tombol Tersedia / Tidak tersedia) |
-| `get_post_list()` | semua peran login | SQL + uji | Daftar pos (nama, lokasi, tersedia atau tidak) tanpa rentang hadiah |
+| `get_post_list()` | semua peran login | SQL + uji | Daftar pos dan lomba (nama, lokasi, tersedia atau tidak, `kind`) tanpa rentang hadiah; layar publik hanya menampilkan `kind = 'rally'` |
 | `admin_set_game_state(state)` | admin | SQL + uji | Pindah status game. Pembukaan pertama mengisi `started_at` dan mengunci harga, kumpulan, dan pengaturan berita |
 | `admin_adjust_cash(team_id, delta, reason)` | admin | SQL + uji | Koreksi saldo |
 | `admin_save_news(news_id?, title, body, effects)` | admin | SQL + uji | Simpan draf berita beserta efek per aset (divalidasi 4–7 aset). **Hanya sebelum game dibuka** (`game_started_locked` sesudahnya) |

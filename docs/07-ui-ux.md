@@ -127,6 +127,10 @@ Toggle pos meminta konfirmasi satu ketukan ("Tutup pos sementara?") agar tidak t
 
 Penjaga **melihat saldo tim hanya untuk tim yang kartunya sedang dipindai**, selama form terbuka (diputuskan 16 Nov; sebelumnya penjaga tidak boleh melihat saldo). Penjaga tetap tidak punya daftar tim, tidak melihat saldo tim lain, dan tidak melihat peringkat; satu-satunya jalan memilih tim adalah memindai QR. Konsekuensinya: siapa pun yang memegang akun penjaga dan satu kartu QR bisa membaca saldo tim itu (lihat [06](06-security.md)). Menu penjaga hanya **Pindai**; halaman riwayat penjaga tidak dibuat.
 
+### 2.2a PIC lomba
+
+Halaman **Pindai** `/pic/scan` memakai komponen yang sama dengan penjaga (`ScanBoard`, `variant="pic"`): kamera, form nominal sebagai lembar dari bawah, dan pop-up PIN. Bedanya: eyebrow "LOMBA N", subjudul merek "PIC Lomba", **tanpa toggle buka/tutup dan tanpa chip Tersedia**, PIN memakai `PIC_PIN`, antrean hadiah tersimpan terpisah (`classmeet.pic.payouts`). Di admin, halaman Pos mendapat filter Semua | Pos rally | Lomba; baris lomba tanpa tombol buka/tutup.
+
 ### 2.3 Admin
 
 | Halaman | Isi | Aksi utama |

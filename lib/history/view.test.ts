@@ -9,6 +9,7 @@ describe("postNumber", () => {
     expect(postNumber("Pos 3 · Estafet Balon")).toBe("03");
     expect(postNumber("Pos 12 - X")).toBe("12");
     expect(postNumber("Lempar Cincin")).toBeNull();
+    expect(postNumber("Lomba 2 · Futsal")).toBe("02");
   });
 });
 

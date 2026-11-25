@@ -3,6 +3,7 @@
 import { Check, Loader2, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { verifyGuardPin } from "@/app/guard/actions";
+import type { ActionResult } from "@/lib/schemas/common";
 import { AnimatedRupiah } from "@/components/guard/animated-rupiah";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -34,6 +35,7 @@ export function PayoutSheet({
   phase,
   onSend,
   onCancel,
+  verifyPin = verifyGuardPin,
 }: {
   team: SheetTeam | null;
   /** Terisi setelah "Kirim" ditekan: form beralih ke tampilan saldo naik. */
@@ -41,6 +43,8 @@ export function PayoutSheet({
   phase: PayoutPhase;
   onSend: (team: SheetTeam, amount: number) => void;
   onCancel: () => void;
+  /** Pemeriksa PIN di server; bawaan PIN penjaga, PIC lomba memakai PIN-nya sendiri. */
+  verifyPin?: (input: unknown) => Promise<ActionResult>;
 }) {
   return (
     <Sheet open={team !== null} onOpenChange={(o) => !o && onCancel()}>
@@ -55,7 +59,13 @@ export function PayoutSheet({
               onDone={onCancel}
             />
           ) : (
-            <Form key={team.requestId} team={team} onSend={onSend} onCancel={onCancel} />
+            <Form
+              key={team.requestId}
+              team={team}
+              onSend={onSend}
+              onCancel={onCancel}
+              verifyPin={verifyPin}
+            />
           )
         ) : null}
       </SheetContent>
@@ -67,10 +77,12 @@ function Form({
   team,
   onSend,
   onCancel,
+  verifyPin,
 }: {
   team: SheetTeam;
   onSend: (team: SheetTeam, amount: number) => void;
   onCancel: () => void;
+  verifyPin: (input: unknown) => Promise<ActionResult>;
 }) {
   const [text, setText] = useState("");
   const [pinOpen, setPinOpen] = useState(false);
@@ -90,7 +102,7 @@ function Form({
   const verify = async (pin: string): Promise<{ error: string | null; clear: boolean }> => {
     if (amount === null) return { error: null, clear: false };
     try {
-      const res = await verifyGuardPin({ pin });
+      const res = await verifyPin({ pin });
       if (!alive.current) return { error: null, clear: false };
       if (res.ok) {
         onSend(team, amount);

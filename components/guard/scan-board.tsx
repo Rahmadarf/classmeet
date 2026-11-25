@@ -6,11 +6,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { resolveTeam } from "@/app/guard/actions";
+import { verifyPicPin } from "@/app/pic/actions";
 import { PayoutNotices } from "@/components/guard/payout-notices";
 import { PayoutSheet, type PayoutPhase, type SheetTeam } from "@/components/guard/payout-sheet";
 import { PostToggle } from "@/components/guard/post-toggle";
 import { fetchMyPost, splitPostName, type MyPost } from "@/lib/guard/data";
-import { usePayoutQueue } from "@/lib/guard/use-payout-queue";
+import { usePayoutQueue, type QueueVariant } from "@/lib/guard/use-payout-queue";
 import type { GameState } from "@/lib/market/data";
 import { isNetworkError } from "@/lib/errors";
 import { parseTeamQr } from "@/lib/qr";
@@ -55,6 +56,8 @@ const DevQrDrop =
     ? dynamic(() => import("@/components/kiosk/dev-qr-drop").then((m) => m.DevQrDrop), { ssr: false })
     : null;
 
+const BANNER_PIC_FINISHED = "Game sudah selesai. Hadiah tidak bisa dikirim lagi.";
+
 const BANNER: Partial<Record<GameState, string>> = {
   setup: "Game belum dimulai. Hadiah belum bisa dikirim.",
   finished: "Game sudah selesai. Hadiah dan saklar pos tidak bisa dipakai lagi.",
@@ -64,11 +67,15 @@ export function ScanBoard({
   guardId,
   initialPost,
   initialState,
+  variant = "guard",
 }: {
   guardId: string;
   initialPost: MyPost;
   initialState: GameState;
+  /** `pic`: PIC lomba (PIN sendiri, antrean sendiri, TANPA saklar buka/tutup); bawaan penjaga pos. */
+  variant?: QueueVariant;
 }) {
+  const isPic = variant === "pic";
   const supabase = useMemo(() => createClient(), []);
   const queryClient = useQueryClient();
   const postKey = qk.guardPost(guardId);
@@ -88,7 +95,7 @@ export function ScanBoard({
   const [resolving, setResolving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [cameraError, setCameraError] = useState<IScannerError | null>(null);
-  const queue = usePayoutQueue();
+  const queue = usePayoutQueue(variant);
 
   const busy = useRef(false);
   const timers = useRef<number[]>([]);
@@ -197,16 +204,14 @@ export function ScanBoard({
         ? "sent"
         : "sending";
 
-  const { number, title } = splitPostName(post.name);
-  const banner = BANNER[state];
+  const { number, title, label } = splitPostName(post.name);
+  const banner = isPic && state === "finished" ? BANNER_PIC_FINISHED : BANNER[state];
 
   return (
     <div className="flex flex-col gap-5">
       <div>
-        {number ? (
-          <p className="text-brand-text text-[13px] font-semibold tracking-[0.12em] uppercase">
-            Pos {number}
-          </p>
+        {label ? (
+          <p className="text-brand-text text-[13px] font-semibold tracking-[0.12em] uppercase">{label}</p>
         ) : null}
         <h1 className="text-ink text-[32px] leading-[1.15] font-bold tracking-tight">Pindai Hadiah</h1>
       </div>
@@ -222,18 +227,22 @@ export function ScanBoard({
 
       <div className="flex items-center justify-between gap-4">
         <p className="text-ink min-w-0 text-lg font-semibold">
-          {number ? `Pos ${number} · ${title}` : title}
-          <span className={cn("block text-sm font-medium", post.open ? "text-ok-text" : "text-bad-text")}>
-            {post.open ? "Tersedia" : "Tidak tersedia"}
-          </span>
+          {number ? `${label} · ${title}` : title}
+          {isPic ? null : (
+            <span className={cn("block text-sm font-medium", post.open ? "text-ok-text" : "text-bad-text")}>
+              {post.open ? "Tersedia" : "Tidak tersedia"}
+            </span>
+          )}
         </p>
-        <PostToggle
-          open={post.open}
-          disabled={state === "finished"}
-          onChanged={(open) =>
-            queryClient.setQueryData(postKey, (p: MyPost | undefined) => (p ? { ...p, open } : p))
-          }
-        />
+        {isPic ? null : (
+          <PostToggle
+            open={post.open}
+            disabled={state === "finished"}
+            onChanged={(open) =>
+              queryClient.setQueryData(postKey, (p: MyPost | undefined) => (p ? { ...p, open } : p))
+            }
+          />
+        )}
       </div>
 
       <div
@@ -308,6 +317,7 @@ export function ScanBoard({
         phase={phase}
         onSend={send}
         onCancel={closeSheet}
+        verifyPin={isPic ? verifyPicPin : undefined}
       />
     </div>
   );
