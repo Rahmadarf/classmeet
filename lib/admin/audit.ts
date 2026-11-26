@@ -37,7 +37,10 @@ export function categoryOf(action: string): AuditCategory {
     action === "rotate_qr" ||
     action === "create_team" ||
     action === "delete_team" ||
-    action === "view_team_qr"
+    action === "view_team_qr" ||
+    action === "import_members" ||
+    action === "upsert_member" ||
+    action === "delete_member"
   )
     return "koreksi";
   if (
@@ -124,6 +127,12 @@ export function summarize(row: AuditRaw, lookup: Lookup): string {
       return `Tim dihapus: ${str(p.name)} (${str(p.username)})`;
     case "delete_post":
       return `Pos dihapus: ${str(p.name)}${p.guard_deleted === true ? ` + penjaga ${str(p.guard_username)}` : ""}`;
+    case "import_members":
+      return `Anggota diimpor: ${num(p.teams)} tim, ${num(p.added)} anggota baru, ${num(p.removed)} anggota lama diganti`;
+    case "upsert_member":
+      return `${team}: anggota ${p.created === true ? "ditambah" : "diubah"}`;
+    case "delete_member":
+      return `${team}: satu anggota dihapus`;
     case "view_team_qr":
       return `${team}: kartu QR dilihat`;
     case "rotate_qr":

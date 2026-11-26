@@ -17,6 +17,8 @@ const MESSAGES: Record<string, string> = {
   request_id_conflict: "Permintaan bentrok, muat ulang halaman.",
   post_closed: "Pos sedang tidak tersedia.",
   not_applicable: "Lomba tidak punya saklar buka/tutup.",
+  member_exists: "Anggota dengan nama itu sudah ada di tim ini.",
+  member_not_found: "Anggota tidak ditemukan.",
   invalid_amount: "Nominal tidak valid.",
   team_not_found: "Tim tidak ditemukan.",
   news_not_found: "Berita tidak ditemukan.",

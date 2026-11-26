@@ -82,6 +82,35 @@ export const setNewsEventSchema = z
 /** Tim baru (akun tim dibuat di server): hanya nama; username, QR, dan kode cadangan dibuat otomatis. */
 export const createTeamSchema = z.object({ name: z.string().trim().min(2).max(40) });
 
+/**
+ * Impor anggota tim (`admin_import_team_members`): baris datar hasil pengurai (`lib/admin/members.ts`). Hanya pagar bentuk;
+ * database memvalidasi ulang (tim ada, nama tidak kembar, batas panjang). Maksimal 2.000 baris.
+ */
+export const importMembersSchema = z.object({
+  rows: z
+    .array(
+      z.object({
+        team: z.string().trim().min(1).max(80),
+        name: z.string().trim().min(1).max(80),
+        class: z.string().trim().max(40).nullable(),
+        captain: z.boolean(),
+      }),
+    )
+    .min(1)
+    .max(2000),
+});
+
+/** Satu anggota (`admin_upsert_team_member`): `memberId` null = tambah baru. */
+export const saveMemberSchema = z.object({
+  memberId: z.number().int().positive().nullable(),
+  teamId: uuidSchema,
+  name: z.string().trim().min(1).max(80),
+  className: z.string().trim().max(40).nullable(),
+  captain: z.boolean(),
+});
+
+export const deleteMemberSchema = z.object({ memberId: z.number().int().positive() });
+
 /** Pos/lomba baru + akunnya: nama game, lokasi, dan kata sandi awal (username dibuat otomatis, mis. guard7 atau pic2). */
 export const createPostSchema = z.object({
   /** `rally` = pos dengan akun guard; `lomba` = lomba dengan akun PIC (tanpa saklar buka/tutup). */

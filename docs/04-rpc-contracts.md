@@ -47,6 +47,10 @@ Urutan blok `sql` pada dokumen ini adalah urutan eksekusi migrasi, setelah semua
 | `get_post_list()` | semua peran login | SQL + uji | Daftar pos dan lomba (nama, lokasi, tersedia atau tidak, `kind`) tanpa rentang hadiah; layar publik hanya menampilkan `kind = 'rally'` |
 | `admin_set_game_state(state)` | admin | SQL + uji | Pindah status game. Pembukaan pertama mengisi `started_at` dan mengunci harga, kumpulan, dan pengaturan berita |
 | `admin_adjust_cash(team_id, delta, reason)` | admin | SQL + uji | Koreksi saldo |
+| `admin_import_team_members(rows jsonb)` | admin | SQL + uji | Impor anggota: `rows` = array `{team, name, class?, captain?}` (maks. 2.000). **Mengganti** seluruh anggota tiap tim yang tercantum, tim lain tidak tersentuh; satu transaksi (tim tak dikenal membatalkan semuanya). Nama tim dicocokkan tanpa membedakan huruf dan spasi ganda. Mengembalikan `{teams, removed, added}`. Galat: `invalid_input`, `team_not_found`. `scripts/sql/team-members.sql`, uji `test-team-members.sql` |
+| `admin_upsert_team_member(member_id?, team_id, name, class?, captain?)` | admin | SQL + uji | Tambah (`member_id` null) atau ubah satu anggota. Galat: `member_exists`, `member_not_found`, `team_not_found`, `invalid_input` |
+| `admin_delete_team_member(member_id)` | admin | SQL + uji | Hapus satu anggota (`member_not_found`) |
+| `admin_member_counts()` | admin | SQL + uji | Jumlah anggota per tim untuk kolom "Anggota" |
 | `admin_save_news(news_id?, title, body, effects)` | admin | SQL + uji | Simpan draf berita beserta efek per aset (divalidasi 4–7 aset). **Hanya sebelum game dibuka** (`game_started_locked` sesudahnya) |
 | `admin_set_news_ready(news_id, ready)` | admin | SQL + uji | Masukkan / keluarkan berita dari kumpulan yang dipilih acak oleh sistem. **Hanya sebelum game dibuka** |
 | `get_news_pool_status()` | admin | SQL + uji | Jumlah berita draf / siap / boleh terbit sekarang / live / terpakai |

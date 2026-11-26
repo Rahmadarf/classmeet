@@ -28,6 +28,9 @@ describe("categoryOf", () => {
     expect(categoryOf("aneh")).toBe("lainnya");
     expect(categoryOf("delete_team")).toBe("koreksi");
     expect(categoryOf("delete_post")).toBe("pos");
+    expect(categoryOf("import_members")).toBe("koreksi");
+    expect(categoryOf("upsert_member")).toBe("koreksi");
+    expect(categoryOf("delete_member")).toBe("koreksi");
   });
 });
 
@@ -210,6 +213,29 @@ describe("aksi dari fungsi admin baru (scripts/sql/admin-functions-missing.sql)"
       "Dividen AP Rp 36.170 per unit, total Rp 108.510",
       "AD disuspensi 10 menit",
       "AD dibuka kembali",
+    ]);
+  });
+});
+
+describe("ringkasan anggota tim", () => {
+  it("impor mencatat jumlah, tanpa nama", () => {
+    const [r] = buildAuditRows([row("import_members", { teams: 3, added: 24, removed: 10 }, "ad")], lookup);
+    expect(r.category).toBe("koreksi");
+    expect(r.summary).toBe("Anggota diimpor: 3 tim, 24 anggota baru, 10 anggota lama diganti");
+  });
+  it("tambah, ubah, dan hapus satu anggota menyebut tim", () => {
+    const rows = buildAuditRows(
+      [
+        row("upsert_member", { team_id: "t1", member_id: 5, created: true }, "ad"),
+        row("upsert_member", { team_id: "t1", member_id: 5, created: false }, "ad"),
+        row("delete_member", { team_id: "t1", member_id: 5 }, "ad"),
+      ],
+      lookup,
+    );
+    expect(rows.map((x) => x.summary)).toEqual([
+      "Tim Elang: anggota ditambah",
+      "Tim Elang: anggota diubah",
+      "Tim Elang: satu anggota dihapus",
     ]);
   });
 });

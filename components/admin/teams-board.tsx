@@ -1,10 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { HandCoins, Plus, QrCode, Trash2 } from "lucide-react";
+import { FileUp, HandCoins, Plus, QrCode, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { deleteTeam } from "@/app/admin/teams/actions";
 import { CorrectionDialog } from "@/components/admin/correction-dialog";
+import { MembersImportDialog } from "@/components/admin/members-import-dialog";
+import { TeamMembersDialog } from "@/components/admin/team-members-dialog";
 import { TeamCreateDialog } from "@/components/admin/team-create-dialog";
 import { TeamQrDialog } from "@/components/admin/team-qr-dialog";
 import { IconButton } from "@/components/ui/icon-button";
@@ -66,6 +68,8 @@ export function TeamsBoard({ initial, initialGame }: { initial: TeamRow[]; initi
   const [correct, setCorrect] = useState<string | null>(null);
   const [qrTeam, setQrTeam] = useState<TeamRow | null>(null);
   const [creating, setCreating] = useState(false);
+  const [membersTeam, setMembersTeam] = useState<TeamRow | null>(null);
+  const [importing, setImporting] = useState(false);
 
   const runDelete = async () => {
     if (!deleting) return;
@@ -104,14 +108,25 @@ export function TeamsBoard({ initial, initialGame }: { initial: TeamRow[]; initi
           <h2 id="tim-judul" className="text-ink text-2xl font-bold">
             {rows.length} tim
           </h2>
-          <IconButton icon={Plus} size="icon" label="Tambah tim" onClick={() => setCreating(true)} />
+          <div className="flex gap-2">
+            <IconButton
+              variant="secondary"
+              icon={FileUp}
+              size="icon"
+              label="Impor anggota"
+              tooltip="Impor anggota dari CSV"
+              onClick={() => setImporting(true)}
+            />
+            <IconButton icon={Plus} size="icon" label="Tambah tim" onClick={() => setCreating(true)} />
+          </div>
         </div>
         <DataTable
           caption="Peringkat langsung semua tim"
-          head={["#", "Tim", "Saldo", "Nilai aset (harga tayang)", "Total", ""]}
-          widths={[72, 220, 150, 230, 160]}
-          minWidth={900}
-          align={["left", "left", "right", "right", "right"]}
+          head={["#", "Tim", "Anggota", "Saldo", "Nilai aset", "Total", ""]}
+          // Kolom aksi punya lebar sendiri (empat tombol 36 px + jarak + padding): tanpa itu ia menyusut dan tombolnya menutupi Total.
+          widths={[80, 190, 96, 130, 140, 140, 200]}
+          minWidth={976}
+          align={["left", "left", "right", "right", "right", "right", "right"]}
         >
           {rows.map((r, i) => (
             <tr key={r.teamId}>
@@ -126,6 +141,7 @@ export function TeamsBoard({ initial, initialGame }: { initial: TeamRow[]; initi
                 </span>
               </td>
               <td className="text-ink text-base font-semibold">{r.name}</td>
+              <td className="money text-right">{r.members}</td>
               <td className="money text-right">{formatRupiah(r.cash)}</td>
               <td className="money text-right">{formatRupiah(r.holdings)}</td>
               <td className="money text-ink text-right text-base font-bold">{formatRupiah(r.total)}</td>
@@ -137,6 +153,13 @@ export function TeamsBoard({ initial, initialGame }: { initial: TeamRow[]; initi
                     label={`Koreksi saldo ${r.name}`}
                     tooltip="Koreksi saldo"
                     onClick={() => setCorrect(r.teamId)}
+                  />
+                  <IconButton
+                    variant="secondary"
+                    icon={Users}
+                    label={`Anggota ${r.name}`}
+                    tooltip="Anggota tim"
+                    onClick={() => setMembersTeam(r)}
                   />
                   <IconButton
                     variant="secondary"
@@ -164,9 +187,11 @@ export function TeamsBoard({ initial, initialGame }: { initial: TeamRow[]; initi
         </DataTable>
         <p className="text-ink-muted text-sm">
           Total = saldo + nilai aset menurut harga tayang saat ini. Koreksi saldo mengubah saldo bebas, wajib
-          beralasan, dan tercatat di audit. Lihat QR menampilkan kartu tim untuk diunduh ulang; setiap
-          pembukaan tercatat di audit. Hapus menghilangkan tim beserta akun login dan kartu QR-nya; hanya bisa
-          saat status game Setup dan untuk tim tanpa saldo atau riwayat (Reset game mengosongkannya).
+          beralasan, dan tercatat di audit. Anggota mengelola daftar peserta tim; Impor anggota mengisi banyak
+          tim sekaligus dari CSV (mengganti anggota tim yang ada di berkas). Lihat QR menampilkan kartu tim
+          untuk diunduh ulang; setiap pembukaan tercatat di audit. Hapus menghilangkan tim beserta akun login
+          dan kartu QR-nya; hanya bisa saat status game Setup dan untuk tim tanpa saldo atau riwayat (Reset
+          game mengosongkannya).
         </p>
         {blockedReason ? (
           <p id="hapus-tim-alasan" className="text-bad-text text-sm font-medium">
@@ -215,6 +240,20 @@ export function TeamsBoard({ initial, initialGame }: { initial: TeamRow[]; initi
         error={deleteError}
         confirmDisabled={!canDelete}
         onConfirm={() => void runDelete()}
+      />
+
+      <TeamMembersDialog
+        team={membersTeam ? { id: membersTeam.teamId, name: membersTeam.name } : null}
+        onOpenChange={(o) => !o && setMembersTeam(null)}
+        onChanged={() => void refresh()}
+      />
+      <MembersImportDialog
+        open={importing}
+        onOpenChange={setImporting}
+        onDone={() => {
+          toast.success("Anggota tim diperbarui.");
+          void refresh();
+        }}
       />
 
       <TeamQrDialog

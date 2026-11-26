@@ -839,6 +839,40 @@ export type Database = {
         }
         Relationships: []
       }
+      team_members: {
+        Row: {
+          class_name: string | null
+          created_at: string
+          id: number
+          is_captain: boolean
+          name: string
+          team_id: string
+        }
+        Insert: {
+          class_name?: string | null
+          created_at?: string
+          id?: never
+          is_captain?: boolean
+          name: string
+          team_id: string
+        }
+        Update: {
+          class_name?: string | null
+          created_at?: string
+          id?: never
+          is_captain?: boolean
+          name?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teams: {
         Row: {
           cash: number
@@ -1005,6 +1039,28 @@ export type Database = {
       admin_delete_team: {
         Args: { p_team_id: string }
         Returns: undefined
+      }
+      admin_delete_team_member: {
+        Args: { p_member_id: number }
+        Returns: undefined
+      }
+      admin_import_team_members: {
+        Args: { p_rows: Json }
+        Returns: Json
+      }
+      admin_member_counts: {
+        Args: Record<PropertyKey, never>
+        Returns: { member_count: number; team_id: string }[]
+      }
+      admin_upsert_team_member: {
+        Args: {
+          p_captain?: boolean
+          p_class?: string
+          p_member_id: number
+          p_name: string
+          p_team_id: string
+        }
+        Returns: number
       }
       admin_freeze_leaderboard: {
         Args: Record<PropertyKey, never>

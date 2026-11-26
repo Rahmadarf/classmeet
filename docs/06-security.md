@@ -34,6 +34,7 @@ Aturan: **setiap pengecekan penting harus ada di lapis 3.** Lapis 1 dan 2 hanya 
 | Isi berita yang belum tayang dan efeknya | Admin **hanya sebelum game dibuka** | RLS `news`/`news_effects`: `app_role()='admin' and not game_is_locked()`; sesudah dibuka tidak ada yang bisa membaca |
 | Identitas tim dari QR | Penjaga, admin | Hanya lewat `resolve_team_qr()` / `resolve_team_code()` yang mengembalikan id, nama, dan **saldo tim itu saja** (revisi 16 Nov, untuk ditampilkan di form hadiah). Penjaga tidak punya akses baca ke `teams`, jadi tidak bisa membaca daftar atau saldo tim lain. Risiko yang diterima: pemegang akun penjaga plus satu kartu QR bisa membaca saldo tim itu; kartu sudah merupakan kredensial penuh tim, jadi tidak ada kebocoran tambahan selain saldo yang memang sudah terlihat oleh pemegang kartu |
 | Hasil leaderboard | `admin`, `display` | `get_leaderboard()` menolak `team` dan `guard`; `teams`, snapshot, dan view `v_team_net_worth` tidak bisa dibaca klien |
+| Anggota tim (`team_members`: nama dan kelas peserta) | Hanya admin | RLS `select` untuk admin; tulis lewat `admin_import_team_members` / `admin_upsert_team_member` / `admin_delete_team_member`. Audit hanya mencatat jumlah dan id, tidak nama. Tidak tampil di layar publik, akun tim, atau log server |
 | Hadiah pos (`payouts`) | Tim (miliknya), penjaga (pos sendiri), admin | RLS pada `payouts`; tulis hanya lewat `award_payout` |
 | Menulis apa pun | Tidak ada klien | `revoke insert, update, delete`; semua lewat RPC |
 

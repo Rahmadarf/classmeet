@@ -212,6 +212,25 @@ create table teams (
 - `short_code` adalah kode cadangan 6 karakter untuk diketik penjaga bila kamera/QR gagal. Dibuat oleh skrip `create-accounts.ts` (huruf besar dan angka, hindari `0/O/1/I` agar mudah dibaca).
 - Jika QR bocor atau tercetak salah, admin memanggil `admin_rotate_team_qr` untuk menggantinya.
 
+### 3.2a `team_members`
+
+Daftar peserta tiap tim (25 Nov; `scripts/sql/team-members.sql`). Diisi admin di `/admin/teams`, satu per satu atau impor CSV.
+
+```sql
+create table team_members (
+  id         bigint generated always as identity primary key,
+  team_id    uuid not null references teams(id) on delete cascade,
+  name       text not null,        -- 1-80 huruf, spasi dirapikan
+  class_name text,                 -- kelas, boleh kosong, maks. 40
+  is_captain boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create unique index on team_members (team_id, lower(name));   -- nama unik per tim tanpa membedakan huruf
+```
+
+- **Data pribadi:** RLS membatasi `select` ke admin; tulis hanya lewat fungsi admin `security definer`. Tidak tampil di layar publik atau akun tim. `audit_log` hanya memuat jumlah dan id, tidak pernah nama atau kelas.
+- Hapus tim ikut menghapus anggotanya (`on delete cascade`). `admin_reset_game` tidak menghapus anggota (seperti tim). Tidak menyentuh uang atau harga, jadi boleh diubah di status game apa pun.
+
 ### 3.3 `posts`
 
 ```sql

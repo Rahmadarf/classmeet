@@ -82,15 +82,20 @@ export type TeamRow = {
   holdings: number;
   total: number;
   freeCash: number;
+  /** Jumlah anggota tim (`admin_member_counts`); 0 bila belum ada atau fungsinya belum dimuat di database. */
+  members: number;
 };
 
 export async function fetchTeamsPage(supabase: Db): Promise<TeamRow[] | null> {
-  const [board, teams] = await Promise.all([
+  const [board, teams, counts] = await Promise.all([
     supabase.rpc("get_leaderboard"),
     supabase.from("teams").select("id,name,cash"),
+    supabase.rpc("admin_member_counts"),
   ]);
   if (board.error || !board.data || teams.error || !teams.data) return null;
   const free = new Map(teams.data.map((t) => [t.id, t.cash]));
+  // Jumlah anggota tidak wajib: bila gagal dimuat, halaman Tim tetap tampil (kolom Anggota = 0).
+  const memberCount = new Map((counts.data ?? []).map((c) => [c.team_id, c.member_count]));
   return board.data
     .flatMap((r): TeamRow[] =>
       r.team_id && r.team_name && r.rank !== null && r.net_worth !== null
@@ -103,11 +108,40 @@ export async function fetchTeamsPage(supabase: Db): Promise<TeamRow[] | null> {
               holdings: r.holdings_value ?? 0,
               total: r.net_worth,
               freeCash: free.get(r.team_id) ?? 0,
+              members: memberCount.get(r.team_id) ?? 0,
             },
           ]
         : [],
     )
     .sort((a, b) => a.rank - b.rank || a.name.localeCompare(b.name));
+}
+
+// ---------- Anggota tim ----------
+export type TeamMember = { id: number; name: string; className: string | null; captain: boolean };
+
+/** Anggota satu tim (RLS: hanya admin). Ketua di atas, lalu menurut nama. null bila gagal dimuat. */
+export async function fetchTeamMembers(supabase: Db, teamId: string): Promise<TeamMember[] | null> {
+  const { data, error } = await supabase
+    .from("team_members")
+    .select("id,name,class_name,is_captain")
+    .eq("team_id", teamId)
+    .order("is_captain", { ascending: false })
+    .order("name", { ascending: true });
+  if (error || !data) return null;
+  return data.map((m) => ({ id: m.id, name: m.name, className: m.class_name, captain: m.is_captain }));
+}
+
+/** Nama dan jumlah anggota semua tim, untuk pratinjau impor (mencocokkan nama tim berkas dengan tim yang ada). */
+export async function fetchTeamsForImport(
+  supabase: Db,
+): Promise<{ id: string; name: string; members: number }[] | null> {
+  const [teams, counts] = await Promise.all([
+    supabase.from("teams").select("id,name"),
+    supabase.rpc("admin_member_counts"),
+  ]);
+  if (teams.error || !teams.data) return null;
+  const memberCount = new Map((counts.data ?? []).map((c) => [c.team_id, c.member_count]));
+  return teams.data.map((t) => ({ id: t.id, name: t.name, members: memberCount.get(t.id) ?? 0 }));
 }
 
 // ---------- Aset ----------
